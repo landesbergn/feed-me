@@ -260,13 +260,14 @@
 
 <h2 id="flows">2. User flows</h2>
 
-<h3>2.1 First-time setup (one-shot, owner only)</h3>
+<h3>2.1 First-time setup (web, ~90 seconds)</h3>
 <ol>
-  <li>SSH to the Fly machine and run <code>npm run init-user -- --email you@example.com --voice shimmer</code>. It prints your <strong>feed URL</strong>, <strong>API token</strong>, and <strong>Shortcut install link</strong> to stdout — save them in your password manager.</li>
-  <li>Paste the feed URL into your podcast app as a custom feed subscription.</li>
-  <li>Tap the Shortcut install link from your iPhone; the Shortcut asks for your API token and stores it inside the shortcut.</li>
+  <li>Open the Feed Me site on your iPhone, tap <strong>Sign in</strong>, enter your password (set during deploy via env var). A signed session cookie keeps you logged in.</li>
+  <li>On the settings page, tap <strong>Add to Apple Podcasts</strong> (or copy the feed URL into another podcast app). This opens the podcast app directly to your subscription.</li>
+  <li>Tap <strong>Install Shortcut</strong>. iOS opens the Shortcuts app with a per-user shortcut that already contains your API token — confirm install. No copy-paste, no token entry.</li>
+  <li>Pick a voice (default: <code>shimmer</code>) and you're done.</li>
 </ol>
-<p class="small">No settings web UI in v1: you're the only user, and one CLI run replaces the entire signup/auth/settings-page surface area. The settings UI returns in v2.0 alongside multi-user support.</p>
+<p class="small">The settings page is the single source of truth for your feed URL, API token, voice, and saved-episode history. Tokens can be rotated from this page if the phone is lost or compromised.</p>
 
 <h3>2.2 Saving an article</h3>
 <ol>
@@ -278,27 +279,34 @@
 <h3>2.3 Listening</h3>
 <p>Standard podcast app behavior. Newest episode at the top of the feed. Your podcast app handles downloads, playback position, speed, and local cleanup.</p>
 
+<p class="small"><strong>Supported apps</strong> (subscribe by URL): Apple Podcasts, Overcast, Pocket Casts, Castro, AntennaPod, Podverse, Podcast Addict, and most other RSS-aware players.</p>
+
+<p class="small"><strong>Not supported: Spotify.</strong> Spotify's consumer app does not let listeners subscribe to arbitrary RSS feed URLs, and its "private podcast" tooling is enterprise-only. Workarounds (submitting your feed to Spotify for Podcasters with an obscure name) make the feed publicly indexed, which defeats the point. Documented as a non-goal in §13.</p>
+
 <h2 id="arch">3. Architecture</h2>
 
-<p>One Fly.io machine runs a single Node.js process. Two HTTP endpoints (ingest and RSS), one in-process worker loop. SQLite (on a Fly volume) holds all state. Cloudflare R2 serves MP3 audio over its default <code>*.r2.dev</code> hostname. Two vendors, one log stream.</p>
+<p>One Fly.io machine runs a single Node.js process. Three HTTP surfaces (settings UI, ingest API, RSS feed), one in-process worker loop. SQLite (on a Fly volume) holds all state including sessions. Cloudflare R2 serves MP3 audio over its default <code>*.r2.dev</code> hostname. Two vendors, one log stream.</p>
 
-<div class="diagram">┌────────────┐     ┌─────────────────────────┐     ┌────────────────────────┐
-│ iOS        │────▶│ Node app on Fly.io      │────▶│ Worker loop (in-proc)  │
-│ Shortcut   │     │                         │     │                        │
-└────────────┘     │ POST /api/ingest        │     │  extract (+ Wayback    │
-                   │   inserts episode row   │     │             fallback)  │
-                   │   returns < 200 ms      │     │  build TTS script      │
-                   │                         │     │  OpenAI TTS (chunked)  │
-                   │ GET /feed/:token.xml    │     │  concat + upload to R2 │
-                   │                         │     │  mark episode ready    │
-                   │ SQLite (Fly volume):    │◀────┴────────────────────────┘
-                   │   users, episodes       │                │
-                   └─────────────────────────┘                ▼
-                              ▲                    ┌────────────────────┐
-                   ┌──────────┴──────────┐         │ Cloudflare R2      │
-Podcast app ──────▶│ Reads RSS XML       │         │ (public, r2.dev)   │
-                   └─────────────────────┘         └─────────┬──────────┘
-                              ◀────────── serves audio ──────┘
+<div class="diagram">┌────────────┐  ┌────────────────────────────┐  ┌────────────────────────┐
+│ iOS        │─▶│ Node app on Fly.io         │─▶│ Worker loop (in-proc)  │
+│ Shortcut   │  │                            │  │                        │
+└────────────┘  │ POST /api/ingest           │  │  extract (+ Wayback    │
+                │   inserts episode row      │  │             fallback)  │
+┌────────────┐  │   returns < 200 ms         │  │  build TTS script      │
+│ Browser    │─▶│                            │  │  OpenAI TTS (chunked)  │
+│ (settings) │  │ GET  /login   POST /login  │  │  concat + upload to R2 │
+└────────────┘  │ GET  /settings (auth'd)    │  │  mark episode ready    │
+                │ GET  /shortcut.shortcut    │  │                        │
+                │ GET  /feed/:token.xml      │  │                        │
+                │                            │  │                        │
+                │ SQLite (Fly volume):       │◀─┴────────────────────────┘
+                │   users, episodes, sessions│           │
+                └────────────────────────────┘           ▼
+                              ▲              ┌────────────────────┐
+                   ┌──────────┴──────────┐   │ Cloudflare R2      │
+Podcast app ──────▶│ Reads RSS XML       │   │ (public, r2.dev)   │
+                   └─────────────────────┘   └─────────┬──────────┘
+                              ◀──────── serves audio ──┘
 </div>
 
 <h3>Components</h3>
@@ -306,13 +314,13 @@ Podcast app ──────▶│ Reads RSS XML       │         │ (public
 <table>
   <thead><tr><th>Component</th><th>Role</th><th>Tech</th></tr></thead>
   <tbody>
-    <tr><td>HTTP server</td><td><code>POST /api/ingest</code> and <code>GET /feed/:token.xml</code></td><td>Node + Fastify</td></tr>
+    <tr><td>HTTP server</td><td>Settings UI, login, ingest API, RSS feed, Shortcut generator</td><td>Node + Fastify + server-side HTML (no SPA)</td></tr>
     <tr><td>Worker loop</td><td>Polls <code>episodes</code> for <code>status='pending'</code>, processes one at a time</td><td>In-process loop (5s tick)</td></tr>
-    <tr><td>Database</td><td>Users + episodes</td><td>SQLite + <code>better-sqlite3</code></td></tr>
+    <tr><td>Database</td><td>Users, episodes, sessions</td><td>SQLite + <code>better-sqlite3</code></td></tr>
     <tr><td>Audio storage</td><td>MP3 files served publicly via unguessable keys</td><td>Cloudflare R2 (S3 API, <code>*.r2.dev</code>)</td></tr>
     <tr><td>Extraction</td><td>HTML → article text + metadata; falls back to Internet Archive when paywalled</td><td><code>@mozilla/readability</code> + <code>jsdom</code> + Wayback Availability API</td></tr>
     <tr><td>TTS</td><td>Text → MP3 (chunked on paragraph boundaries to fit per-request char limit)</td><td>OpenAI <code>tts-1</code> (gpt-4o-mini-tts class)</td></tr>
-    <tr><td>Bootstrap CLI</td><td>Seeds the single owner user and prints feed URL + API token + Shortcut link</td><td><code>npm run init-user</code></td></tr>
+    <tr><td>Shortcut generator</td><td>Renders a per-user <code>.shortcut</code> file with the API token pre-embedded so iOS one-tap-installs it</td><td>Apple Shortcuts file format (plist)</td></tr>
   </tbody>
 </table>
 
@@ -358,15 +366,16 @@ Podcast app ──────▶│ Reads RSS XML       │         │ (public
 
 <h2 id="data">6. Data model</h2>
 
-<p>SQLite, two tables. Times are unix epoch milliseconds. No public IDs or UUIDs — the random <code>feed_token</code> (per user) and <code>audio_token</code> (per episode) double as both the credential and the URL slug.</p>
+<p>SQLite, three tables. Times are unix epoch milliseconds. No public IDs or UUIDs — the random <code>feed_token</code> (per user), <code>audio_token</code> (per episode), and <code>session_token</code> (per login) double as both credential and URL slug.</p>
 
 <pre><code>CREATE TABLE users (
-  id              INTEGER PRIMARY KEY,
-  email           TEXT NOT NULL,
-  voice           TEXT NOT NULL DEFAULT 'shimmer',
-  feed_token      TEXT NOT NULL UNIQUE,    -- 32 random bytes, base64url, used in feed URL
-  api_token_hash  TEXT NOT NULL,           -- sha256 of bearer token; plaintext never stored
-  created_at      INTEGER NOT NULL
+  id                INTEGER PRIMARY KEY,
+  email             TEXT NOT NULL,
+  password_hash     TEXT NOT NULL,         -- bcrypt(SETTINGS_PASSWORD) seeded on first run
+  voice             TEXT NOT NULL DEFAULT 'shimmer',
+  feed_token        TEXT NOT NULL UNIQUE,  -- 32 random bytes, base64url, used in feed URL
+  api_token_hash    TEXT NOT NULL,         -- sha256 of bearer token; plaintext never stored
+  created_at        INTEGER NOT NULL
 );
 
 CREATE TABLE episodes (
@@ -390,16 +399,41 @@ CREATE TABLE episodes (
   UNIQUE(user_id, url_hash)
 );
 
-CREATE INDEX idx_episodes_pending ON episodes(status, updated_at) WHERE status IN ('pending','processing');
-CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE status = 'ready';
+CREATE TABLE sessions (
+  token             TEXT PRIMARY KEY,      -- 32 random bytes, base64url; stored in cookie
+  user_id           INTEGER NOT NULL REFERENCES users(id),
+  created_at        INTEGER NOT NULL,
+  expires_at        INTEGER NOT NULL,      -- created_at + 30 days
+  last_seen_at      INTEGER NOT NULL
+);
+
+CREATE INDEX idx_episodes_pending      ON episodes(status, updated_at) WHERE status IN ('pending','processing');
+CREATE INDEX idx_episodes_user_ready   ON episodes(user_id, ready_at DESC) WHERE status = 'ready';
+CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
 </code></pre>
 
 <p class="small">Crash recovery: on startup the app runs <code>UPDATE episodes SET status='pending' WHERE status='processing' AND updated_at &lt; now() - 5min</code> — sweeps stuck rows back into the queue without a separate jobs table.</p>
 
 <h2 id="api">7. API contracts</h2>
 
-<h3>POST <code>/api/ingest</code> <span class="pill">authenticated</span></h3>
-<p>Auth: <code>Authorization: Bearer &lt;api_token&gt;</code>.</p>
+<h3>GET <code>/</code>, <code>/login</code>, <code>POST /login</code> <span class="pill">public</span></h3>
+<p>Server-rendered HTML. Root redirects to <code>/settings</code> if a valid session cookie is present, otherwise <code>/login</code>. The login page is a single email + password form. On submit, the server checks bcrypt, creates a <code>sessions</code> row, and sets an <code>HttpOnly; Secure; SameSite=Lax</code> cookie with the session token (30-day expiry, sliding on activity).</p>
+
+<h3>GET <code>/settings</code>, <code>POST /settings/voice</code>, <code>POST /settings/rotate-token</code> <span class="pill">session</span></h3>
+<p>Single page showing:</p>
+<ul>
+  <li><strong>Feed URL</strong> with one-tap copy + an <em>"Add to Apple Podcasts"</em> button that opens <code>podcast://&lt;feed_url&gt;</code>.</li>
+  <li><strong>Install Shortcut</strong> button linking to <code>/shortcut.shortcut</code>.</li>
+  <li><strong>Voice picker</strong> (radio buttons; submits to <code>POST /settings/voice</code>).</li>
+  <li><strong>Rotate API token</strong> button (invalidates the old token, redirects to settings with new value visible once).</li>
+  <li><strong>Recent episodes</strong> — last 30 rows, including failed ones with <code>error_message</code> visible.</li>
+</ul>
+
+<h3>GET <code>/shortcut.shortcut</code> <span class="pill">session</span></h3>
+<p>Generates and returns an Apple Shortcuts file (<code>application/octet-stream</code>; iOS recognizes the extension) with the user's <code>api_token</code> and the ingest URL pre-embedded as constants. iOS opens Shortcuts on tap and prompts to install — the user confirms once and the shortcut is fully configured. Anyone with an active session can download this; if the user rotates their API token, the previously-installed shortcut stops working until reinstalled.</p>
+
+<h3>POST <code>/api/ingest</code> <span class="pill">bearer</span></h3>
+<p>Called by the iOS Shortcut. Auth: <code>Authorization: Bearer &lt;api_token&gt;</code>.</p>
 <pre><code>// Request
 { "url": "https://example.com/article" }
 
@@ -415,7 +449,7 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 // 401 — missing or bad token
 { "error": "unauthorized" }
 </code></pre>
-<p>Response time target: &lt; 200ms. Heavy work runs in the worker loop. The Shortcut only needs the boolean acceptance; episode-specific IDs aren't surfaced to the client.</p>
+<p>Response time target: &lt; 200ms. Heavy work runs in the worker loop.</p>
 
 <h3>GET <code>/feed/:token.xml</code> <span class="pill">public</span></h3>
 <p>No auth header; the token in the URL <em>is</em> the auth. Returns valid podcast RSS 2.0 with the iTunes namespace. Includes only episodes with <code>status='ready'</code>, ordered newest first. Each <code>&lt;guid&gt;</code> is the episode's <code>audio_token</code>. <code>Cache-Control: max-age=60</code>.</p>
@@ -426,10 +460,13 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 <h2 id="auth">8. Auth &amp; security</h2>
 
 <ul>
-  <li><strong>API token:</strong> 32 random bytes, base64url. Stored as sha256 hash; plaintext shown once by the bootstrap CLI. Sent as <code>Authorization: Bearer &lt;token&gt;</code>.</li>
-  <li><strong>Feed token:</strong> 32 random bytes, base64url. Stored plaintext — the token itself is the credential, so hashing would prevent feed lookups. Treated as a capability URL: anyone with it can read your feed (rotated via CLI if leaked).</li>
-  <li><strong>Audio tokens:</strong> 16 random bytes per episode, base64url. R2 bucket has public read on the <code>audio/</code> prefix with listing disabled, so enumeration is infeasible.</li>
-  <li><strong>No SSRF guardrail or rate limiter in v1.</strong> Single user, single token. If the token leaks it's rotated. Both return for the public release alongside multi-user auth.</li>
+  <li><strong>Owner account:</strong> on first boot the app reads <code>OWNER_EMAIL</code> and <code>OWNER_PASSWORD</code> env vars and seeds the single <code>users</code> row, bcrypt-hashing the password. Subsequent restarts skip the seed step. To rotate the password, change the env var and restart.</li>
+  <li><strong>Browser session:</strong> after a successful login the server inserts a <code>sessions</code> row and sets an <code>HttpOnly; Secure; SameSite=Lax</code> cookie. 30-day expiry, sliding on each authenticated request. Logout deletes the row.</li>
+  <li><strong>API token (for the Shortcut):</strong> 32 random bytes, base64url. Stored as sha256 hash; plaintext appears in the rendered <code>.shortcut</code> file only. Rotating it from the settings page generates a new value and invalidates the previously-installed shortcut.</li>
+  <li><strong>Feed token:</strong> 32 random bytes, base64url. Stored plaintext (it's the credential itself, so hashing would block feed lookups). Capability URL — anyone with it reads your feed. Rotation supported from settings.</li>
+  <li><strong>Audio tokens:</strong> 16 random bytes per episode, base64url. R2 bucket has public read on <code>audio/</code> with listing disabled, so enumeration is infeasible.</li>
+  <li><strong>Open signup is disabled:</strong> v1 supports exactly one user, seeded from env vars. New signups are deferred until v2 (multi-user with magic-link onboarding).</li>
+  <li><strong>No SSRF guardrail or rate limiter in v1.</strong> Single user with a static API token; if it leaks, rotate it. Both return for the public release.</li>
 </ul>
 
 <h2 id="errors">9. Error handling</h2>
@@ -453,8 +490,9 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 
 <ul>
   <li><strong>Fly.io:</strong> one machine, <code>shared-cpu-1x</code>, 256 MB RAM, with a 1 GB volume mounted at <code>/data</code> for SQLite. <code>fly deploy</code> from a standard Node Dockerfile.</li>
+  <li><strong>Domain:</strong> Fly's default <code>*.fly.dev</code> hostname is fine for v1 (it's HTTPS by default; the iOS Shortcut and podcast apps don't care about the hostname). A custom domain is backlog.</li>
   <li><strong>Cloudflare R2:</strong> one bucket, public read on <code>audio/</code> prefix, listing disabled, served from R2's default <code>pub-XXX.r2.dev</code> hostname.</li>
-  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>.</li>
+  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>, <code>OWNER_EMAIL</code>, <code>OWNER_PASSWORD</code>, <code>SESSION_SECRET</code> (used to sign session cookies), <code>APP_BASE_URL</code> (e.g. <code>https://feed-me-noah.fly.dev</code>; baked into the generated Shortcut).</li>
   <li><strong>Schema:</strong> a single <code>schema.sql</code> applied with <code>CREATE TABLE IF NOT EXISTS</code> on startup. A real migration system arrives the first time we actually need to alter a table.</li>
   <li><strong>Backups:</strong> <code>flyctl ssh sftp get</code> the SQLite file occasionally if you care. Fly volumes are reliable enough for a personal tool; no Litestream in v1.</li>
   <li><strong>Logs:</strong> stdout to Fly's log stream; structured JSON via <code>pino</code>.</li>
@@ -487,10 +525,11 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 
 <h3>Explicitly out of scope for v1</h3>
 <ul>
-  <li>Settings web page — replaced by a bootstrap CLI for the single owner.</li>
+  <li><strong>Spotify support.</strong> Spotify's consumer app cannot subscribe to custom RSS URLs and its "private podcast" tooling is enterprise-only. Listeners use Apple Podcasts, Overcast, Pocket Casts, etc.</li>
+  <li>Multi-user signup. v1 supports exactly one owner account, seeded from env vars. Magic-link multi-user lands in v2.0.</li>
+  <li>Custom domain (Fly's default <code>*.fly.dev</code> hostname is used).</li>
   <li>PDF / file uploads.</li>
   <li>Raw-text input ("paste this text") Shortcut variant.</li>
-  <li>Magic-link or OAuth login.</li>
   <li>Per-episode voice override.</li>
   <li>LLM cleanup or summarization.</li>
   <li>Multi-part episode splitting (long articles render as one long MP3 via chunked TTS, but stay a single feed entry).</li>
@@ -498,16 +537,16 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
   <li>Episode artwork from <code>og:image</code>.</li>
   <li>Streaming TTS / progressive playback.</li>
   <li>Search, transcripts, export.</li>
-  <li>Custom audio domain, SSRF allowlist, rate limiter, migrations system, Litestream backup — all valid; all deferred until the public release.</li>
+  <li>SSRF allowlist, rate limiter, migrations system, Litestream backup — all valid; all deferred until the public release.</li>
 </ul>
 
 <h3>Backlog (rough order)</h3>
 <ol>
   <li><span class="pill future">v1.1</span> Async failure notifications back to the Shortcut (iOS push or email).</li>
   <li><span class="pill future">v1.2</span> "Paste text" Shortcut variant for paywalled content not in Wayback.</li>
-  <li><span class="pill future">v1.3</span> Episode artwork from <code>og:image</code>.</li>
-  <li><span class="pill future">v2.0</span> Multi-user: magic-link auth, settings web page, public landing page, SSRF allowlist, per-user rate limiter, real migrations system.</li>
-  <li><span class="pill future">v2.x</span> PDF input. Per-episode voice. ElevenLabs as a premium voice tier. Custom audio domain. Litestream backups.</li>
+  <li><span class="pill future">v1.3</span> Episode artwork from <code>og:image</code>; custom domain.</li>
+  <li><span class="pill future">v2.0</span> Multi-user signup with magic-link auth (Resend), public landing page, SSRF allowlist, per-user rate limiter, real migrations system.</li>
+  <li><span class="pill future">v2.x</span> PDF input. Per-episode voice. ElevenLabs as a premium voice tier. Litestream backups. Spotify-compatible feed for users who claim their show via Spotify for Podcasters.</li>
 </ol>
 
 <hr>
