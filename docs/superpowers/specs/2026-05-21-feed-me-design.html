@@ -260,13 +260,13 @@
 
 <h2 id="flows">2. User flows</h2>
 
-<h3>2.1 First-time setup (once per user)</h3>
+<h3>2.1 First-time setup (one-shot, owner only)</h3>
 <ol>
-  <li>Visit <code>/settings</code>, sign in (single password, MVP).</li>
-  <li>Copy your <strong>RSS feed URL</strong> and paste it into your podcast app as a custom feed subscription.</li>
-  <li>Tap the <strong>Install Shortcut</strong> link from your iPhone; Apple Shortcuts asks for your <strong>API token</strong> (shown on the settings page) and saves it inside the shortcut.</li>
-  <li>Pick a voice (default: <code>shimmer</code>).</li>
+  <li>SSH to the Fly machine and run <code>npm run init-user -- --email you@example.com --voice shimmer</code>. It prints your <strong>feed URL</strong>, <strong>API token</strong>, and <strong>Shortcut install link</strong> to stdout — save them in your password manager.</li>
+  <li>Paste the feed URL into your podcast app as a custom feed subscription.</li>
+  <li>Tap the Shortcut install link from your iPhone; the Shortcut asks for your API token and stores it inside the shortcut.</li>
 </ol>
+<p class="small">No settings web UI in v1: you're the only user, and one CLI run replaces the entire signup/auth/settings-page surface area. The settings UI returns in v2.0 alongside multi-user support.</p>
 
 <h3>2.2 Saving an article</h3>
 <ol>
@@ -280,25 +280,25 @@
 
 <h2 id="arch">3. Architecture</h2>
 
-<p>One Fly.io machine runs a single Node.js process containing both the HTTP server and the background worker. SQLite (on a Fly volume) holds all state. Cloudflare R2 stores MP3 audio. Two vendors, one log stream.</p>
+<p>One Fly.io machine runs a single Node.js process. Two HTTP endpoints (ingest and RSS), one in-process worker loop. SQLite (on a Fly volume) holds all state. Cloudflare R2 serves MP3 audio over its default <code>*.r2.dev</code> hostname. Two vendors, one log stream.</p>
 
 <div class="diagram">┌────────────┐     ┌─────────────────────────┐     ┌────────────────────────┐
-│ iOS        │────▶│ Node app on Fly.io      │────▶│ Background worker      │
-│ Shortcut   │     │ POST /api/ingest        │     │ (in-process queue)     │
-└────────────┘     │  (validate, enqueue)    │     │                        │
-                   │                         │     │  1. fetch + extract    │
-                   │ GET /feed/:token.xml    │     │  2. paywall? → Wayback │
-                   │ GET /settings           │     │  3. template intro     │
-                   │ GET /shortcut/install   │     │  4. OpenAI TTS         │
-                   │                         │     │  5. upload to R2       │
-                   │ SQLite (Fly volume):    │     │  6. mark episode ready │
-                   │   users, episodes, jobs │◀────┴────────────────────────┘
-                   └─────────────────────────┘                │
-                              ▲                               ▼
-                   ┌──────────┴──────────┐         ┌────────────────────┐
-Podcast app ──────▶│ Reads RSS XML       │         │ Cloudflare R2      │
-                              ◀──────────serves audio───────────────────┘
-                   └─────────────────────┘
+│ iOS        │────▶│ Node app on Fly.io      │────▶│ Worker loop (in-proc)  │
+│ Shortcut   │     │                         │     │                        │
+└────────────┘     │ POST /api/ingest        │     │  extract (+ Wayback    │
+                   │   inserts episode row   │     │             fallback)  │
+                   │   returns < 200 ms      │     │  build TTS script      │
+                   │                         │     │  OpenAI TTS (chunked)  │
+                   │ GET /feed/:token.xml    │     │  concat + upload to R2 │
+                   │                         │     │  mark episode ready    │
+                   │ SQLite (Fly volume):    │◀────┴────────────────────────┘
+                   │   users, episodes       │                │
+                   └─────────────────────────┘                ▼
+                              ▲                    ┌────────────────────┐
+                   ┌──────────┴──────────┐         │ Cloudflare R2      │
+Podcast app ──────▶│ Reads RSS XML       │         │ (public, r2.dev)   │
+                   └─────────────────────┘         └─────────┬──────────┘
+                              ◀────────── serves audio ──────┘
 </div>
 
 <h3>Components</h3>
@@ -306,109 +306,95 @@ Podcast app ──────▶│ Reads RSS XML       │         │ Cloudfl
 <table>
   <thead><tr><th>Component</th><th>Role</th><th>Tech</th></tr></thead>
   <tbody>
-    <tr><td>HTTP server</td><td>Ingest, RSS feed, settings page</td><td>Node + Fastify</td></tr>
-    <tr><td>Worker</td><td>Polls <code>jobs</code> table, runs pipeline steps</td><td>In-process loop (5s tick)</td></tr>
-    <tr><td>Database</td><td>Users, episodes, jobs, attempts</td><td>SQLite + <code>better-sqlite3</code></td></tr>
-    <tr><td>Audio storage</td><td>MP3 files, served publicly with unguessable keys</td><td>Cloudflare R2 (S3 API)</td></tr>
-    <tr><td>Extraction</td><td>HTML → article text + metadata</td><td><code>@mozilla/readability</code> + <code>jsdom</code></td></tr>
-    <tr><td>Paywall fallback</td><td>Re-fetch from Internet Archive when extraction looks paywalled</td><td>Wayback Availability API</td></tr>
-    <tr><td>TTS</td><td>Text → MP3</td><td>OpenAI <code>tts-1</code> (gpt-4o-mini-tts class)</td></tr>
+    <tr><td>HTTP server</td><td><code>POST /api/ingest</code> and <code>GET /feed/:token.xml</code></td><td>Node + Fastify</td></tr>
+    <tr><td>Worker loop</td><td>Polls <code>episodes</code> for <code>status='pending'</code>, processes one at a time</td><td>In-process loop (5s tick)</td></tr>
+    <tr><td>Database</td><td>Users + episodes</td><td>SQLite + <code>better-sqlite3</code></td></tr>
+    <tr><td>Audio storage</td><td>MP3 files served publicly via unguessable keys</td><td>Cloudflare R2 (S3 API, <code>*.r2.dev</code>)</td></tr>
+    <tr><td>Extraction</td><td>HTML → article text + metadata; falls back to Internet Archive when paywalled</td><td><code>@mozilla/readability</code> + <code>jsdom</code> + Wayback Availability API</td></tr>
+    <tr><td>TTS</td><td>Text → MP3 (chunked on paragraph boundaries to fit per-request char limit)</td><td>OpenAI <code>tts-1</code> (gpt-4o-mini-tts class)</td></tr>
+    <tr><td>Bootstrap CLI</td><td>Seeds the single owner user and prints feed URL + API token + Shortcut link</td><td><code>npm run init-user</code></td></tr>
   </tbody>
 </table>
 
 <h2 id="pipeline">4. Processing pipeline</h2>
 
-<p>Each ingested URL becomes one <code>episode</code> row. The worker drives it through five steps, each tracked as a <code>jobs</code> row. Steps are idempotent; on transient failure they retry up to 3 times with exponential backoff before marking the episode <code>failed</code>.</p>
+<p>Each ingested URL becomes one <code>episodes</code> row with <code>status='pending'</code>. The worker loop wakes every 5 seconds, claims one pending episode (compare-and-swap to <code>processing</code>), and runs the four steps below in sequence. On any failure the episode is marked <code>failed</code> with an <code>error_message</code>. Whole-pipeline retry happens up to 3 times via the row's <code>attempts</code> counter — step-level retry would be a nice-to-have but isn't worth a separate jobs table at this scale.</p>
 
 <div class="step">
-  <div class="head"><span class="num">1</span>fetch_extract<span class="timing">~3–5s</span></div>
-  <p>HTTP GET the URL with a real-browser User-Agent. Run Mozilla Readability on the HTML to get <code>title</code>, <code>byline</code>, <code>siteName</code>, and clean article text. Compute word count. If <code>word_count &gt; 20,000</code>, fail the episode with <em>"Article too long (over 20k words)"</em>. Run the paywall heuristic (§5). If paywalled, schedule step 2; otherwise skip to step 3.</p>
+  <div class="head"><span class="num">1</span>extract (with Wayback fallback)<span class="timing">~3–8s</span></div>
+  <p>HTTP GET the URL with a real-browser User-Agent. Run Mozilla Readability on the HTML to capture <code>title</code>, <code>byline</code>, <code>siteName</code>, and clean article text. If the result trips the paywall heuristic (§5), call the Wayback Availability API and re-run Readability on the latest snapshot. If word count exceeds 20,000 either before or after the Wayback retry, fail with <em>"Article too long (over 20k words)."</em> If extraction still fails after Wayback, fail with <em>"Couldn't extract article."</em></p>
 </div>
 
 <div class="step">
-  <div class="head"><span class="num">2</span>fetch_archive (conditional)<span class="timing">~3–6s</span></div>
-  <p>Call <code>https://archive.org/wayback/available?url=&lt;URL&gt;</code>. If a snapshot exists, fetch it and re-run Readability. Mark <code>used_archive=true</code> on the episode. If the archived version still trips the paywall heuristic (or no snapshot exists), fail the episode with <em>"Couldn't extract article (paywalled and not in Wayback)"</em>.</p>
-</div>
-
-<div class="step">
-  <div class="head"><span class="num">3</span>build_script<span class="timing">&lt;100ms</span></div>
-  <p>Construct the TTS script from a template, no LLM:
+  <div class="head"><span class="num">2</span>build script<span class="timing">&lt;50ms</span></div>
+  <p>Template-only, no LLM:
   <code>"From {siteName}{byline ? ', by ' + byline : ''}. {title}.\n\n{body}"</code>.
-  Body is the Readability-cleaned plain text. Normalize whitespace and ensure paragraph breaks are preserved as natural pauses.</p>
+  Body is the Readability plain text. Normalize whitespace; preserve paragraph breaks so TTS pacing sounds natural.</p>
 </div>
 
 <div class="step">
-  <div class="head"><span class="num">4</span>tts<span class="timing">~30–90s</span></div>
-  <p>Call OpenAI TTS with the user's voice setting. Stream the response to a temp file. Reject scripts exceeding the OpenAI per-request limit by chunking on paragraph boundaries and concatenating the resulting MP3 segments before upload.</p>
+  <div class="head"><span class="num">3</span>TTS (chunked)<span class="timing">~20–90s</span></div>
+  <p>OpenAI TTS has a ~4,096-character per-request limit, so the script is split on paragraph boundaries into chunks of ≤ 3,800 characters (safety margin). Each chunk is sent to the OpenAI TTS endpoint with the user's voice; chunks are processed in parallel with a small concurrency limit (e.g. 3) to stay within rate limits. Resulting MP3 byte streams are concatenated naively in order — MP3 frames are independent, so plain byte concatenation produces a playable file with no <code>ffmpeg</code> step.</p>
 </div>
 
 <div class="step">
-  <div class="head"><span class="num">5</span>upload<span class="timing">~1–3s</span></div>
-  <p>PUT the MP3 to R2 at key <code>audio/{user_id}/{episode_public_id}.mp3</code>. Read <code>Content-Length</code> for <code>audio_size_bytes</code>; estimate <code>duration_seconds</code> from byte length and bitrate (or parse the MP3 header). Update episode: <code>status='ready'</code>, <code>ready_at=now()</code>, store the R2 key. The RSS feed picks up the new episode immediately on next request.</p>
+  <div class="head"><span class="num">4</span>upload<span class="timing">~1–3s</span></div>
+  <p>PUT the combined MP3 to R2 at key <code>audio/{user_id}/{audio_token}.mp3</code>, where <code>audio_token</code> is a per-episode random base64url string (16 bytes). Read <code>Content-Length</code> for <code>audio_size_bytes</code>; estimate <code>duration_seconds</code> from byte length and bitrate. Mark episode: <code>status='ready'</code>, <code>ready_at=now()</code>, store <code>audio_token</code>. The RSS feed picks up the new episode on next request.</p>
 </div>
 
 <h2 id="paywall">5. Paywall handling</h2>
 
-<p>Two heuristics trigger the Wayback fallback after step 1:</p>
+<p>The Wayback fallback is a control-flow detail of step 1, triggered when either heuristic fires on the direct fetch:</p>
 <ul>
   <li><strong>Length signal:</strong> extracted body has fewer than 200 words.</li>
-  <li><strong>Phrase signal:</strong> body contains one of: <code>"subscribe to continue"</code>, <code>"sign in to read"</code>, <code>"this article is for subscribers"</code>, <code>"create a free account"</code>, <code>"premium content"</code>, plus a small denylist of known paywall site banners.</li>
+  <li><strong>Phrase signal:</strong> body contains one of <code>"subscribe to continue"</code>, <code>"sign in to read"</code>, <code>"this article is for subscribers"</code>, <code>"create a free account"</code>, or <code>"premium content"</code>, plus a small denylist of known paywall banners.</li>
 </ul>
 
-<p>Either signal sends the episode to step 2 (Wayback). The fallback is ethical (it uses the Internet Archive's official Availability API, not scraped clones), but coverage is imperfect — articles published in the last 24 hours often aren't archived yet.</p>
+<p>Either signal sends the URL through the Wayback Availability API. The fallback is ethical (it uses the Internet Archive's official API, not scraped clones), but coverage is imperfect — articles published in the last 24 hours often aren't archived yet.</p>
 
 <div class="callout">
-  <strong>Known limitation:</strong> when both the direct fetch and Wayback fail, the user sees a failed episode in settings with a clear error. A future <em>"Paste text"</em> Shortcut variant (in backlog) will cover paywalled content not in Wayback.
+  <strong>Known limitation:</strong> when both the direct fetch and Wayback fail, the episode is marked failed. A future <em>"Paste text"</em> Shortcut variant (in backlog) covers paywalled content not in Wayback.
 </div>
 
 <h2 id="data">6. Data model</h2>
 
-<p>SQLite, three tables. Times are unix epoch milliseconds. <code>public_id</code> columns are UUIDv7 strings used in URLs to prevent enumeration; internal <code>id</code> stays an integer for ergonomic joins.</p>
+<p>SQLite, two tables. Times are unix epoch milliseconds. No public IDs or UUIDs — the random <code>feed_token</code> (per user) and <code>audio_token</code> (per episode) double as both the credential and the URL slug.</p>
 
 <pre><code>CREATE TABLE users (
   id              INTEGER PRIMARY KEY,
   email           TEXT NOT NULL,
   voice           TEXT NOT NULL DEFAULT 'shimmer',
   feed_token      TEXT NOT NULL UNIQUE,    -- 32 random bytes, base64url, used in feed URL
-  api_token_hash  TEXT NOT NULL,           -- sha256 of bearer token, plaintext never stored
+  api_token_hash  TEXT NOT NULL,           -- sha256 of bearer token; plaintext never stored
   created_at      INTEGER NOT NULL
 );
 
 CREATE TABLE episodes (
   id                INTEGER PRIMARY KEY,
-  public_id         TEXT NOT NULL UNIQUE,  -- UUIDv7, used in audio URL + RSS guid
   user_id           INTEGER NOT NULL REFERENCES users(id),
   url               TEXT NOT NULL,
   url_hash          TEXT NOT NULL,         -- sha256(user_id || normalized_url), for dedup
   status            TEXT NOT NULL,         -- pending | processing | ready | failed
+  attempts          INTEGER NOT NULL DEFAULT 0,
   title             TEXT,
   byline            TEXT,
   site_name         TEXT,
   word_count        INTEGER,
-  audio_key         TEXT,                  -- R2 object key
+  audio_token       TEXT,                  -- 16 random bytes, base64url; slugs the R2 key + RSS guid
   audio_size_bytes  INTEGER,
   duration_seconds  INTEGER,
-  used_archive      INTEGER NOT NULL DEFAULT 0,
   error_message     TEXT,
   created_at        INTEGER NOT NULL,
+  updated_at        INTEGER NOT NULL,
   ready_at          INTEGER,
   UNIQUE(user_id, url_hash)
 );
 
-CREATE TABLE jobs (
-  id            INTEGER PRIMARY KEY,
-  episode_id    INTEGER NOT NULL REFERENCES episodes(id),
-  step          TEXT NOT NULL,             -- fetch_extract | fetch_archive | build_script | tts | upload
-  status        TEXT NOT NULL,             -- pending | running | done | failed
-  attempts      INTEGER NOT NULL DEFAULT 0,
-  last_error    TEXT,
-  scheduled_at  INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL
-);
-
-CREATE INDEX idx_jobs_pending ON jobs(status, scheduled_at);
+CREATE INDEX idx_episodes_pending ON episodes(status, updated_at) WHERE status IN ('pending','processing');
 CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE status = 'ready';
 </code></pre>
+
+<p class="small">Crash recovery: on startup the app runs <code>UPDATE episodes SET status='pending' WHERE status='processing' AND updated_at &lt; now() - 5min</code> — sweeps stuck rows back into the queue without a separate jobs table.</p>
 
 <h2 id="api">7. API contracts</h2>
 
@@ -418,10 +404,10 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 { "url": "https://example.com/article" }
 
 // 200 OK — new episode queued
-{ "episode_id": "0190ab...", "status": "pending", "deduped": false }
+{ "status": "pending", "deduped": false }
 
 // 200 OK — already in this user's feed
-{ "episode_id": "0190ab...", "status": "ready",   "deduped": true }
+{ "status": "ready",   "deduped": true }
 
 // 400 — malformed URL
 { "error": "invalid_url" }
@@ -429,26 +415,21 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 // 401 — missing or bad token
 { "error": "unauthorized" }
 </code></pre>
-<p>Response time target: &lt; 200ms. Heavy work happens in the background worker.</p>
+<p>Response time target: &lt; 200ms. Heavy work runs in the worker loop. The Shortcut only needs the boolean acceptance; episode-specific IDs aren't surfaced to the client.</p>
 
 <h3>GET <code>/feed/:token.xml</code> <span class="pill">public</span></h3>
-<p>No auth header; the token in the URL <em>is</em> the auth. Returns valid podcast RSS 2.0 with the iTunes namespace. Includes only episodes with <code>status='ready'</code>, ordered newest first. Caches at the edge for 60s.</p>
-
-<h3>GET <code>/settings</code> <span class="pill">authenticated</span></h3>
-<p>Minimal HTML settings page. Shows feed URL, API token, Shortcut install link, voice picker, recent episode list (with errors for failed ones). MVP auth: a single password in env (<code>SETTINGS_PASSWORD</code>) via HTTP basic auth — replaced with magic-link auth when going public.</p>
+<p>No auth header; the token in the URL <em>is</em> the auth. Returns valid podcast RSS 2.0 with the iTunes namespace. Includes only episodes with <code>status='ready'</code>, ordered newest first. Each <code>&lt;guid&gt;</code> is the episode's <code>audio_token</code>. <code>Cache-Control: max-age=60</code>.</p>
 
 <h3>R2 audio URLs <span class="pill">public</span></h3>
-<p>Audio is served directly from a public R2 bucket via a custom domain, e.g. <code>https://audio.feedme.app/audio/{user_id}/{episode_public_id}.mp3</code>. Anyone with the URL can stream it (same security model as every podcast on the internet); unguessable keys keep the bucket effectively private to feed subscribers.</p>
+<p>Audio is served directly from a public R2 bucket via R2's default hostname, e.g. <code>https://pub-XXXXX.r2.dev/audio/{user_id}/{audio_token}.mp3</code>. Anyone with the URL can stream the file — the standard podcast security model. Unguessable <code>audio_token</code> keys keep the bucket effectively private to feed subscribers. A custom domain is backlog.</p>
 
 <h2 id="auth">8. Auth &amp; security</h2>
 
 <ul>
-  <li><strong>API token:</strong> 32 random bytes, base64url-encoded. Stored as a sha256 hash; the plaintext is shown to the user once on the settings page. Sent as a Bearer token.</li>
-  <li><strong>Feed token:</strong> 32 random bytes, base64url. Stored plaintext (no out-of-band check possible — the token itself is the credential). Treated as a capability URL: anyone with it can read your feed.</li>
-  <li><strong>Settings access (MVP):</strong> HTTP basic auth gated by <code>SETTINGS_PASSWORD</code> env var. Replaced by magic-link login (Resend or Postmark) before the first non-owner user.</li>
-  <li><strong>R2 bucket:</strong> public read on the <code>audio/</code> prefix, no listing. Keys contain UUIDv7s, so enumeration is infeasible.</li>
-  <li><strong>SSRF guardrail:</strong> URL fetching uses a strict allowlist of schemes (<code>http</code>/<code>https</code>) and blocks private IP ranges (10/8, 192.168/16, 172.16/12, 127/8, fe80::/10, etc.) to prevent the ingest endpoint from being abused to probe internal networks.</li>
-  <li><strong>Rate limit:</strong> per-token simple sliding window — 30 submissions / hour, 200 / day. Generous for personal use, sane upper bound if a token leaks.</li>
+  <li><strong>API token:</strong> 32 random bytes, base64url. Stored as sha256 hash; plaintext shown once by the bootstrap CLI. Sent as <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+  <li><strong>Feed token:</strong> 32 random bytes, base64url. Stored plaintext — the token itself is the credential, so hashing would prevent feed lookups. Treated as a capability URL: anyone with it can read your feed (rotated via CLI if leaked).</li>
+  <li><strong>Audio tokens:</strong> 16 random bytes per episode, base64url. R2 bucket has public read on the <code>audio/</code> prefix with listing disabled, so enumeration is infeasible.</li>
+  <li><strong>No SSRF guardrail or rate limiter in v1.</strong> Single user, single token. If the token leaks it's rotated. Both return for the public release alongside multi-user auth.</li>
 </ul>
 
 <h2 id="errors">9. Error handling</h2>
@@ -456,27 +437,27 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 <table>
   <thead><tr><th>Failure</th><th>Behavior</th></tr></thead>
   <tbody>
-    <tr><td>Network/HTTP error fetching URL</td><td>Retry 3× with backoff; then fail episode with the HTTP status.</td></tr>
-    <tr><td>Readability returns empty / paywalled body</td><td>Go to <code>fetch_archive</code> step (§5).</td></tr>
+    <tr><td>Network/HTTP error fetching URL</td><td>Retry the whole pipeline up to 3 times (via <code>episodes.attempts</code>); then fail with the HTTP status.</td></tr>
+    <tr><td>Readability returns empty / paywalled body</td><td>Inline Wayback fallback within step 1 (§5).</td></tr>
     <tr><td>Wayback has no snapshot</td><td>Fail episode: <em>"Couldn't extract article (paywalled and not in Wayback)."</em></td></tr>
     <tr><td>Article over 20k words</td><td>Fail episode: <em>"Article too long (over 20k words)."</em></td></tr>
-    <tr><td>OpenAI TTS error (rate limit, transient)</td><td>Retry 3× with backoff; then fail episode.</td></tr>
-    <tr><td>R2 upload error</td><td>Retry 3× with backoff; then fail episode.</td></tr>
-    <tr><td>Worker process crash mid-step</td><td>On restart, any <code>jobs.status='running'</code> older than 5 min is reset to <code>pending</code> and re-attempted.</td></tr>
+    <tr><td>OpenAI TTS error (rate limit, transient)</td><td>Retry the whole pipeline up to 3 times with backoff; then fail episode.</td></tr>
+    <tr><td>R2 upload error</td><td>Retry the whole pipeline up to 3 times with backoff; then fail episode.</td></tr>
+    <tr><td>Worker process crash mid-step</td><td>On startup, any <code>episodes</code> stuck in <code>processing</code> older than 5 min is reset to <code>pending</code> and re-attempted (counted as one attempt).</td></tr>
   </tbody>
 </table>
 
-<p>Failed episodes appear in the settings page with their error message so you know what went wrong. The Shortcut response from <code>/api/ingest</code> only reflects acceptance, not eventual outcome — surfacing async failures back to the Shortcut as iOS notifications is a v1.1 enhancement.</p>
+<p>Failed episodes can be inspected via <code>npm run list-failed</code> (CLI) which prints recent failures with their <code>error_message</code>. The Shortcut response from <code>/api/ingest</code> only reflects acceptance, not eventual outcome — surfacing async failures back to the Shortcut as iOS notifications is a v1.1 enhancement.</p>
 
 <h2 id="deploy">10. Deployment</h2>
 
 <ul>
-  <li><strong>Fly.io:</strong> one machine, <code>shared-cpu-1x</code>, 256MB RAM, with a 1GB volume mounted at <code>/data</code> for SQLite. <code>fly deploy</code> from a standard Node Dockerfile.</li>
-  <li><strong>Cloudflare R2:</strong> one bucket with public access on <code>audio/</code> prefix, custom domain mapped.</li>
-  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>, <code>SETTINGS_PASSWORD</code>, <code>OWNER_EMAIL</code>.</li>
-  <li><strong>Migrations:</strong> SQL files in <code>migrations/</code>, applied in order on startup; tracked in a <code>_migrations</code> table.</li>
-  <li><strong>Backups:</strong> nightly <code>litestream</code> replication of the SQLite file to R2 (optional but cheap insurance).</li>
-  <li><strong>Logs:</strong> stdout to Fly's log stream; structured JSON (<code>pino</code>).</li>
+  <li><strong>Fly.io:</strong> one machine, <code>shared-cpu-1x</code>, 256 MB RAM, with a 1 GB volume mounted at <code>/data</code> for SQLite. <code>fly deploy</code> from a standard Node Dockerfile.</li>
+  <li><strong>Cloudflare R2:</strong> one bucket, public read on <code>audio/</code> prefix, listing disabled, served from R2's default <code>pub-XXX.r2.dev</code> hostname.</li>
+  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>.</li>
+  <li><strong>Schema:</strong> a single <code>schema.sql</code> applied with <code>CREATE TABLE IF NOT EXISTS</code> on startup. A real migration system arrives the first time we actually need to alter a table.</li>
+  <li><strong>Backups:</strong> <code>flyctl ssh sftp get</code> the SQLite file occasionally if you care. Fly volumes are reliable enough for a personal tool; no Litestream in v1.</li>
+  <li><strong>Logs:</strong> stdout to Fly's log stream; structured JSON via <code>pino</code>.</li>
 </ul>
 
 <h2 id="cost">11. Cost estimate</h2>
@@ -496,26 +477,28 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
 <h2 id="testing">12. Testing</h2>
 
 <ul>
-  <li><strong>Unit tests:</strong> URL normalization, paywall heuristic, Readability output shape, RSS XML rendering, SSRF guardrail.</li>
-  <li><strong>Integration tests:</strong> end-to-end <code>POST /ingest</code> → DB row → mocked TTS → R2 mock → feed XML contains episode. Run against an ephemeral SQLite file and an in-memory R2 stub.</li>
-  <li><strong>Fixture corpus:</strong> a small set of saved HTML pages (paywalled, ad-heavy, simple blog, long-form, edge cases like non-English) to regression-test extraction.</li>
-  <li><strong>Manual smoke test:</strong> after deploy, send 3 real URLs via the Shortcut and confirm episodes appear in a podcast app within 90s.</li>
+  <li><strong>Unit tests:</strong> URL normalization, paywall heuristic, Readability output shape, RSS XML rendering, paragraph chunking.</li>
+  <li><strong>Integration tests:</strong> end-to-end <code>POST /ingest</code> → DB row → mocked TTS → in-memory R2 stub → feed XML contains episode. Runs against an ephemeral SQLite file.</li>
+  <li><strong>Fixture corpus:</strong> a small set of saved HTML pages (paywalled, ad-heavy, simple blog, long-form, non-English) to regression-test extraction.</li>
+  <li><strong>Manual smoke test:</strong> after deploy, send 3 real URLs via the Shortcut and confirm episodes appear in a podcast app within 90 seconds.</li>
 </ul>
 
 <h2 id="scope">13. Out of scope &amp; backlog</h2>
 
 <h3>Explicitly out of scope for v1</h3>
 <ul>
+  <li>Settings web page — replaced by a bootstrap CLI for the single owner.</li>
   <li>PDF / file uploads.</li>
   <li>Raw-text input ("paste this text") Shortcut variant.</li>
   <li>Magic-link or OAuth login.</li>
   <li>Per-episode voice override.</li>
   <li>LLM cleanup or summarization.</li>
-  <li>Multi-part splitting of very long articles (currently capped at 20k words and rejected).</li>
+  <li>Multi-part episode splitting (long articles render as one long MP3 via chunked TTS, but stay a single feed entry).</li>
   <li>iOS notifications on async failure.</li>
   <li>Episode artwork from <code>og:image</code>.</li>
   <li>Streaming TTS / progressive playback.</li>
   <li>Search, transcripts, export.</li>
+  <li>Custom audio domain, SSRF allowlist, rate limiter, migrations system, Litestream backup — all valid; all deferred until the public release.</li>
 </ul>
 
 <h3>Backlog (rough order)</h3>
@@ -523,8 +506,8 @@ CREATE INDEX idx_episodes_user_ready ON episodes(user_id, ready_at DESC) WHERE s
   <li><span class="pill future">v1.1</span> Async failure notifications back to the Shortcut (iOS push or email).</li>
   <li><span class="pill future">v1.2</span> "Paste text" Shortcut variant for paywalled content not in Wayback.</li>
   <li><span class="pill future">v1.3</span> Episode artwork from <code>og:image</code>.</li>
-  <li><span class="pill future">v2.0</span> Magic-link auth, multi-user signup, public landing page.</li>
-  <li><span class="pill future">v2.x</span> PDF input. Per-episode voice. ElevenLabs as a premium voice tier.</li>
+  <li><span class="pill future">v2.0</span> Multi-user: magic-link auth, settings web page, public landing page, SSRF allowlist, per-user rate limiter, real migrations system.</li>
+  <li><span class="pill future">v2.x</span> PDF input. Per-episode voice. ElevenLabs as a premium voice tier. Custom audio domain. Litestream backups.</li>
 </ol>
 
 <hr>
