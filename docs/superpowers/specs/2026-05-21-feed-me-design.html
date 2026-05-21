@@ -205,6 +205,214 @@
     font-size: 13px;
     font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   }
+
+  /* ---- Visuals ---- */
+  .visual {
+    margin: 28px 0 32px;
+  }
+  .visual-caption {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  /* Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 36px;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 14px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--rule);
+  }
+  .tl-step {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .tl-step::before {
+    content: "";
+    position: absolute;
+    left: -29px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+  }
+  .tl-step.done::before {
+    background: var(--good);
+    border-color: var(--good);
+  }
+  .tl-actor {
+    display: inline-block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-mute);
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .tl-actor.server   { background: #e8eef6; color: #2c5b8f; }
+  .tl-actor.icloud   { background: #f0e9f6; color: #6a4290; }
+  .tl-actor.podcasts { background: #f6ebde; color: #8a4a17; }
+  .tl-actor.worker   { background: #ecf3e8; color: #4a6a2c; }
+  .tl-text { color: var(--ink); }
+  .tl-sub {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink-soft);
+    font-size: 13px;
+  }
+  .tl-timing {
+    display: inline-block;
+    font-family: "JetBrains Mono", Menlo, monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+  }
+
+  /* Mockups */
+  .mockups {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .mockup {
+    flex: 1 1 280px;
+    max-width: 320px;
+    background: #111;
+    border-radius: 28px;
+    padding: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+  .mockup-screen {
+    background: #fdfcf9;
+    border-radius: 22px;
+    padding: 20px 18px 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    min-height: 460px;
+  }
+  .mockup-status {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    margin-bottom: 18px;
+    padding: 0 4px;
+  }
+  .mockup-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 6px 0 4px;
+    color: var(--ink);
+  }
+  .mockup-subtitle {
+    font-size: 13px;
+    color: var(--ink-mute);
+    margin-bottom: 22px;
+  }
+  .mockup-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+    font-weight: 600;
+    margin: 16px 0 4px;
+  }
+  .mockup-input {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-family: "JetBrains Mono", Menlo, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mockup-btn {
+    display: block;
+    text-align: center;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 999px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 12px;
+  }
+  .mockup-btn.secondary {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+  }
+  .mockup-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 13px;
+  }
+  .mockup-row:last-child { border-bottom: none; }
+  .mockup-row .name { color: var(--ink); font-weight: 500; }
+  .mockup-row .meta { color: var(--ink-mute); font-size: 11px; font-family: "JetBrains Mono", Menlo, monospace; }
+  .mockup-pill-ready  { color: var(--good); }
+  .mockup-pill-pending { color: var(--warn); }
+  .mockup-pill-failed { color: var(--accent); }
+  .mockup-voices {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .mockup-voice {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink-soft);
+  }
+  .mockup-voice.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  /* State diagram */
+  svg.state-diagram {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 8px;
+  }
 </style>
 </head>
 <body>
@@ -260,14 +468,105 @@
 
 <h2 id="flows">2. User flows</h2>
 
-<h3>2.1 First-time setup (web, ~90 seconds)</h3>
+<h3>2.1 First-time setup (web, ~2 minutes)</h3>
 <ol>
   <li>Open the Feed Me site on your iPhone, tap <strong>Sign in</strong>, enter your password (set during deploy via env var). A signed session cookie keeps you logged in.</li>
-  <li>On the settings page, tap <strong>Add to Apple Podcasts</strong> (or copy the feed URL into another podcast app). This opens the podcast app directly to your subscription.</li>
-  <li>Tap <strong>Install Shortcut</strong>. iOS opens the Shortcuts app with a per-user shortcut that already contains your API token — confirm install. No copy-paste, no token entry.</li>
+  <li>On the settings page, tap <strong>Add to Apple Podcasts</strong> (or copy the feed URL into another podcast app). This opens Apple Podcasts to your feed with a one-tap <em>Follow</em> button.</li>
+  <li>Tap <strong>Install Shortcut</strong>. This opens the canonical, iCloud-signed Feed Me shortcut in the Shortcuts app — tap <em>Get Shortcut</em> to add it. The first time the shortcut runs (or when you tap "Run on first install"), it prompts for your <strong>API token</strong>; copy it from the settings page and paste it once. iOS stores the token inside the shortcut for all future runs.</li>
   <li>Pick a voice (default: <code>shimmer</code>) and you're done.</li>
 </ol>
-<p class="small">The settings page is the single source of truth for your feed URL, API token, voice, and saved-episode history. Tokens can be rotated from this page if the phone is lost or compromised.</p>
+<p class="small">The settings page is the single source of truth for your feed URL, API token, voice, and saved-episode history. Tokens can be rotated from this page if the phone is lost or compromised — after rotating, open the shortcut, run the embedded <em>Reset Token</em> action, and paste the new value.</p>
+
+<div class="callout">
+  <strong>Why not a one-tap install with the token pre-embedded?</strong> iOS blocks unsigned <code>.shortcut</code> files by default (the "Allow Untrusted Shortcuts" toggle is even hidden until a user has installed at least one shortcut). The smooth install path requires an iCloud-signed shortcut, and Apple signs those through the Shortcuts app — they can't be generated server-side with a per-user token baked in. Every comparable tool (Readwise, Matter, Snipd) ships the same "install signed shortcut, paste token once" UX.
+</div>
+
+<div class="visual">
+  <div class="visual-caption">Setup walkthrough</div>
+  <div class="timeline">
+    <div class="tl-step done">
+      <span class="tl-actor">You</span>
+      <span class="tl-text">Open the Feed Me site on your iPhone in Safari.</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor server">Server</span>
+      <span class="tl-text">Tap <em>Sign in</em>, enter your password.</span>
+      <span class="tl-sub">The server creates a 30-day session cookie and lands you on the settings page.</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor podcasts">Podcasts</span>
+      <span class="tl-text">Tap <em>Add to Apple Podcasts</em>. Your phone opens Apple Podcasts to your feed with a one-tap <em>Follow</em> button — confirm.</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor icloud">iCloud</span>
+      <span class="tl-text">Back on settings, tap <em>Install Shortcut</em>. iCloud opens the signed Feed Me shortcut in the Shortcuts app; tap <em>Get Shortcut</em>.</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor">You</span>
+      <span class="tl-text">First time you run the shortcut from the Share Sheet, it prompts for an API token. Copy the token from the settings page and paste it once.</span>
+      <span class="tl-sub">The token is stored inside the shortcut for all future runs — no further setup.</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor">Done</span>
+      <span class="tl-text">From now on: any URL → Share → <em>Send to Feed Me</em> → episode appears in your podcast app within a minute or two.</span>
+    </div>
+  </div>
+</div>
+
+<div class="visual">
+  <div class="visual-caption">The two screens you'll see</div>
+  <div class="mockups">
+
+    <div class="mockup">
+      <div class="mockup-screen">
+        <div class="mockup-status"><span>9:41</span><span>feed-me-noah.fly.dev</span></div>
+        <div class="mockup-title">Sign in to Feed Me</div>
+        <div class="mockup-subtitle">A personal podcast feed of articles you save.</div>
+        <div class="mockup-label">Email</div>
+        <div class="mockup-input">you@example.com</div>
+        <div class="mockup-label">Password</div>
+        <div class="mockup-input">••••••••••••</div>
+        <div class="mockup-btn">Sign in</div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-screen">
+        <div class="mockup-status"><span>9:41</span><span>feed-me-noah.fly.dev</span></div>
+        <div class="mockup-title">Your feed</div>
+        <div class="mockup-subtitle">noah · 14 episodes · 2 h 47 m total</div>
+
+        <div class="mockup-label">RSS feed URL</div>
+        <div class="mockup-input">…/feed/9Hx3w…2pQ.xml</div>
+        <div class="mockup-btn secondary">Add to Apple Podcasts</div>
+        <div class="mockup-btn secondary">Install iOS Shortcut</div>
+
+        <div class="mockup-label">Voice</div>
+        <div class="mockup-voices">
+          <span class="mockup-voice active">shimmer</span>
+          <span class="mockup-voice">alloy</span>
+          <span class="mockup-voice">nova</span>
+          <span class="mockup-voice">echo</span>
+        </div>
+
+        <div class="mockup-label">Recent</div>
+        <div class="mockup-row">
+          <span class="name">The Atlantic — On Time</span>
+          <span class="meta mockup-pill-ready">ready</span>
+        </div>
+        <div class="mockup-row">
+          <span class="name">NYT — Long Read</span>
+          <span class="meta mockup-pill-pending">processing</span>
+        </div>
+        <div class="mockup-row">
+          <span class="name">Substack — Paywalled</span>
+          <span class="meta mockup-pill-failed">failed</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <h3>2.2 Saving an article</h3>
 <ol>
@@ -275,6 +574,40 @@
   <li>The Shortcut POSTs the URL to the API; you see a brief success toast.</li>
   <li>~30–90 seconds later, the new episode appears in your podcast app on next refresh.</li>
 </ol>
+
+<div class="visual">
+  <div class="visual-caption">What happens when you share a URL</div>
+  <div class="timeline">
+    <div class="tl-step done">
+      <span class="tl-actor">You</span>
+      <span class="tl-text">Tap Share in Safari → <em>Send to Feed Me</em>.</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor server">Server</span>
+      <span class="tl-text">Validates the bearer token, inserts a <code>pending</code> episode row, returns <code>200 OK</code>. Shortcut shows a toast.</span>
+      <span class="tl-timing">&lt; 200 ms</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor worker">Worker</span>
+      <span class="tl-text">Fetches the page, runs Readability. If the body looks paywalled, retries via the Wayback Machine.</span>
+      <span class="tl-timing">3–8 s</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor worker">Worker</span>
+      <span class="tl-text">Splits the script on paragraph boundaries, calls OpenAI TTS per chunk, strips ID3 tags from chunks 2..N, concatenates the MP3.</span>
+      <span class="tl-timing">20–90 s</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor worker">Worker</span>
+      <span class="tl-text">Uploads the combined MP3 to R2 and marks the episode <code>ready</code>.</span>
+      <span class="tl-timing">1–3 s</span>
+    </div>
+    <div class="tl-step done">
+      <span class="tl-actor podcasts">Podcasts</span>
+      <span class="tl-text">Your podcast app picks up the new episode on its next RSS refresh (every few minutes).</span>
+    </div>
+  </div>
+</div>
 
 <h3>2.3 Listening</h3>
 <p>Standard podcast app behavior. Newest episode at the top of the feed. Your podcast app handles downloads, playback position, speed, and local cleanup.</p>
@@ -296,7 +629,7 @@
 │ Browser    │─▶│                            │  │  OpenAI TTS (chunked)  │
 │ (settings) │  │ GET  /login   POST /login  │  │  concat + upload to R2 │
 └────────────┘  │ GET  /settings (auth'd)    │  │  mark episode ready    │
-                │ GET  /shortcut.shortcut    │  │                        │
+                │ (Shortcut hosted on iCloud)│  │                        │
                 │ GET  /feed/:token.xml      │  │                        │
                 │                            │  │                        │
                 │ SQLite (Fly volume):       │◀─┴────────────────────────┘
@@ -320,7 +653,7 @@ Podcast app ──────▶│ Reads RSS XML       │   │ (public, r2.d
     <tr><td>Audio storage</td><td>MP3 files served publicly via unguessable keys</td><td>Cloudflare R2 (S3 API, <code>*.r2.dev</code>)</td></tr>
     <tr><td>Extraction</td><td>HTML → article text + metadata; falls back to Internet Archive when paywalled</td><td><code>@mozilla/readability</code> + <code>jsdom</code> + Wayback Availability API</td></tr>
     <tr><td>TTS</td><td>Text → MP3 (chunked on paragraph boundaries to fit per-request char limit)</td><td>OpenAI <code>tts-1</code> (gpt-4o-mini-tts class)</td></tr>
-    <tr><td>Shortcut generator</td><td>Renders a per-user <code>.shortcut</code> file with the API token pre-embedded so iOS one-tap-installs it</td><td>Apple Shortcuts file format (plist)</td></tr>
+    <tr><td>iCloud shortcut</td><td>One canonical, iCloud-signed shortcut shared via a stable <code>icloud.com/shortcuts/&lt;uuid&gt;</code> URL. Hardcodes the API base URL; prompts for the API token on first run and stores it as a shortcut variable.</td><td>Apple Shortcuts (authored once, hosted on iCloud)</td></tr>
   </tbody>
 </table>
 
@@ -342,12 +675,59 @@ Podcast app ──────▶│ Reads RSS XML       │   │ (public, r2.d
 
 <div class="step">
   <div class="head"><span class="num">3</span>TTS (chunked)<span class="timing">~20–90s</span></div>
-  <p>OpenAI TTS has a ~4,096-character per-request limit, so the script is split on paragraph boundaries into chunks of ≤ 3,800 characters (safety margin). Each chunk is sent to the OpenAI TTS endpoint with the user's voice; chunks are processed in parallel with a small concurrency limit (e.g. 3) to stay within rate limits. Resulting MP3 byte streams are concatenated naively in order — MP3 frames are independent, so plain byte concatenation produces a playable file with no <code>ffmpeg</code> step.</p>
+  <p>OpenAI TTS has historically had a ~4,096-character per-request limit on <code>tts-1</code>; the newer <code>gpt-4o-mini-tts</code> may differ — verify in the current API docs before implementation. If the limit holds, split the script on paragraph boundaries into chunks of ≤ 3,800 characters (safety margin) and call the TTS endpoint with the user's voice; chunks run with a small concurrency limit (e.g. 3) to respect rate limits.</p>
+  <p>MP3 frames are independent, but each response includes an <strong>ID3 header</strong>. Naive <code>cat</code>-style concatenation stacks N ID3 tags into the output, which a handful of players (notably some Apple Podcasts versions) reject. Strip ID3 from chunks 2..N before concatenating — ~10 lines with <code>node-id3</code>, no <code>ffmpeg</code> needed.</p>
 </div>
 
 <div class="step">
   <div class="head"><span class="num">4</span>upload<span class="timing">~1–3s</span></div>
   <p>PUT the combined MP3 to R2 at key <code>audio/{user_id}/{audio_token}.mp3</code>, where <code>audio_token</code> is a per-episode random base64url string (16 bytes). Read <code>Content-Length</code> for <code>audio_size_bytes</code>; estimate <code>duration_seconds</code> from byte length and bitrate. Mark episode: <code>status='ready'</code>, <code>ready_at=now()</code>, store <code>audio_token</code>. The RSS feed picks up the new episode on next request.</p>
+</div>
+
+<div class="visual">
+  <div class="visual-caption">Episode lifecycle</div>
+  <svg class="state-diagram" viewBox="0 0 680 220" role="img" aria-label="Episode states: insert leads to pending; worker claims, moving to processing; success leads to ready, error leads to failed. A dashed arrow from processing returns to pending if the row gets stuck for more than five minutes.">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#4a4a4a"/>
+      </marker>
+      <marker id="arrow-dashed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#6a6a6a"/>
+      </marker>
+    </defs>
+
+    <g font-family="-apple-system,BlinkMacSystemFont,Inter,sans-serif" font-size="13" font-weight="600">
+      <rect x="80"  y="80" width="110" height="44" rx="8" fill="#f6efd6" stroke="#8a6500" stroke-width="1.5"/>
+      <text x="135" y="107" text-anchor="middle" fill="#8a6500">pending</text>
+
+      <rect x="280" y="80" width="130" height="44" rx="8" fill="#e8eef6" stroke="#2c5b8f" stroke-width="1.5"/>
+      <text x="345" y="107" text-anchor="middle" fill="#2c5b8f">processing</text>
+
+      <rect x="500" y="20" width="130" height="44" rx="8" fill="#e3f1e3" stroke="#2f7a3d" stroke-width="1.5"/>
+      <text x="565" y="47" text-anchor="middle" fill="#2f7a3d">ready ✓</text>
+
+      <rect x="500" y="140" width="130" height="44" rx="8" fill="#f6e0d6" stroke="#b04a00" stroke-width="1.5"/>
+      <text x="565" y="167" text-anchor="middle" fill="#b04a00">failed</text>
+    </g>
+
+    <g fill="none" stroke="#4a4a4a" stroke-width="1.5" marker-end="url(#arrow)">
+      <line x1="20" y1="102" x2="78" y2="102"/>
+      <line x1="190" y1="102" x2="278" y2="102"/>
+      <line x1="410" y1="92" x2="498" y2="48"/>
+      <line x1="410" y1="112" x2="498" y2="156"/>
+    </g>
+
+    <path d="M 345 124 Q 345 200 235 200 Q 135 200 135 124"
+          fill="none" stroke="#6a6a6a" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-dashed)"/>
+
+    <g font-family="-apple-system,BlinkMacSystemFont,Inter,sans-serif" font-size="11" fill="#6a6a6a">
+      <text x="20"  y="92">insert (POST /api/ingest)</text>
+      <text x="200" y="92">worker claims</text>
+      <text x="424" y="74">success</text>
+      <text x="424" y="138">error → error_message</text>
+      <text x="220" y="218" font-style="italic">stuck &gt; 5 min → reset on restart</text>
+    </g>
+  </svg>
 </div>
 
 <h2 id="paywall">5. Paywall handling</h2>
@@ -429,8 +809,8 @@ CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
   <li><strong>Recent episodes</strong> — last 30 rows, including failed ones with <code>error_message</code> visible.</li>
 </ul>
 
-<h3>GET <code>/shortcut.shortcut</code> <span class="pill">session</span></h3>
-<p>Generates and returns an Apple Shortcuts file (<code>application/octet-stream</code>; iOS recognizes the extension) with the user's <code>api_token</code> and the ingest URL pre-embedded as constants. iOS opens Shortcuts on tap and prompts to install — the user confirms once and the shortcut is fully configured. Anyone with an active session can download this; if the user rotates their API token, the previously-installed shortcut stops working until reinstalled.</p>
+<h3>Shortcut install (link out)</h3>
+<p>No server endpoint. The settings page renders a static link to the canonical iCloud shortcut URL (set at deploy time via the <code>SHORTCUT_ICLOUD_URL</code> env var, e.g. <code>https://www.icloud.com/shortcuts/abc123...</code>). The shortcut is authored once in the Apple Shortcuts app, with the API base URL hardcoded and an <em>Ask for Input</em> action that prompts for the token on first run, storing it in a persistent shortcut variable named <code>FeedMeToken</code>. A second tile inside the shortcut, "Reset Token," clears that variable so the user can paste a rotated token without rebuilding the shortcut.</p>
 
 <h3>POST <code>/api/ingest</code> <span class="pill">bearer</span></h3>
 <p>Called by the iOS Shortcut. Auth: <code>Authorization: Bearer &lt;api_token&gt;</code>.</p>
@@ -465,6 +845,7 @@ CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
   <li><strong>API token (for the Shortcut):</strong> 32 random bytes, base64url. Stored as sha256 hash; plaintext appears in the rendered <code>.shortcut</code> file only. Rotating it from the settings page generates a new value and invalidates the previously-installed shortcut.</li>
   <li><strong>Feed token:</strong> 32 random bytes, base64url. Stored plaintext (it's the credential itself, so hashing would block feed lookups). Capability URL — anyone with it reads your feed. Rotation supported from settings.</li>
   <li><strong>Audio tokens:</strong> 16 random bytes per episode, base64url. R2 bucket has public read on <code>audio/</code> with listing disabled, so enumeration is infeasible.</li>
+  <li><strong>CSRF:</strong> the <code>SameSite=Lax</code> cookie covers the common forgery vectors. A proper CSRF token on <code>POST /settings/*</code> forms is ~5 extra lines and lands alongside the v2.0 multi-user work; for the single-user MVP, the residual risk is negligible (no untrusted users to exploit).</li>
   <li><strong>Open signup is disabled:</strong> v1 supports exactly one user, seeded from env vars. New signups are deferred until v2 (multi-user with magic-link onboarding).</li>
   <li><strong>No SSRF guardrail or rate limiter in v1.</strong> Single user with a static API token; if it leaks, rotate it. Both return for the public release.</li>
 </ul>
@@ -489,10 +870,10 @@ CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
 <h2 id="deploy">10. Deployment</h2>
 
 <ul>
-  <li><strong>Fly.io:</strong> one machine, <code>shared-cpu-1x</code>, 256 MB RAM, with a 1 GB volume mounted at <code>/data</code> for SQLite. <code>fly deploy</code> from a standard Node Dockerfile.</li>
+  <li><strong>Fly.io:</strong> one machine, <code>shared-cpu-1x</code>, <strong>512 MB RAM</strong> (256 MB is too tight — <code>jsdom</code> + Readability plus buffering N MP3 chunks can spike past it), with a 1 GB volume mounted at <code>/data</code> for SQLite. <code>fly deploy</code> from a standard Node Dockerfile.</li>
   <li><strong>Domain:</strong> Fly's default <code>*.fly.dev</code> hostname is fine for v1 (it's HTTPS by default; the iOS Shortcut and podcast apps don't care about the hostname). A custom domain is backlog.</li>
   <li><strong>Cloudflare R2:</strong> one bucket, public read on <code>audio/</code> prefix, listing disabled, served from R2's default <code>pub-XXX.r2.dev</code> hostname.</li>
-  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>, <code>OWNER_EMAIL</code>, <code>OWNER_PASSWORD</code>, <code>SESSION_SECRET</code> (used to sign session cookies), <code>APP_BASE_URL</code> (e.g. <code>https://feed-me-noah.fly.dev</code>; baked into the generated Shortcut).</li>
+  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>, <code>OWNER_EMAIL</code>, <code>OWNER_PASSWORD</code>, <code>SESSION_SECRET</code> (used to sign session cookies), <code>APP_BASE_URL</code> (the public origin, e.g. <code>https://feed-me-noah.fly.dev</code>), <code>SHORTCUT_ICLOUD_URL</code> (the canonical iCloud share URL for the Feed Me shortcut).</li>
   <li><strong>Schema:</strong> a single <code>schema.sql</code> applied with <code>CREATE TABLE IF NOT EXISTS</code> on startup. A real migration system arrives the first time we actually need to alter a table.</li>
   <li><strong>Backups:</strong> <code>flyctl ssh sftp get</code> the SQLite file occasionally if you care. Fly volumes are reliable enough for a personal tool; no Litestream in v1.</li>
   <li><strong>Logs:</strong> stdout to Fly's log stream; structured JSON via <code>pino</code>.</li>
@@ -504,11 +885,11 @@ CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
 <table>
   <thead><tr><th>Item</th><th>Monthly cost</th></tr></thead>
   <tbody>
-    <tr><td>Fly.io machine + 1GB volume</td><td>~$3</td></tr>
+    <tr><td>Fly.io machine (512 MB) + 1 GB volume</td><td>~$5–6</td></tr>
     <tr><td>Cloudflare R2 storage &amp; egress</td><td>$0 (under 10GB free tier; egress always free)</td></tr>
     <tr><td>OpenAI TTS (~900k chars/mo @ $0.60/1M)</td><td>~$0.55</td></tr>
     <tr><td>Domain (optional)</td><td>~$1</td></tr>
-    <tr><td><strong>Total</strong></td><td><strong>~$4–5/month</strong></td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>~$6–8/month</strong></td></tr>
   </tbody>
 </table>
 
