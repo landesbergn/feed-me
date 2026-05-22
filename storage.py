@@ -19,3 +19,36 @@ def user_exists(data_dir: Path, secret: str) -> bool:
     if not secret or "/" in secret or ".." in secret:
         return False
     return (data_dir / secret).is_dir()
+
+
+def _new_slug() -> str:
+    return _secrets.token_urlsafe(12)
+
+
+def write_episode(
+    data_dir: Path, secret: str, *,
+    title: str, source_url: str, audio: bytes,
+) -> str:
+    slug = _new_slug()
+    user_dir = data_dir / secret
+    (user_dir / f"{slug}.mp3").write_bytes(audio)
+    (user_dir / f"{slug}.json").write_text(json.dumps({
+        "title": title,
+        "url": source_url,
+        "ts": int(time.time()),
+    }))
+    return slug
+
+
+def write_failed_episode(
+    data_dir: Path, secret: str, *,
+    source_url: str, error: str,
+) -> str:
+    slug = _new_slug()
+    (data_dir / secret / f"{slug}.json").write_text(json.dumps({
+        "title": None,
+        "url": source_url,
+        "ts": int(time.time()),
+        "error": error,
+    }))
+    return slug
