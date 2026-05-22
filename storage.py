@@ -52,3 +52,23 @@ def write_failed_episode(
         "error": error,
     }))
     return slug
+
+
+def list_episodes(data_dir: Path, secret: str) -> list[dict]:
+    user_dir = data_dir / secret
+    if not user_dir.is_dir():
+        return []
+    records = []
+    for p in user_dir.glob("*.json"):
+        if p.name == "settings.json":
+            continue
+        try:
+            data = json.loads(p.read_text())
+            data["slug"] = p.stem
+            data["mtime"] = p.stat().st_mtime
+            data["has_audio"] = (user_dir / f"{p.stem}.mp3").exists()
+            records.append(data)
+        except (json.JSONDecodeError, OSError):
+            continue
+    records.sort(key=lambda r: r["mtime"], reverse=True)
+    return records

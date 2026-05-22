@@ -1,4 +1,5 @@
 import json
+import time as _time
 from pathlib import Path
 
 import storage
@@ -65,3 +66,40 @@ def test_write_failed_episode_writes_json_only(tmp_path):
     assert meta["error"] == "paywalled"
     assert meta["url"] == "https://example.com/b"
     assert meta.get("title") is None
+
+
+def test_list_episodes_returns_newest_first(tmp_path):
+    secret = storage.create_user(tmp_path)
+
+    storage.write_episode(tmp_path, secret, title="A",
+                          source_url="https://a", audio=b"X")
+    _time.sleep(0.01)
+    storage.write_episode(tmp_path, secret, title="B",
+                          source_url="https://b", audio=b"Y")
+
+    eps = storage.list_episodes(tmp_path, secret)
+
+    assert len(eps) == 2
+    assert eps[0]["title"] == "B"
+    assert eps[1]["title"] == "A"
+
+
+def test_list_episodes_includes_failures(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.write_episode(tmp_path, secret, title="ok",
+                          source_url="https://a", audio=b"X")
+    storage.write_failed_episode(tmp_path, secret,
+                                  source_url="https://b", error="boom")
+
+    eps = storage.list_episodes(tmp_path, secret)
+
+    assert len(eps) == 2
+    err = [e for e in eps if e.get("error")]
+    assert len(err) == 1
+    assert err[0]["error"] == "boom"
+
+
+def test_list_episodes_excludes_settings(tmp_path):
+    secret = storage.create_user(tmp_path)
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps == []
