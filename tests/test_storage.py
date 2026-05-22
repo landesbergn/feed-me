@@ -103,3 +103,23 @@ def test_list_episodes_excludes_settings(tmp_path):
     secret = storage.create_user(tmp_path)
     eps = storage.list_episodes(tmp_path, secret)
     assert eps == []
+
+
+def test_get_settings_returns_defaults(tmp_path):
+    secret = storage.create_user(tmp_path)
+    s = storage.get_settings(tmp_path, secret)
+    assert s["voice"] == "shimmer"
+
+
+def test_set_voice_persists(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.set_voice(tmp_path, secret, "alloy")
+    assert storage.get_settings(tmp_path, secret)["voice"] == "alloy"
+
+
+def test_set_voice_rejects_unknown_voice(tmp_path):
+    secret = storage.create_user(tmp_path)
+    import pytest
+    with pytest.raises(ValueError):
+        storage.set_voice(tmp_path, secret, "evil_voice")
+    assert storage.get_settings(tmp_path, secret)["voice"] == "shimmer"

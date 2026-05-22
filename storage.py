@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 DEFAULT_VOICE = "shimmer"
+ALLOWED_VOICES = {"shimmer", "alloy", "nova", "echo"}
 
 
 def create_user(data_dir: Path) -> str:
@@ -72,3 +73,16 @@ def list_episodes(data_dir: Path, secret: str) -> list[dict]:
             continue
     records.sort(key=lambda r: r["mtime"], reverse=True)
     return records
+
+
+def get_settings(data_dir: Path, secret: str) -> dict:
+    return json.loads((data_dir / secret / "settings.json").read_text())
+
+
+def set_voice(data_dir: Path, secret: str, voice: str) -> None:
+    if voice not in ALLOWED_VOICES:
+        raise ValueError(f"unknown voice: {voice}")
+    path = data_dir / secret / "settings.json"
+    settings = json.loads(path.read_text())
+    settings["voice"] = voice
+    path.write_text(json.dumps(settings))
