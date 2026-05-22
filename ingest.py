@@ -1,7 +1,14 @@
+import logging
+from pathlib import Path
+
 import httpx
 from readability import Document
 from lxml import html as lxml_html
 from openai import OpenAI
+
+import storage
+
+log = logging.getLogger("ingest")
 
 http_client = httpx.Client(
     timeout=30.0,
@@ -50,3 +57,19 @@ def synthesize(text: str, voice: str) -> bytes:
         input=text[:TTS_CHAR_LIMIT],
     )
     return response.content
+
+
+def process(url: str, secret: str, data_dir: Path) -> None:
+    try:
+        title, body = fetch_article(url)
+        settings = storage.get_settings(data_dir, secret)
+        audio = synthesize(body, settings["voice"])
+        storage.write_episode(
+            data_dir, secret,
+            title=title, source_url=url, audio=audio,
+        )
+    except Exception as e:
+        log.exception("ingest failed user=%s url=%s", secret[:6], url)
+        storage.write_failed_episode(
+            data_dir, secret, source_url=url, error=str(e)[:200],
+        )

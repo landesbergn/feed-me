@@ -1,6 +1,10 @@
+import json
+from pathlib import Path
+
 import pytest
 
 import ingest
+import storage
 from tests.conftest import FakeResponse
 
 
@@ -51,3 +55,39 @@ def test_synthesize_truncates_long_text(monkeypatch, fake_openai):
 
     sent = fake_openai.calls[0]["input"]
     assert len(sent) <= ingest.TTS_CHAR_LIMIT
+
+
+def test_process_writes_episode_on_success(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    fake_http.responses["https://example.com/ok"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/ok", secret, tmp_path)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["has_audio"] is True
+    assert "On Time" in eps[0]["title"]
+
+
+def test_process_writes_failure_on_extraction_error(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    fake_http.responses["https://example.com/bad"] = FakeResponse(
+        status_code=500,
+    )
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/bad", secret, tmp_path)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["has_audio"] is False
+    assert eps[0]["error"]
