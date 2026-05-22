@@ -13,3 +13,9 @@ def create_user(data_dir: Path) -> str:
     settings = {"voice": DEFAULT_VOICE, "created_at": int(time.time())}
     (user_dir / "settings.json").write_text(json.dumps(settings))
     return secret
+
+
+def user_exists(data_dir: Path, secret: str) -> bool:
+    if not secret or "/" in secret or ".." in secret:
+        return False
+    return (data_dir / secret).is_dir()
