@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Feed Me</title>
+    <link>{{ feed_url }}</link>
+    <description>Articles you shared, narrated.</description>
+    <language>en-us</language>
+    <itunes:author>Feed Me</itunes:author>
+    <itunes:explicit>false</itunes:explicit>
+    {% for ep in episodes %}
+    <item>
+      <title>{{ ep.title | e }}</title>
+      <link>{{ ep.url | e }}</link>
+      <guid isPermaLink="false">{{ ep.slug }}</guid>
+      <pubDate>{{ ep.pub_date }}</pubDate>
+      <enclosure url="{{ audio_base }}/{{ ep.slug }}.mp3"
+                 type="audio/mpeg" length="0"/>
+    </item>
+    {% endfor %}
+  </channel>
+</rss>
