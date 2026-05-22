@@ -86,3 +86,9 @@ def set_voice(data_dir: Path, secret: str, voice: str) -> None:
     settings = json.loads(path.read_text())
     settings["voice"] = voice
     path.write_text(json.dumps(settings))
+
+
+def rotate_secret(data_dir: Path, old_secret: str) -> str:
+    new_secret = _secrets.token_urlsafe(32)
+    (data_dir / old_secret).rename(data_dir / new_secret)
+    return new_secret

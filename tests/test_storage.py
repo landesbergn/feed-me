@@ -123,3 +123,18 @@ def test_set_voice_rejects_unknown_voice(tmp_path):
     with pytest.raises(ValueError):
         storage.set_voice(tmp_path, secret, "evil_voice")
     assert storage.get_settings(tmp_path, secret)["voice"] == "shimmer"
+
+
+def test_rotate_secret_moves_data_and_returns_new_secret(tmp_path):
+    old = storage.create_user(tmp_path)
+    storage.write_episode(tmp_path, old, title="A",
+                          source_url="https://a", audio=b"X")
+
+    new = storage.rotate_secret(tmp_path, old)
+
+    assert new != old
+    assert not (tmp_path / old).exists()
+    assert (tmp_path / new).is_dir()
+    eps = storage.list_episodes(tmp_path, new)
+    assert len(eps) == 1
+    assert eps[0]["title"] == "A"
