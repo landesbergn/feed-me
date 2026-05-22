@@ -31,3 +31,23 @@ def test_fetch_article_raises_on_http_error(monkeypatch, fake_http):
 
     with pytest.raises(RuntimeError):
         ingest.fetch_article("https://example.com/y")
+
+
+def test_synthesize_returns_audio_bytes(monkeypatch, fake_openai):
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+
+    audio = ingest.synthesize("hello world", "shimmer")
+
+    assert audio == b"FAKEMP3"
+    assert fake_openai.calls[0]["voice"] == "shimmer"
+    assert fake_openai.calls[0]["input"] == "hello world"
+
+
+def test_synthesize_truncates_long_text(monkeypatch, fake_openai):
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    long = "x" * 10_000
+
+    ingest.synthesize(long, "alloy")
+
+    sent = fake_openai.calls[0]["input"]
+    assert len(sent) <= ingest.TTS_CHAR_LIMIT

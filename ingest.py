@@ -1,6 +1,7 @@
 import httpx
 from readability import Document
 from lxml import html as lxml_html
+from openai import OpenAI
 
 http_client = httpx.Client(
     timeout=30.0,
@@ -12,6 +13,11 @@ http_client = httpx.Client(
     },
     follow_redirects=True,
 )
+
+openai_client = OpenAI()  # reads OPENAI_API_KEY from env
+
+TTS_CHAR_LIMIT = 4000
+TTS_MODEL = "tts-1"
 
 
 def fetch_article(url: str) -> tuple[str, str]:
@@ -35,3 +41,12 @@ def fetch_article(url: str) -> tuple[str, str]:
         body = body[len(title):].strip()
     body = "\n\n".join(line.strip() for line in body.splitlines() if line.strip())
     return title, body
+
+
+def synthesize(text: str, voice: str) -> bytes:
+    response = openai_client.audio.speech.create(
+        model=TTS_MODEL,
+        voice=voice,
+        input=text[:TTS_CHAR_LIMIT],
+    )
+    return response.content
