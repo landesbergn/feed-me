@@ -63,3 +63,14 @@ def fake_http():
 @pytest.fixture
 def fake_openai():
     return FakeOpenAI()
+
+
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    import app as app_module
+    monkeypatch.setattr(app_module, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(app_module, "APP_BASE_URL", "https://test.local")
+    return TestClient(app_module.app)
