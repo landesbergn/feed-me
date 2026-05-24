@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+
+import storage
 
 DATA_DIR = Path(os.environ.get("FEED_ME_DATA_DIR", "/data"))
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
@@ -24,3 +26,9 @@ def healthz():
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
     return templates.TemplateResponse(request, "landing.html", {})
+
+
+@app.post("/create")
+def create():
+    secret = storage.create_user(DATA_DIR)
+    return RedirectResponse(f"/u/{secret}", status_code=303)
