@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Feed Me feed</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 480px;
+           margin: 40px auto; padding: 0 20px; line-height: 1.5; color: #1a1a1a; }
+    h1 { font-size: 26px; letter-spacing: -0.01em; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+         color: #6a6a6a; margin-top: 28px; }
+    .warn { background: #f6efd6; border-left: 3px solid #8a6500;
+            padding: 10px 14px; font-size: 14px; color: #4a4a4a; }
+    .btn { display: block; width: 100%; padding: 12px; text-align: center;
+           background: #1a1a1a; color: #fff; border: none; border-radius: 999px;
+           font-size: 14px; font-weight: 600; cursor: pointer;
+           text-decoration: none; margin-top: 10px; box-sizing: border-box; }
+    .btn.secondary { background: #fff; color: #1a1a1a; border: 1px solid #e5e5e5; }
+    .url { font-family: monospace; font-size: 12px; background: #f3f1ec;
+           padding: 8px 10px; border-radius: 4px; word-break: break-all;
+           margin: 6px 0; }
+    form { display: inline; }
+    .voices { display: flex; flex-wrap: wrap; gap: 6px; }
+    .voice-btn { padding: 6px 12px; border: 1px solid #e5e5e5; background: #fff;
+                 border-radius: 999px; font-size: 13px; cursor: pointer; }
+    .voice-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+    .ep { padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-size: 14px; }
+    .ep.failed { color: #b04a00; }
+    .ep .meta { font-size: 11px; color: #6a6a6a; }
+  </style>
+</head>
+<body>
+  <h1>Your feed is ready.</h1>
+  <div class="warn">Bookmark this page — it's your account.
+    Losing the URL means losing the feed.</div>
+
+  <h2>Step 1 · Shortcut</h2>
+  <a class="btn" href="{{ shortcut_url }}">Install Shortcut</a>
+
+  <h2>Step 2 · Podcast app</h2>
+  <a class="btn secondary" href="podcasts://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
+  <div class="url">{{ feed_url }}</div>
+
+  <h2>Step 3 · First share</h2>
+  <div class="url" id="ingest-url">{{ ingest_url }}</div>
+  <button class="btn secondary" onclick="navigator.clipboard.writeText(document.getElementById('ingest-url').textContent.trim())">Copy ingest URL</button>
+  <p style="font-size: 13px; color: #6a6a6a;">First time you share, the Shortcut will ask for this URL. Paste it once — it's saved forever.</p>
+
+  <h2>Voice</h2>
+  <div class="voices">
+    {% for v in voices %}
+    <form action="/u/{{ secret }}/voice" method="post">
+      <input type="hidden" name="voice" value="{{ v }}">
+      <button class="voice-btn {% if v == current_voice %}active{% endif %}" type="submit">{{ v }}</button>
+    </form>
+    {% endfor %}
+  </div>
+
+  <h2>Recent episodes</h2>
+  {% if episodes %}
+    {% for ep in episodes %}
+      <div class="ep {% if ep.error %}failed{% endif %}">
+        {{ ep.title or "(failed)" }}
+        <div class="meta">
+          {% if ep.error %}error: {{ ep.error }}{% else %}ready{% endif %} · {{ ep.url }}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p style="color: #6a6a6a; font-size: 14px;">No episodes yet. Share an article to test.</p>
+  {% endif %}
+
+  <h2>Rotate URL (use only if you suspect leak)</h2>
+  <form action="/u/{{ secret }}/rotate" method="post">
+    <button class="btn secondary" type="submit"
+            onclick="return confirm('Generate a new URL? Old one will stop working.')">
+      Rotate
+    </button>
+  </form>
+</body>
+</html>

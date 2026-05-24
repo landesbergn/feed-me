@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -32,3 +32,24 @@ def landing(request: Request):
 def create():
     secret = storage.create_user(DATA_DIR)
     return RedirectResponse(f"/u/{secret}", status_code=303)
+
+
+@app.get("/u/{secret}", response_class=HTMLResponse)
+def settings(request: Request, secret: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    s = storage.get_settings(DATA_DIR, secret)
+    eps = storage.list_episodes(DATA_DIR, secret)[:30]
+    feed_url = f"{APP_BASE_URL}/u/{secret}/feed.xml"
+    ingest_url = f"{APP_BASE_URL}/u/{secret}/ingest"
+    feed_host_and_path = feed_url.split("://", 1)[1]
+    return templates.TemplateResponse(request, "settings.html", {
+        "secret": secret,
+        "current_voice": s["voice"],
+        "voices": sorted(storage.ALLOWED_VOICES),
+        "episodes": eps,
+        "feed_url": feed_url,
+        "ingest_url": ingest_url,
+        "feed_host_and_path": feed_host_and_path,
+        "shortcut_url": SHORTCUT_ICLOUD_URL,
+    })

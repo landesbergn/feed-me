@@ -23,3 +23,33 @@ def test_post_create_makes_user_dir(client, tmp_path):
     response = client.post("/create", follow_redirects=False)
     secret = response.headers["location"].split("/u/")[1]
     assert (tmp_path / secret / "settings.json").exists()
+
+
+def test_settings_404_for_unknown_user(client):
+    response = client.get("/u/unknown_secret")
+    assert response.status_code == 404
+
+
+def test_settings_renders_for_known_user(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}")
+    assert response.status_code == 200
+    assert "Install Shortcut" in response.text
+    assert "Add to Apple Podcasts" in response.text
+    assert "Copy ingest URL" in response.text
+    # Ingest URL must appear so the page can copy it
+    assert f"/u/{secret}/ingest" in response.text
+
+
+def test_settings_lists_recent_episodes(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_episode(tmp_path, secret, title="My Article",
+                          source_url="https://example.com/a", audio=b"X")
+
+    response = client.get(f"/u/{secret}")
+    assert "My Article" in response.text
