@@ -4,10 +4,16 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.templating import Jinja2Templates
 
 import ingest
+import rss
 import storage
 
 
@@ -95,3 +101,20 @@ def ingest_route(secret: str, url: str):
         raise HTTPException(400, "invalid url")
     spawn_ingest(url, secret, DATA_DIR)
     return {"ok": True}
+
+
+@app.get("/u/{secret}/feed.xml")
+def feed_route(secret: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    eps = storage.list_episodes(DATA_DIR, secret)
+    xml = rss.render_feed(
+        feed_url=f"{APP_BASE_URL}/u/{secret}/feed.xml",
+        audio_base=f"{APP_BASE_URL}/u/{secret}/audio",
+        episodes=eps,
+    )
+    return Response(
+        content=xml,
+        media_type="application/rss+xml",
+        headers={"Cache-Control": "max-age=60"},
+    )

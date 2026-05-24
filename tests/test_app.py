@@ -135,3 +135,24 @@ def test_ingest_rejects_invalid_url(client, monkeypatch):
 def test_ingest_404_for_unknown_user(client):
     response = client.get("/u/nope/ingest?url=https://example.com")
     assert response.status_code == 404
+
+
+def test_feed_xml_returns_valid_rss(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_episode(tmp_path, secret, title="Test",
+                          source_url="https://a", audio=b"X")
+
+    response = client.get(f"/u/{secret}/feed.xml")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/rss+xml") \
+        or response.headers["content-type"].startswith("application/xml")
+    assert "<rss" in response.text
+    assert "Test" in response.text
+
+
+def test_feed_xml_404_for_unknown_user(client):
+    response = client.get("/u/unknown/feed.xml")
+    assert response.status_code == 404
