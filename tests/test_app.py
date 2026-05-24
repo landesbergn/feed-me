@@ -84,3 +84,19 @@ def test_post_voice_404_for_unknown_user(client):
                            data={"voice": "alloy"},
                            follow_redirects=False)
     assert response.status_code == 404
+
+
+def test_post_rotate_returns_new_secret_url(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    old = create.headers["location"].split("/u/")[1]
+
+    response = client.post(f"/u/{old}/rotate", follow_redirects=False)
+    assert response.status_code == 303
+    new_path = response.headers["location"]
+    assert new_path.startswith("/u/")
+    new = new_path.split("/u/")[1]
+    assert new != old
+
+    import storage
+    assert not storage.user_exists(tmp_path, old)
+    assert storage.user_exists(tmp_path, new)

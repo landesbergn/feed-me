@@ -64,3 +64,11 @@ def set_voice_route(secret: str, voice: str = Form(...)):
     except ValueError:
         raise HTTPException(400)
     return RedirectResponse(f"/u/{secret}", status_code=303)
+
+
+@app.post("/u/{secret}/rotate")
+def rotate_route(secret: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    new = storage.rotate_secret(DATA_DIR, secret)
+    return RedirectResponse(f"/u/{new}", status_code=303)
