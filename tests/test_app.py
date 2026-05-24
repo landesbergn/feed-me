@@ -100,3 +100,38 @@ def test_post_rotate_returns_new_secret_url(client, tmp_path):
     import storage
     assert not storage.user_exists(tmp_path, old)
     assert storage.user_exists(tmp_path, new)
+
+
+def test_ingest_returns_ok_quickly(client, monkeypatch):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    calls = []
+
+    def fake_spawn(url, secret_, data_dir):
+        calls.append((url, secret_, str(data_dir)))
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", fake_spawn)
+
+    response = client.get(
+        f"/u/{secret}/ingest?url=https://example.com/x",
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert len(calls) == 1
+    assert calls[0][0] == "https://example.com/x"
+    assert calls[0][1] == secret
+
+
+def test_ingest_rejects_invalid_url(client, monkeypatch):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}/ingest?url=not-a-url")
+    assert response.status_code == 400
+
+
+def test_ingest_404_for_unknown_user(client):
+    response = client.get("/u/nope/ingest?url=https://example.com")
+    assert response.status_code == 404

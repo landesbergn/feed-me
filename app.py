@@ -1,11 +1,23 @@
 import os
+import threading
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+import ingest
 import storage
+
+
+def spawn_ingest(url: str, secret: str, data_dir: Path) -> None:
+    t = threading.Thread(
+        target=ingest.process,
+        args=(url, secret, data_dir),
+        daemon=True,
+    )
+    t.start()
 
 DATA_DIR = Path(os.environ.get("FEED_ME_DATA_DIR", "/data"))
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
@@ -72,3 +84,14 @@ def rotate_route(secret: str):
         raise HTTPException(404)
     new = storage.rotate_secret(DATA_DIR, secret)
     return RedirectResponse(f"/u/{new}", status_code=303)
+
+
+@app.get("/u/{secret}/ingest")
+def ingest_route(secret: str, url: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise HTTPException(400, "invalid url")
+    spawn_ingest(url, secret, DATA_DIR)
+    return {"ok": True}
