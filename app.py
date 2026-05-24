@@ -1,10 +1,12 @@
 import os
+import re
 import threading
 from pathlib import Path
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import (
+    FileResponse,
     HTMLResponse,
     PlainTextResponse,
     RedirectResponse,
@@ -31,6 +33,8 @@ SHORTCUT_ICLOUD_URL = os.environ.get(
     "SHORTCUT_ICLOUD_URL",
     "https://www.icloud.com/shortcuts/PLACEHOLDER",
 )
+
+SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -118,3 +122,15 @@ def feed_route(secret: str):
         media_type="application/rss+xml",
         headers={"Cache-Control": "max-age=60"},
     )
+
+
+@app.get("/u/{secret}/audio/{slug}.mp3")
+def audio_route(secret: str, slug: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    if not SLUG_RE.match(slug):
+        raise HTTPException(404)
+    path = DATA_DIR / secret / f"{slug}.mp3"
+    if not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="audio/mpeg")

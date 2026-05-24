@@ -156,3 +156,39 @@ def test_feed_xml_returns_valid_rss(client, tmp_path):
 def test_feed_xml_404_for_unknown_user(client):
     response = client.get("/u/unknown/feed.xml")
     assert response.status_code == 404
+
+
+def test_audio_streams_file(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    slug = storage.write_episode(tmp_path, secret, title="A",
+                                  source_url="https://a", audio=b"MP3DATA")
+
+    response = client.get(f"/u/{secret}/audio/{slug}.mp3")
+    assert response.status_code == 200
+    assert response.content == b"MP3DATA"
+    assert response.headers["content-type"] == "audio/mpeg"
+
+
+def test_audio_404_for_unknown_slug(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}/audio/missing.mp3")
+    assert response.status_code == 404
+
+
+def test_audio_404_for_unknown_user(client):
+    response = client.get("/u/nope/audio/x.mp3")
+    assert response.status_code == 404
+
+
+def test_audio_rejects_path_traversal(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}/audio/..%2Fsettings.json")
+    # The slug regex should reject this; either 404 or 422 is acceptable
+    assert response.status_code in (404, 422)
