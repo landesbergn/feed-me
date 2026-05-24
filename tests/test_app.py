@@ -53,3 +53,34 @@ def test_settings_lists_recent_episodes(client, tmp_path):
 
     response = client.get(f"/u/{secret}")
     assert "My Article" in response.text
+
+
+def test_post_voice_updates_setting(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.post(f"/u/{secret}/voice",
+                           data={"voice": "alloy"},
+                           follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/u/{secret}"
+
+    import storage
+    assert storage.get_settings(tmp_path, secret)["voice"] == "alloy"
+
+
+def test_post_voice_rejects_unknown(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.post(f"/u/{secret}/voice",
+                           data={"voice": "evil"},
+                           follow_redirects=False)
+    assert response.status_code == 400
+
+
+def test_post_voice_404_for_unknown_user(client):
+    response = client.post("/u/nonexistent/voice",
+                           data={"voice": "alloy"},
+                           follow_redirects=False)
+    assert response.status_code == 404

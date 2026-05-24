@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -53,3 +53,14 @@ def settings(request: Request, secret: str):
         "feed_host_and_path": feed_host_and_path,
         "shortcut_url": SHORTCUT_ICLOUD_URL,
     })
+
+
+@app.post("/u/{secret}/voice")
+def set_voice_route(secret: str, voice: str = Form(...)):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    try:
+        storage.set_voice(DATA_DIR, secret, voice)
+    except ValueError:
+        raise HTTPException(400)
+    return RedirectResponse(f"/u/{secret}", status_code=303)
