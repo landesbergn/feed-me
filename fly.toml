@@ -1,0 +1,30 @@
+# fly.toml app configuration file generated for feed-me-noah-willow-grove-8052 on 2026-05-25T14:51:37-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'feed-me-noah-willow-grove-8052'
+primary_region = 'sjc'
+
+[build]
+
+[env]
+  FEED_ME_DATA_DIR = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[mounts]]
+  source = "feed_me_data"
+  destination = "/data"
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
