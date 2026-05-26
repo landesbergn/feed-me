@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Landing Page Redesign (v1.1)</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-soft: #4a4a4a;
+    --ink-mute: #6a6a6a;
+    --rule: #e5e5e5;
+    --bg: #fafaf7;
+    --paper: #ffffff;
+    --accent: #b04a00;
+    --good: #2f7a3d;
+    --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.55;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 56px 28px 96px;
+  }
+  header.title {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 22px;
+    margin-bottom: 36px;
+  }
+  header.title .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 12px;
+    color: var(--ink-mute);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-weight: 600;
+  }
+  header.title h1 {
+    font-size: 38px;
+    line-height: 1.1;
+    margin: 8px 0 8px;
+    letter-spacing: -0.01em;
+  }
+  header.title .meta {
+    font-size: 14px;
+    color: var(--ink-mute);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  }
+  h2 {
+    font-size: 22px;
+    margin: 48px 0 12px;
+    letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px;
+    margin: 26px 0 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 14px;
+  }
+  th, td {
+    border-bottom: 1px solid var(--rule);
+    padding: 9px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    color: var(--ink-soft);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .toc {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 16px 0 36px;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--code-bg);
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .pill.good { background: #e3f1e3; color: var(--good); }
+  .pill.warn { background: #f6efd6; color: var(--warn); }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .pill.never  { background: #f6e0d6; color: var(--accent); }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--paper);
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 15px;
+    color: var(--ink-soft);
+  }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+  .ascii {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+    white-space: pre;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.1</div>
+  <h1>Landing Page Redesign</h1>
+  <div class="meta">Feed Me · 2026-05-25 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Predecessor: <a href="2026-05-21-feed-me-design.html">v1 design</a>,
+  shipped at commit <code>4aa4380</code> (tag <code>v1.0</code>).
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#visual">Visual direction</a></li>
+    <li><a href="#copy">Copy</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  v1 launched with a functional but unfussy landing page. Now the user wants to share
+  <code>feed-me-noah-willow-grove-8052.fly.dev</code> with friends and have them
+  self-serve their own feed without help. The current page reads as a placeholder;
+  it doesn't sell the product or make the value obvious enough to convert a casual
+  visitor.
+</p>
+
+<p>
+  This spec covers <strong>only the landing page</strong>. The Shortcut wiring for
+  friends (so a friend's "Install Shortcut" button works end-to-end) is a separate,
+  related work item — called out under
+  <a href="#followups">Known follow-ups</a> but not part of this spec.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<p>A redesigned <code>templates/landing.html</code> that:</p>
+
+<ol>
+  <li>Sells the product in one screen</li>
+  <li>Names the differentiator (it's <em>yours</em>, it's <em>private</em>) without crowding</li>
+  <li>Shows the three-step setup as a clear sequence so a friend knows what they're signing up for</li>
+  <li>Stays mobile-first (the friend almost certainly opens the link on their phone)</li>
+</ol>
+
+<p>No backend changes. No new routes. No new dependencies.</p>
+
+<h2 id="visual">3 · Visual direction</h2>
+
+<p>
+  <strong>Vibe:</strong> Minimal — Linear/Vercel aesthetic. White background, near-black text,
+  system sans (Inter / <code>-apple-system</code> stack), one accent (the black button itself).
+  Plenty of air. No images, no audio sample, no illustrations.
+</p>
+
+<p><strong>Layout</strong> (locked via visual companion):</p>
+
+<div class="ascii">┌─────────────────────────────────────────────┐
+│ Feed Me                                     │  ← brand mark, 10px uppercase, top-left
+│                                             │
+│ Your articles, read to you in               │  ← h1, 22-28px, weight 600, tracking -0.025em
+│ your own private podcast feed.              │     "your own private" gets a 2px underline
+│                                             │     "podcast feed." nbsp'd so "feed." can't orphan
+│                                             │     text-wrap: balance for even line distribution
+│ Share an article, play it later.            │  ← subhead, 13-14px, neutral gray
+│                                             │
+│ [ Get my feed → ]                           │  ← black pill button, posts to /create
+│                                             │
+│ ───────────────────────────────────         │  ← thin top border on the steps block
+│                                             │
+│ ① ─── Create your feed                      │  ← numbered circles (22px, 1.5px border)
+│ │     A private URL only you know.          │     connected by a 2px hairline timeline
+│ │     Bookmark it.                          │
+│ │                                           │
+│ ② ─── Install the Shortcut                  │  ← bold 13px title, 11px gray description
+│ │     One tap. Lives in your iOS            │
+│ │     share sheet.                          │
+│ │                                           │
+│ ③     Subscribe in any podcast app          │  ← last step: no trailing line
+│       Apple Podcasts, Overcast, Pocket      │
+│       Casts — standard RSS.                 │
+│                                             │
+└─────────────────────────────────────────────┘</div>
+
+<p>
+  The whole page is one column. On mobile, the column is the viewport width minus padding.
+  On wider screens, content stays in a centered ~480px column — same envelope as v1.
+</p>
+
+<h2 id="copy">4 · Copy</h2>
+
+<p class="small">Placeholder — may be edited before or after implementation. The spec governs structure and visual treatment, not the final words.</p>
+
+<table>
+  <thead><tr><th style="width: 30%;">Slot</th><th>Text</th></tr></thead>
+  <tbody>
+    <tr><td>Brand</td><td><code>Feed Me</code> (uppercase, tracked)</td></tr>
+    <tr><td>h1</td><td>Your articles, read to you in your own private podcast feed.</td></tr>
+    <tr><td>h1 emphasis</td><td><code>your own private</code> gets a 2px solid black underline</td></tr>
+    <tr><td>Subhead</td><td>Share an article, play it later.</td></tr>
+    <tr><td>Button</td><td>Get my feed →</td></tr>
+    <tr><td>Step 1 · title</td><td>Create your feed</td></tr>
+    <tr><td>Step 1 · desc</td><td>A private URL only you know. Bookmark it.</td></tr>
+    <tr><td>Step 2 · title</td><td>Install the Shortcut</td></tr>
+    <tr><td>Step 2 · desc</td><td>One tap. Lives in your iOS share sheet.</td></tr>
+    <tr><td>Step 3 · title</td><td>Subscribe in any podcast app</td></tr>
+    <tr><td>Step 3 · desc</td><td>Apple Podcasts, Overcast, Pocket Casts — standard RSS.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="impl">5 · Implementation notes</h2>
+
+<h3>One file changes</h3>
+<p><code>templates/landing.html</code>.</p>
+
+<h3>No CSS extraction</h3>
+<p>
+  Keep styles in a <code>&lt;style&gt;</code> block inside the template, matching the existing
+  pattern in <code>templates/landing.html</code> and <code>templates/settings.html</code>.
+  No new CSS file.
+</p>
+
+<h3>Responsive</h3>
+<p>
+  Mobile-first. Single column with <code>max-width: 480px; margin: 60px auto</code> (same envelope as v1).
+  On screens narrower than ~520px, padding stays at <code>0 24px</code>.
+</p>
+
+<h3>Type stack</h3>
+<p><code>-apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif</code>. No webfont loading.</p>
+
+<h3>Color palette</h3>
+<table>
+  <thead><tr><th>Token</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Text primary</td><td><code>#0a0a0a</code></td></tr>
+    <tr><td>Text secondary</td><td><code>#6a6a6a</code></td></tr>
+    <tr><td>Text tertiary</td><td><code>#999</code></td></tr>
+    <tr><td>Border / divider</td><td><code>#eaeaea</code></td></tr>
+    <tr><td>Background</td><td><code>#fff</code></td></tr>
+    <tr><td>Button bg / text</td><td><code>#0a0a0a</code> / <code>#fff</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Step timeline</h3>
+<p>
+  22px circles with <code>1.5px solid #0a0a0a</code> border, transparent inside, number centered.
+  Vertical 2px hairline at <code>#eaeaea</code> connects the centers of consecutive circles.
+  Last step has no trailing line.
+</p>
+
+<h3>Text decoration on the headline</h3>
+<ul>
+  <li><code>text-wrap: balance</code> on the <code>h1</code> for even line distribution</li>
+  <li><code>&amp;nbsp;</code> between <code>podcast</code> and <code>feed.</code> to prevent the orphan</li>
+  <li>A <code>&lt;span&gt;</code> with <code>border-bottom: 2px solid #0a0a0a</code> wraps the phrase <code>your own private</code></li>
+</ul>
+
+<h3>Form behavior preserved</h3>
+<p>
+  The button stays inside a <code>&lt;form action="/create" method="post"&gt;</code> so the
+  POST → 303 redirect to <code>/u/&lt;secret&gt;</code> flow continues working exactly as before.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+
+<p>The existing <code>test_landing_page_renders(client)</code> in <code>tests/test_app.py</code> asserts:</p>
+<ul>
+  <li>200 response on <code>GET /</code></li>
+  <li><code>"Get my feed"</code> appears in the response</li>
+  <li><code>"feed-me"</code> appears case-insensitively</li>
+</ul>
+
+<p>This redesign preserves all three. Update the test to also assert:</p>
+<ul>
+  <li><code>"private"</code> appears (regression guard for the privacy emphasis)</li>
+  <li><code>"Create your feed"</code> appears (regression guard for step 1 title)</li>
+</ul>
+
+<p class="small">
+  The visual treatment itself is verified by eye — there's no meaningful way to assert
+  "the underline is 2px solid black" in a request-level test, and FastAPI's test client
+  doesn't render CSS.
+</p>
+
+<h2 id="scope">7 · Out of scope</h2>
+
+<ul>
+  <li><strong>Settings page</strong> (<code>templates/settings.html</code>) — different surface, different problem. Touched only if accidentally regressed.</li>
+  <li><strong>Sample audio player</strong> — explicitly chosen against during brainstorm; would force baking a 500KB MP3 into the repo and a new route.</li>
+  <li><strong>Webfonts</strong> — system stack works fine; loading webfonts adds page weight and licensing concerns.</li>
+  <li><strong>Dark mode</strong> — out of scope for v1.1; the minimal aesthetic reads fine on either OS preference.</li>
+  <li><strong>Hero illustration / share-sheet screenshot</strong> — explicitly chosen against (pure type per the vibe selection).</li>
+  <li><strong>Analytics / conversion tracking / A/B testing</strong> — premature for a tool a handful of friends might use.</li>
+</ul>
+
+<h2 id="followups">8 · Known follow-ups <span class="pill future">separate work</span></h2>
+
+<p>
+  Required for the <em>friend journey</em> to be truly end-to-end usable, but
+  independent from the landing page redesign:
+</p>
+
+<ol>
+  <li>
+    <strong>Wire the iCloud Shortcut share link.</strong>
+    Re-author the Shortcut using Apple's <em>Import Questions</em> feature so installers are
+    prompted for their own ingest URL during install; set <code>SHORTCUT_ICLOUD_URL</code>
+    on Fly. Without this, the "Install Shortcut" button on every settings page points
+    to a placeholder.
+  </li>
+  <li>
+    <strong>Improve the bookmark-the-URL onboarding moment.</strong>
+    Today the URL-as-account warning is a yellow box on the settings page, easy to miss.
+    Consider an explicit "Bookmark this page" confirmation step (one screen between
+    <code>POST /create</code> and the settings view) that interrupts the redirect flow until
+    the user acknowledges. Raised because the landing page does mention "bookmark the URL"
+    and the actual bookmarking experience should match.
+  </li>
+</ol>
+
+<p class="small">Both should get their own spec → plan cycle.</p>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+
+<ul>
+  <li><code>templates/landing.html</code> rewritten with the layout and styles above</li>
+  <li>All existing landing-page tests still pass</li>
+  <li>New regression assertions for <code>"private"</code> and <code>"Create your feed"</code> added</li>
+  <li>Deployed to Fly; <code>https://feed-me-noah-willow-grove-8052.fly.dev/</code> shows the redesigned page</li>
+  <li>
+    On an iPhone Safari render in portrait (iPhone 14 / 15-class, 6.1" / 390×844pt with default Safari chrome),
+    the hero, button, and all three steps are visible without scrolling.
+  </li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Brainstormed via the <code>brainstorming</code> visual companion on 2026-05-25.
+  Vibe selection → layout selection → privacy treatment → copy iteration → final mockup at
+  <code>.superpowers/brainstorm/49832-1779763241/content/locked.html</code>.
+</p>
+
+</div>
+</body>
+</html>
