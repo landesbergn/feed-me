@@ -5,31 +5,132 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>feed-me</title>
   <style>
-    body { font-family: -apple-system, sans-serif; max-width: 480px;
-           margin: 60px auto; padding: 0 20px; line-height: 1.5; color: #1a1a1a; }
-    h1 { font-size: 32px; letter-spacing: -0.01em; }
-    p { color: #4a4a4a; }
-    form { margin-top: 32px; }
-    button { display: block; width: 100%; padding: 14px;
-             background: #1a1a1a; color: #fff; border: none;
-             border-radius: 999px; font-size: 16px; font-weight: 600;
-             cursor: pointer; }
-    ol { padding-left: 20px; }
-    li { margin: 8px 0; }
+    body {
+      font-family: -apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif;
+      max-width: 480px;
+      margin: 60px auto;
+      padding: 0 24px;
+      line-height: 1.5;
+      color: #0a0a0a;
+      background: #fff;
+      -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-size: 10px;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin: 0 0 10px;
+      text-wrap: balance;
+    }
+    h1 .key {
+      border-bottom: 2px solid #0a0a0a;
+      padding-bottom: 1px;
+    }
+    .sub {
+      font-size: 14px;
+      color: #6a6a6a;
+      line-height: 1.4;
+      margin: 0 0 18px;
+    }
+    button {
+      display: inline-block;
+      background: #0a0a0a;
+      color: #fff;
+      font-size: 14px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 999px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .steps {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 14px;
+      position: relative;
+      padding-bottom: 14px;
+    }
+    .step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 26px;
+      bottom: 0;
+      width: 2px;
+      background: #eaeaea;
+    }
+    .circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      background: #fff;
+      position: relative;
+      z-index: 1;
+    }
+    .step-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0a0a0a;
+      line-height: 1.3;
+      margin-bottom: 2px;
+    }
+    .step-desc {
+      font-size: 11px;
+      color: #888;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
-  <h1>Articles, as a podcast.</h1>
-  <p>Share any URL from iOS. A minute later, listen to it in
-     Apple Podcasts, Overcast, or any RSS-aware app.</p>
-  <h2>No account needed</h2>
-  <ol>
-    <li>Tap below to create your feed (you'll get a private URL — bookmark it)</li>
-    <li>Install the iOS Shortcut (one tap, signed by iCloud)</li>
-    <li>Subscribe in your podcast app (standard RSS)</li>
-  </ol>
+  <div class="brand">Feed Me</div>
+  <h1>Your articles, read to you in <span class="key">your own private</span>&nbsp;podcast&nbsp;feed.</h1>
+  <p class="sub">Share an article, play it later.</p>
   <form action="/create" method="post">
     <button type="submit">Get my feed →</button>
   </form>
+  <div class="steps">
+    <div class="step">
+      <div class="circle">1</div>
+      <div>
+        <div class="step-title">Create your feed</div>
+        <div class="step-desc">A private URL only you know. Bookmark it.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="circle">2</div>
+      <div>
+        <div class="step-title">Install the Shortcut</div>
+        <div class="step-desc">One tap. Lives in your iOS share sheet.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="circle">3</div>
+      <div>
+        <div class="step-title">Subscribe in any podcast app</div>
+        <div class="step-desc">Apple Podcasts, Overcast, Pocket Casts — standard RSS.</div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
