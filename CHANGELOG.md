@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1 — 2026-05-26
+
+Landing page redesign + custom domain:
+
+- Minimal Linear-style hero, privacy-first headline (`Your articles, read to you in your own private podcast feed.`) with underlined privacy phrase
+- 3-step timeline explainer (numbered circles + connecting hairline) replaces the old ordered list
+- Custom domain wired up: `https://feed-me.xyz` (with `www` cert too); old fly subdomain still works
+- New test regression guards for `"private"` and `"Create your feed"` on the landing
+- Step-desc grey bumped to `#6a6a6a` for WCAG AA contrast
+- Spec: `docs/superpowers/specs/2026-05-25-landing-page-redesign.html`
+
 ## v1.0 — 2026-05-25
 
 Initial release. End-to-end self-serve podcast feed:
