@@ -183,3 +183,42 @@ def test_list_episodes_status_field_failed(tmp_path):
     eps = storage.list_episodes(tmp_path, secret)
 
     assert eps[0]["status"] == "failed"
+
+
+def test_write_episode_promotes_pending(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://example.com/x",
+    )
+
+    returned = storage.write_episode(
+        tmp_path, secret,
+        title="On Time", source_url="https://example.com/x",
+        audio=b"FAKEMP3", slug=slug,
+    )
+
+    # Same slug returned, same file updated, no second file created
+    assert returned == slug
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "ready"
+    assert eps[0]["title"] == "On Time"
+    assert "pending" not in eps[0] or eps[0].get("pending") is None
+
+
+def test_write_failed_episode_promotes_pending(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://example.com/y",
+    )
+
+    returned = storage.write_failed_episode(
+        tmp_path, secret,
+        source_url="https://example.com/y", error="paywalled", slug=slug,
+    )
+
+    assert returned == slug
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "failed"
+    assert eps[0]["error"] == "paywalled"

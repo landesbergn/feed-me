@@ -29,8 +29,10 @@ def _new_slug() -> str:
 def write_episode(
     data_dir: Path, secret: str, *,
     title: str, source_url: str, audio: bytes,
+    slug: str | None = None,
 ) -> str:
-    slug = _new_slug()
+    if slug is None:
+        slug = _new_slug()
     user_dir = data_dir / secret
     (user_dir / f"{slug}.mp3").write_bytes(audio)
     (user_dir / f"{slug}.json").write_text(json.dumps({
@@ -44,8 +46,10 @@ def write_episode(
 def write_failed_episode(
     data_dir: Path, secret: str, *,
     source_url: str, error: str,
+    slug: str | None = None,
 ) -> str:
-    slug = _new_slug()
+    if slug is None:
+        slug = _new_slug()
     (data_dir / secret / f"{slug}.json").write_text(json.dumps({
         "title": None,
         "url": source_url,
