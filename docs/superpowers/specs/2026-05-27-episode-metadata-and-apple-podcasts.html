@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Episode Metadata + Apple Podcasts Compatibility (v1.6)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .pill.warn { background: #f6efd6; color: var(--warn); }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+  .callout {
+    border-left: 3px solid var(--warn); background: var(--paper);
+    padding: 12px 16px; margin: 16px 0; font-size: 15px; color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.6</div>
+  <h1>Episode Metadata + Apple Podcasts Compatibility</h1>
+  <div class="meta">Feed Me · 2026-05-27 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Three coupled fixes for the post-share experience. <strong>(1)</strong> the
+  Pending row currently reads "(couldn't extract article)" — misleading since the
+  article hasn't actually failed; <strong>(2)</strong> RSS items have no descriptions
+  so the source URL and a snippet don't show up in podcast apps; <strong>(3)</strong>
+  Apple Podcasts silently refuses to subscribe to the feed (Overcast accepts it).
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#title">Quick title fetch on /ingest</a></li>
+    <li><a href="#desc">Per-episode descriptions</a></li>
+    <li><a href="#apple">Apple Podcasts compatibility</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  v1.5 delivered live updates and the welcome episode — friends can now subscribe to
+  an empty feed and watch shares appear. But three rough edges undercut the experience:
+</p>
+
+<ul>
+  <li>The Pending row reads "(couldn't extract article)" because the template uses that
+    string as the fallback whenever <code>title</code> is None. None means two different
+    things: "ingest hasn't happened yet" (pending) vs. "extraction actually failed".
+    They deserve different fallbacks.</li>
+  <li>RSS items only carry title/link/guid/pubDate/enclosure. No description, no summary,
+    no excerpt. In Apple Podcasts the episode preview shows blank — the source URL and
+    article context are invisible.</li>
+  <li>Apple Podcasts refuses to subscribe (verified by the user; Overcast works). The
+    feed is valid RSS 2.0 but missing a few iTunes/atom elements Apple requires and has
+    one definitely-wrong attribute (<code>length="0"</code> on every enclosure).</li>
+</ul>
+
+<h2 id="what">2 · What we're building</h2>
+
+<ol>
+  <li><strong>Quick title fetch at <code>/ingest</code> time.</strong> Before spawning
+    the worker thread, do a fast HTTP GET on the URL, parse just the HTML <code>&lt;title&gt;</code>,
+    store as the pending record's title. Costs ~1-2s of added latency on the ingest
+    endpoint; in exchange the Pending row shows the real title from ~1s in.</li>
+  <li><strong>Per-episode descriptions.</strong> Add a <code>description</code> field to
+    the episode JSON. For shared articles, store the first ~200 chars of the extracted
+    plain-text body. For the welcome, a hand-written one-liner. Render in
+    <code>&lt;description&gt;</code> and <code>&lt;itunes:summary&gt;</code> at the item level.</li>
+  <li><strong>Apple Podcasts fixes.</strong> Compute and emit real <code>length</code>
+    bytes on each <code>&lt;enclosure&gt;</code>. Add <code>&lt;atom:link rel="self"&gt;</code>
+    and <code>&lt;itunes:type&gt;episodic&lt;/itunes:type&gt;</code> to the channel.
+    Change the <code>podcasts://</code> deep link in <code>settings.html</code> to
+    <code>podcast://</code> (singular — Apple's documented scheme).</li>
+</ol>
+
+<h2 id="title">3 · Quick title fetch on /ingest</h2>
+
+<h3>Behavior</h3>
+
+<p>
+  Today the <code>/ingest</code> route validates the URL, calls
+  <code>spawn_ingest()</code>, returns <code>{"ok": true}</code>. The pending record
+  written by the worker thread has <code>title: None</code>.
+</p>
+
+<p>The new flow:</p>
+
+<ol>
+  <li><code>/ingest</code> validates the URL.</li>
+  <li>Synchronously calls a new helper <code>ingest.fetch_title(url) → str | None</code>
+    that does an HTTP GET (with a tight 5s timeout) and extracts the <code>&lt;title&gt;</code>
+    tag. Returns the title text, or <code>None</code> on any failure (timeout, no title,
+    parse error).</li>
+  <li>Writes the pending record with this title via a new signature
+    <code>storage.write_pending_episode(data_dir, secret, *, source_url, title=None)</code>.</li>
+  <li>Spawns the worker thread as before, which later promotes the record (and
+    over-writes the title with the Readability-extracted one, which may be the same or
+    better).</li>
+</ol>
+
+<h3>Failure handling</h3>
+
+<p>
+  If <code>fetch_title</code> returns None — network error, no title tag, anything —
+  the pending record gets <code>title: None</code> and the template falls back to
+  showing the hostname (see §3 template change below). The worker still runs normally
+  and may succeed with a Readability-extracted title.
+</p>
+
+<h3>Template change</h3>
+
+<p>The episode-section partial currently has:</p>
+
+<pre><code>{{ ep.title or "(couldn't extract article)" }}</code></pre>
+
+<p>Change to:</p>
+
+<pre><code>{% if ep.title %}{{ ep.title }}{% elif ep.status == "pending" %}Loading from {{ ep.url | hostname }}…{% else %}(couldn't extract article){% endif %}</code></pre>
+
+<p>
+  Where <code>| hostname</code> is a small new Jinja filter that strips scheme and path
+  from a URL (returns <code>colossus.com</code> from <code>https://colossus.com/article/inside-notion/</code>).
+</p>
+
+<h2 id="desc">4 · Per-episode descriptions</h2>
+
+<h3>Storage shape</h3>
+
+<p>
+  Episode JSON gains a <code>description</code> field, optional. When set, the RSS feed
+  renders it in <code>&lt;description&gt;</code> and <code>&lt;itunes:summary&gt;</code>.
+</p>
+
+<h3>Content rules</h3>
+
+<table>
+  <thead><tr><th>Episode type</th><th>Description content</th></tr></thead>
+  <tbody>
+    <tr><td>Shared article (ready)</td><td>First ~200 chars of the Readability-extracted plain-text body, then "…" if truncated. Followed by a newline and the source URL.</td></tr>
+    <tr><td>Shared article (pending)</td><td>None (description not yet available; rendered as just the source URL in the feed).</td></tr>
+    <tr><td>Shared article (failed)</td><td>The error string + the source URL.</td></tr>
+    <tr><td>Welcome</td><td><code>"Share an article from your phone — it'll show up here a minute later."</code> (hand-written).</td></tr>
+  </tbody>
+</table>
+
+<h3>Storage signatures</h3>
+
+<p>
+  <code>write_episode</code>, <code>write_pending_episode</code>, and <code>write_failed_episode</code>
+  all accept a new optional <code>description: str | None = None</code> keyword. When provided,
+  it's written into the episode JSON.
+</p>
+
+<p>
+  <code>seed_welcome_episode</code> always writes the hard-coded welcome description above.
+</p>
+
+<h3>RSS template additions</h3>
+
+<p>Inside <code>&lt;item&gt;</code>, after <code>&lt;pubDate&gt;</code>:</p>
+
+<pre><code>&lt;description&gt;{{ ep.description or ep.url | e }}&lt;/description&gt;
+&lt;itunes:summary&gt;{{ ep.description or ep.url | e }}&lt;/itunes:summary&gt;</code></pre>
+
+<p>Fallback to the source URL if no description is set (pending case, mostly).</p>
+
+<h2 id="apple">5 · Apple Podcasts compatibility</h2>
+
+<h3>Enclosure length</h3>
+
+<p>
+  Today every enclosure has <code>length="0"</code>. Apple Podcasts often rejects this.
+  Compute the real byte size from the MP3 file when rendering the feed.
+</p>
+
+<p>
+  Implementation: in <code>list_episodes</code>, look up
+  <code>(user_dir / f"{slug}.mp3").stat().st_size</code> when the file exists, attach
+  as <code>audio_bytes</code> on the dict. Template renders <code>length="{{ ep.audio_bytes or 0 }}"</code>
+  (defaults to 0 for items with no audio, which are filtered out anyway since they're not ready).
+</p>
+
+<h3>New channel elements</h3>
+
+<p>Add to <code>&lt;channel&gt;</code>:</p>
+
+<pre><code>&lt;atom:link href="{{ feed_url }}" rel="self" type="application/rss+xml"/&gt;
+&lt;itunes:type&gt;episodic&lt;/itunes:type&gt;</code></pre>
+
+<p>
+  Also add the <code>xmlns:atom="http://www.w3.org/2005/Atom"</code> namespace declaration
+  to the <code>&lt;rss&gt;</code> root.
+</p>
+
+<h3>Deep link scheme</h3>
+
+<p>
+  Change in <code>templates/settings.html</code>:
+</p>
+
+<pre><code>&lt;!-- before --&gt;
+&lt;a href="podcasts://{{ feed_host_and_path }}"&gt;Add to Apple Podcasts&lt;/a&gt;
+
+&lt;!-- after --&gt;
+&lt;a href="podcast://{{ feed_host_and_path }}"&gt;Add to Apple Podcasts&lt;/a&gt;</code></pre>
+
+<p>
+  <code>podcast://</code> (singular) is Apple's documented URL scheme for subscribing
+  to a custom RSS feed. <code>podcasts://</code> (plural) used to work but is no longer
+  the canonical form.
+</p>
+
+<h3 id="cache-note">Note on Apple's feed cache</h3>
+
+<div class="callout">
+  Apple aggressively caches feeds. After deploy, an already-failed subscription attempt
+  may continue to fail because Apple keeps serving its cached bad version. To force a
+  fresh fetch: either rotate the user's URL (gives Apple a feed URL it's never seen),
+  or unfollow + wait ~5 minutes + retry. This is an Apple limitation, not something we
+  can fix in code.
+</div>
+
+<h2 id="impl">6 · Implementation notes</h2>
+
+<h3>Modified files</h3>
+
+<ul>
+  <li><code>ingest.py</code> — new <code>fetch_title(url) -&gt; str | None</code> helper; <code>process</code> accepts a description from the Readability body excerpt.</li>
+  <li><code>storage.py</code> — <code>write_pending_episode</code> / <code>write_episode</code> / <code>write_failed_episode</code> gain optional <code>title</code> / <code>description</code> kwargs; <code>seed_welcome_episode</code> writes hard-coded welcome description; <code>list_episodes</code> attaches <code>audio_bytes</code> from <code>stat().st_size</code> when the MP3 file exists.</li>
+  <li><code>app.py</code> — <code>/ingest</code> route calls <code>ingest.fetch_title</code> synchronously before spawning; register the new <code>hostname</code> Jinja filter.</li>
+  <li><code>rss.py</code> — pass <code>cover_url</code> through unchanged; <code>render_feed</code> doesn't need a signature change.</li>
+  <li><code>templates/feed.xml</code> — add atom namespace, atom:link, itunes:type, per-item description, real enclosure length.</li>
+  <li><code>templates/_episodes_section.html</code> — title fallback chain.</li>
+  <li><code>templates/settings.html</code> — change <code>podcasts://</code> to <code>podcast://</code>.</li>
+  <li><code>tests/test_ingest.py</code> — tests for <code>fetch_title</code> (success, no title, network error), test that <code>/ingest</code> writes the pending record with the fetched title.</li>
+  <li><code>tests/test_storage.py</code> — tests that the new optional kwargs survive round-trip; <code>list_episodes</code> exposes <code>audio_bytes</code>.</li>
+  <li><code>tests/test_rss.py</code> — tests for atom:link, itunes:type, per-item description, real enclosure length.</li>
+  <li><code>tests/test_app.py</code> — test the <code>hostname</code> filter; test the pending-title-fetch path returns the fetched title in the page; test the <code>podcast://</code> deep link.</li>
+</ul>
+
+<h3>Hostname filter</h3>
+
+<p>
+  Small Jinja filter registered on the FastAPI Jinja2Templates instance. Takes a URL
+  string, returns the hostname (no scheme, no port, no path). E.g.
+  <code>https://colossus.com/article/foo</code> → <code>colossus.com</code>.
+  Implemented via <code>urllib.parse.urlparse</code>.
+</p>
+
+<h3>fetch_title implementation sketch</h3>
+
+<pre><code>def fetch_title(url: str, *, timeout: float = 5.0) -&gt; str | None:
+    """Quick HTTP GET to extract just the &lt;title&gt; tag. Returns None on any failure."""
+    try:
+        resp = http_client.get(url, timeout=timeout)
+        resp.raise_for_status()
+    except Exception:
+        return None
+    # Parse just the title tag — don't run full Readability here, that's the worker's job
+    try:
+        doc = lxml_html.fromstring(resp.text)
+        title_el = doc.find(".//title")
+        if title_el is not None and title_el.text:
+            return title_el.text.strip() or None
+    except Exception:
+        return None
+    return None</code></pre>
+
+<h3>Worker thread interaction with fetched title</h3>
+
+<p>
+  The worker calls <code>fetch_article</code> as before, getting the Readability title.
+  When it calls <code>write_episode(slug=slug, title=readability_title, ...)</code>, the
+  pending record's title gets overwritten. If the Readability title is the same or
+  better than the <code>&lt;title&gt;</code> tag, this is fine. If different — Readability
+  wins, which is usually correct (its title-cleaning logic strips site-name suffixes).
+</p>
+
+<h3>Description from Readability body</h3>
+
+<p>
+  <code>fetch_article</code> already returns <code>(title, body)</code>. <code>process</code>
+  truncates the body to 200 chars (preserving word boundaries) plus an ellipsis, and
+  passes as the description to <code>write_episode</code>.
+</p>
+
+<h2 id="tests">7 · Testing</h2>
+
+<h3>Ingest tests</h3>
+<ul>
+  <li>New: <code>test_fetch_title_extracts_from_html</code> — fake HTTP returns sample HTML with a title, assert correct extraction.</li>
+  <li>New: <code>test_fetch_title_returns_none_on_http_error</code> — fake HTTP returns 500, assert None.</li>
+  <li>New: <code>test_fetch_title_returns_none_when_no_title_tag</code> — fake HTTP returns HTML with no title, assert None.</li>
+  <li>New: <code>test_process_passes_description_from_body</code> — fake HTTP returns sample article, run process, assert the ready episode has a description containing a body excerpt.</li>
+</ul>
+
+<h3>Storage tests</h3>
+<ul>
+  <li>New: <code>test_write_pending_episode_accepts_title</code> — pass title kwarg, assert it's in the json.</li>
+  <li>New: <code>test_write_episode_accepts_description</code> — pass description kwarg, assert it's in the json and on the episode dict.</li>
+  <li>New: <code>test_list_episodes_includes_audio_bytes</code> — write an episode with audio, assert <code>audio_bytes</code> equals the file size.</li>
+</ul>
+
+<h3>RSS tests</h3>
+<ul>
+  <li>New: <code>test_render_feed_includes_atom_link_self</code> — assert <code>&lt;atom:link rel="self" href="..."/&gt;</code> appears.</li>
+  <li>New: <code>test_render_feed_includes_itunes_type_episodic</code> — assert <code>&lt;itunes:type&gt;episodic&lt;/itunes:type&gt;</code> appears.</li>
+  <li>New: <code>test_render_feed_per_item_description</code> — pass episode with description, assert it appears in <code>&lt;description&gt;</code> and <code>&lt;itunes:summary&gt;</code> per item.</li>
+  <li>Update: <code>test_render_feed_emits_ready_episodes_in_order</code> to assert real <code>length</code> attribute on enclosure (passes <code>audio_bytes</code> on the episode dict).</li>
+</ul>
+
+<h3>App tests</h3>
+<ul>
+  <li>New: <code>test_ingest_route_writes_pending_with_fetched_title</code> — fake HTTP returns HTML with a title, GET /ingest, assert the pending record's title is set.</li>
+  <li>New: <code>test_settings_page_shows_loading_for_pending_with_no_title</code> — manually write a pending episode with no title, render settings, assert "Loading from" + hostname appears.</li>
+  <li>New: <code>test_settings_apple_podcasts_uses_podcast_scheme</code> — render settings, assert <code>href="podcast://...</code> appears (singular, not plural).</li>
+</ul>
+
+<h2 id="scope">8 · Out of scope</h2>
+
+<ul>
+  <li><strong>Per-episode <code>&lt;itunes:image&gt;</code>.</strong> Channel image inherits to all episodes.</li>
+  <li><strong>Per-episode <code>&lt;itunes:duration&gt;</code>.</strong> Would need to parse MP3 duration via mutagen or similar; previously called out as a future item.</li>
+  <li><strong><code>&lt;itunes:owner&gt;</code> / <code>&lt;itunes:category&gt;</code>.</strong> Required only for Apple Podcasts Connect submission to the public directory. Not needed for arbitrary RSS subscription.</li>
+  <li><strong>Forcing Apple's cache invalidation.</strong> No client-side fix; user must rotate URL or wait.</li>
+  <li><strong>AI-summarized descriptions.</strong> First-200-chars-of-body is fine; an LLM summary would be a more interesting future feature, not v1.6.</li>
+</ul>
+
+<h2 id="followups">9 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li><strong>Episode duration tag.</strong> Carried over from v1.4 and v1.5. Becomes more attractive now that we're touching the enclosure tag (we'd parse the MP3 with mutagen once at write time and store both <code>audio_bytes</code> and <code>duration_seconds</code> in the episode JSON).</li>
+  <li><strong>LLM-generated episode summary.</strong> First 200 chars of the body is OK but not great for long-form pieces. An OpenAI completion call after TTS could produce a real 2-3 sentence summary. Adds a few cents per episode and a few seconds of latency.</li>
+  <li><strong>Apple Podcasts directory submission.</strong> If Feed Me grows beyond a small friend group, you might want each feed visible in Apple's search. Requires <code>&lt;itunes:owner&gt;</code> + <code>&lt;itunes:category&gt;</code> + a separate submission step through Apple Podcasts Connect. Not v1.6.</li>
+</ul>
+
+<h2 id="accept">10 · Acceptance criteria</h2>
+
+<ul>
+  <li>Sharing an article via the Shortcut causes the Pending row to appear within ~3s <strong>with the article's real title</strong>, not "(couldn't extract article)".</li>
+  <li>Each RSS item has a non-empty <code>&lt;description&gt;</code> containing either a body excerpt + URL (ready) or the source URL (pending) or the error + URL (failed).</li>
+  <li>Each <code>&lt;enclosure&gt;</code> has a real byte-count <code>length</code> attribute.</li>
+  <li>The feed channel includes <code>&lt;atom:link rel="self"&gt;</code> and <code>&lt;itunes:type&gt;episodic&lt;/itunes:type&gt;</code>.</li>
+  <li>The "Add to Apple Podcasts" button links to <code>podcast://...</code> (singular).</li>
+  <li>After deploy + rotating the user's URL, subscribing to the feed in Apple Podcasts succeeds (Follow button enables, episodes appear).</li>
+  <li>All existing tests pass; new tests pass.</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-05-27. Quick title fetch chosen over template-only
+  fallback. Per-item descriptions use first 200 chars of body. Apple fix is multi-pronged
+  because no single missing element is provably the cause — three additions + one scheme
+  change cover the most likely culprits.
+</p>
+
+</div>
+</body>
+</html>
