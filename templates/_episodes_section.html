@@ -12,7 +12,7 @@
       {% for ep in episodes %}
         <tr>
           <td class="col-title">
-            {{ ep.title or "(couldn't extract article)" }}
+            {% if ep.title %}{{ ep.title }}{% elif ep.status == "pending" %}Loading from {{ ep.url | hostname }}…{% else %}(couldn't extract article){% endif %}
             <span class="src">{{ ep.url }}</span>
           </td>
           <td class="col-time">{{ ep.when }}</td>

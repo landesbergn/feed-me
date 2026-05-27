@@ -383,3 +383,48 @@ def test_ingest_route_writes_pending_with_no_title_on_fetch_failure(
     pending = [e for e in eps if e["status"] == "pending"]
     assert len(pending) == 1
     assert pending[0]["title"] is None
+
+
+def test_settings_page_shows_loading_for_pending_with_no_title(client, tmp_path):
+    """When a pending episode has no title, the row shows 'Loading from <hostname>...'"""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_pending_episode(
+        tmp_path, secret, source_url="https://colossus.com/article/inside-notion/"
+    )
+
+    response = client.get(f"/u/{secret}")
+    assert "Loading from colossus.com" in response.text
+
+
+def test_settings_page_shows_pending_title_when_set(client, tmp_path):
+    """When fetch_title succeeded, the row shows the real title, not 'Loading from'."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_pending_episode(
+        tmp_path, secret,
+        source_url="https://example.com/x",
+        title="Real Article Title",
+    )
+
+    response = client.get(f"/u/{secret}")
+    assert "Real Article Title" in response.text
+    assert "Loading from" not in response.text
+
+
+def test_settings_page_shows_couldnt_extract_for_failed_episodes(client, tmp_path):
+    """Failed episodes still get the '(couldn't extract article)' fallback."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_failed_episode(
+        tmp_path, secret, source_url="https://nyt.com/a", error="paywall"
+    )
+
+    response = client.get(f"/u/{secret}")
+    assert "(couldn't extract article)" in response.text
