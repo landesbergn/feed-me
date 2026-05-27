@@ -195,3 +195,34 @@ def test_audio_rejects_path_traversal(client):
     response = client.get(f"/u/{secret}/audio/..%2Fsettings.json")
     # The slug regex should reject this; either 404 or 422 is acceptable
     assert response.status_code in (404, 422)
+
+
+def test_relative_time_just_now():
+    import app
+    assert app.relative_time(1_000_000, now=1_000_000) == "just now"
+    assert app.relative_time(1_000_000, now=1_000_059) == "just now"
+
+
+def test_relative_time_minutes():
+    import app
+    assert app.relative_time(1_000_000, now=1_000_060) == "1 min ago"
+    assert app.relative_time(1_000_000, now=1_000_000 + 30 * 60) == "30 min ago"
+
+
+def test_relative_time_hours():
+    import app
+    assert app.relative_time(1_000_000, now=1_000_000 + 3600) == "1 h ago"
+    assert app.relative_time(1_000_000, now=1_000_000 + 5 * 3600) == "5 h ago"
+
+
+def test_relative_time_days():
+    import app
+    assert app.relative_time(1_000_000, now=1_000_000 + 86400) == "1 d ago"
+    assert app.relative_time(1_000_000, now=1_000_000 + 3 * 86400) == "3 d ago"
+
+
+def test_relative_time_absolute_after_week():
+    import app
+    # 2001-09-09 01:46:40 UTC (the famous 1_000_000_000 epoch)
+    result = app.relative_time(1_000_000_000, now=1_000_000_000 + 8 * 86400)
+    assert result == "2001-09-09"

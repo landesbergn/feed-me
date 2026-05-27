@@ -1,6 +1,8 @@
 import os
 import re
 import threading
+import time as _time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -17,6 +19,22 @@ from fastapi.templating import Jinja2Templates
 import ingest
 import rss
 import storage
+
+
+def relative_time(ts: int, now: int | None = None) -> str:
+    """Bucket a unix timestamp into a friendly relative string."""
+    if now is None:
+        now = int(_time.time())
+    delta = now - ts
+    if delta < 60:
+        return "just now"
+    if delta < 3600:
+        return f"{delta // 60} min ago"
+    if delta < 86400:
+        return f"{delta // 3600} h ago"
+    if delta < 604800:
+        return f"{delta // 86400} d ago"
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
 
 
 def spawn_ingest(url: str, secret: str, data_dir: Path) -> None:
