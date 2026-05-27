@@ -428,3 +428,14 @@ def test_settings_page_shows_couldnt_extract_for_failed_episodes(client, tmp_pat
 
     response = client.get(f"/u/{secret}")
     assert "(couldn't extract article)" in response.text
+
+
+def test_settings_apple_podcasts_uses_singular_podcast_scheme(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}")
+    # v1.6: podcast:// (singular) is Apple's documented scheme
+    assert 'href="podcast://' in response.text
+    # The old plural form should not appear
+    assert 'href="podcasts://' not in response.text

@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+<rss version="2.0"
+     xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Feed Me</title>
     <link>{{ feed_url }}</link>
+    <atom:link href="{{ feed_url }}" rel="self" type="application/rss+xml"/>
     <description>Your personal podcast of articles you've saved with Feed Me.</description>
     <itunes:summary>Your personal podcast of articles you've saved with Feed Me.</itunes:summary>
     <itunes:image href="{{ cover_url }}"/>
+    <itunes:type>episodic</itunes:type>
     <language>en-us</language>
     <itunes:author>Feed Me</itunes:author>
     <itunes:explicit>false</itunes:explicit>
@@ -15,8 +19,11 @@
       <link>{{ ep.url | e }}</link>
       <guid isPermaLink="false">{{ ep.slug }}</guid>
       <pubDate>{{ ep.pub_date }}</pubDate>
+      <description>{{ (ep.description or ep.url) | e }}</description>
+      <itunes:summary>{{ (ep.description or ep.url) | e }}</itunes:summary>
       <enclosure url="{{ audio_base }}/{{ ep.slug }}.mp3"
-                 type="audio/mpeg" length="0"/>
+                 type="audio/mpeg"
+                 length="{{ ep.audio_bytes or 0 }}"/>
     </item>
     {% endfor %}
   </channel>
