@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Welcome Episode + Live Updates (v1.5)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+  blockquote {
+    margin: 14px 0; padding: 10px 16px;
+    border-left: 3px solid var(--ink-mute); color: var(--ink-soft);
+    background: var(--paper);
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.5</div>
+  <h1>Welcome Episode + Live Updates</h1>
+  <div class="meta">Feed Me · 2026-05-26 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Two coupled UX gaps. <strong>(1)</strong> a fresh feed is empty, and most podcast apps
+  refuse to subscribe to an empty show — so the friend journey breaks halfway through
+  setup. <strong>(2)</strong> after sharing an article the settings page doesn't update
+  until manual refresh, so the friend doesn't know the share worked. Both fixes are small
+  but make the first-run feel like a finished product.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#welcome">Welcome episode</a></li>
+    <li><a href="#live">Live episode updates</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  Spec drops have been polish-heavy (cover art, redesign, copy) and the friend journey
+  still has rough edges. Two specific failures that hurt:
+</p>
+
+<ul>
+  <li>
+    A friend tap "Add to Apple Podcasts" right after creating their feed → Podcasts opens
+    the show, but the show has zero episodes → Follow button is disabled or behaves
+    weirdly. They bounce.
+  </li>
+  <li>
+    A friend shares an article → goes back to the settings page to check → sees nothing
+    happen → refreshes → sees Pending → refreshes again → sees Ready. Felt clunky;
+    they're not sure if it's working until they manually refresh twice.
+  </li>
+</ul>
+
+<h2 id="what">2 · What we're building</h2>
+
+<ol>
+  <li>
+    A pre-rendered welcome MP3 (~30s, OpenAI TTS, generated once via a script and
+    committed to the repo). On <code>POST /create</code>, the server copies it into the
+    new user's directory so their feed has one real episode from the moment it exists.
+  </li>
+  <li>
+    A new partial-rendering route <code>GET /u/&lt;secret&gt;/episodes_partial</code> that
+    returns just the HTML for the episode section. JS on the settings page polls every
+    3 seconds while the tab is visible and swaps the section in place.
+  </li>
+</ol>
+
+<p>
+  The episode-section markup is extracted into a Jinja partial template that both the
+  main settings render and the polling endpoint use — single source of truth.
+</p>
+
+<h2 id="welcome">3 · Welcome episode</h2>
+
+<h3>Script</h3>
+
+<blockquote>
+  Welcome to Feed Me. This is your private podcast feed for articles you want to listen to
+  instead of read. Open an article in Safari, tap Share, then tap Feed Me — a new episode
+  shows up here in about a minute. Head back to your Feed Me page to set things up. Enjoy.
+</blockquote>
+
+<p>
+  ~50 words. At <code>tts-1</code>'s pace this lands at roughly 30 seconds. Voice:
+  <code>shimmer</code> (matches the default). Generated once via a one-time script;
+  committed to repo at <code>static/welcome.mp3</code>.
+</p>
+
+<h3>Generation</h3>
+
+<p>
+  New script <code>scripts/gen_welcome.py</code> calls the same OpenAI client the
+  ingest pipeline uses. Requires <code>OPENAI_API_KEY</code> in the environment when run.
+  Output: <code>static/welcome.mp3</code> (~50–100 KB). Re-run when the script changes;
+  commit script + new MP3 together.
+</p>
+
+<h3>Seeding on user creation</h3>
+
+<p>
+  New storage function:
+</p>
+
+<pre><code>def seed_welcome_episode(data_dir: Path, secret: str, welcome_audio: bytes) -> str:
+    """Write a welcome episode (mp3 + json) into a new user's directory.
+    Returns the slug."""
+    slug = _new_slug()
+    user_dir = data_dir / secret
+    (user_dir / f"{slug}.mp3").write_bytes(welcome_audio)
+    (user_dir / f"{slug}.json").write_text(json.dumps({
+        "title": "Welcome to Feed Me",
+        "url": "https://feed-me.xyz",
+        "ts": int(time.time()),
+    }))
+    return slug</code></pre>
+
+<p>
+  The <code>POST /create</code> route reads <code>static/welcome.mp3</code> once at module
+  load time (or per-request — small file, but cache at import) and calls
+  <code>seed_welcome_episode</code> right after <code>storage.create_user</code>.
+</p>
+
+<h3>Rotate URL behavior</h3>
+
+<p>
+  No special handling. <code>rotate_secret</code> renames the directory; the welcome
+  episode (and any others) come along. The welcome appears once per user lifetime.
+</p>
+
+<h3>Why a real MP3, not a silent placeholder</h3>
+
+<p>
+  Apple Podcasts and many other apps don't just need "an enclosure exists" — they
+  prefer/expect actual playable audio. A silent 1-second MP3 satisfies most validators
+  but a 30-second narrated welcome doubles as onboarding for friends who tap play.
+  Same effort either way (the seeding code is identical); the welcome script is what
+  changes.
+</p>
+
+<h2 id="live">4 · Live episode updates</h2>
+
+<h3>Mechanism</h3>
+
+<p>3-second polling, JS-driven, server returns HTML.</p>
+
+<ol>
+  <li>
+    Extract the existing "Recent episodes" section from <code>templates/settings.html</code>
+    into a new partial <code>templates/_episodes_section.html</code>. The partial owns
+    the <code>&lt;h2&gt;Recent episodes&lt;/h2&gt;</code>, the table, the status chips,
+    and the empty state.
+  </li>
+  <li>
+    <code>settings.html</code> wraps the include in
+    <code>&lt;div id="episodes-section"&gt;{% include "_episodes_section.html" %}&lt;/div&gt;</code>.
+  </li>
+  <li>
+    New route <code>GET /u/&lt;secret&gt;/episodes_partial</code> returns the partial
+    rendered with the user's current episodes. Same enrichment as the main settings route
+    (status field, <code>when</code> via <code>relative_time</code>).
+  </li>
+  <li>
+    JS in <code>settings.html</code> polls every 3 s using
+    <code>fetch()</code>, replaces <code>#episodes-section</code>'s innerHTML with the
+    response text. Skips the poll when <code>document.hidden</code> is true.
+  </li>
+  <li>
+    Polling starts on page load and continues until navigation. Wakes back up on
+    <code>visibilitychange</code>.
+  </li>
+</ol>
+
+<h3>JS sketch</h3>
+
+<pre><code>const POLL_INTERVAL_MS = 3000;
+const EPISODES_URL = window.location.pathname + "/episodes_partial";
+const target = document.getElementById("episodes-section");
+
+async function refreshEpisodes() {
+  if (document.hidden) return;
+  try {
+    const resp = await fetch(EPISODES_URL, { cache: "no-store" });
+    if (!resp.ok) return;
+    target.innerHTML = await resp.text();
+  } catch (e) { /* silent — page still works */ }
+}
+
+setInterval(refreshEpisodes, POLL_INTERVAL_MS);
+document.addEventListener("visibilitychange", () =&gt; {
+  if (!document.hidden) refreshEpisodes();
+});</code></pre>
+
+<h3>Behavior on slow network or failed fetch</h3>
+
+<p>
+  Errors are swallowed silently. The existing content stays in place. Next interval tries
+  again. The page is fully functional without polling (the server-rendered initial state
+  is always correct).
+</p>
+
+<h3>Status transitions visible to user</h3>
+
+<p>After the friend taps the Shortcut to share an article:</p>
+
+<ul>
+  <li>~0–3 s: ingest endpoint hit → daemon thread spawns → writes pending stub</li>
+  <li>≤ 3 s after that: poll fires → table swaps → row appears with <strong>Pending</strong> chip</li>
+  <li>~30–60 s later: ingest completes → row promotes to <strong>Ready</strong> (or <strong>Failed</strong>)</li>
+  <li>≤ 3 s after that: poll picks it up → chip updates</li>
+</ul>
+
+<p>Total perceived latency from share to visual confirmation: under 6 seconds.</p>
+
+<h2 id="impl">5 · Implementation notes</h2>
+
+<h3>New files</h3>
+
+<ul>
+  <li><code>scripts/gen_welcome.py</code> — TTS the welcome script, save to <code>static/welcome.mp3</code></li>
+  <li><code>static/welcome.mp3</code> — committed binary (~50-100 KB)</li>
+  <li><code>templates/_episodes_section.html</code> — partial with the recent-episodes table + empty state</li>
+</ul>
+
+<h3>Modified files</h3>
+
+<ul>
+  <li>
+    <code>storage.py</code> — add <code>seed_welcome_episode(data_dir, secret, welcome_audio) -&gt; str</code>.
+  </li>
+  <li>
+    <code>app.py</code> — at module load, read <code>static/welcome.mp3</code> into
+    a module-level constant <code>WELCOME_AUDIO_BYTES</code>; <code>POST /create</code>
+    calls <code>storage.seed_welcome_episode</code> after <code>storage.create_user</code>;
+    new route <code>GET /u/&lt;secret&gt;/episodes_partial</code>.
+  </li>
+  <li>
+    <code>templates/settings.html</code> — replace the inline "Recent episodes" block with
+    <code>&lt;div id="episodes-section"&gt;{% include "_episodes_section.html" %}&lt;/div&gt;</code>,
+    plus inline <code>&lt;script&gt;</code> polling block.
+  </li>
+  <li>
+    <code>tests/test_storage.py</code> — test for <code>seed_welcome_episode</code>.
+  </li>
+  <li>
+    <code>tests/test_app.py</code> — update <code>test_post_create_makes_user_dir</code>
+    + <code>test_settings_renders_for_known_user</code> to reflect the welcome episode;
+    new tests for <code>GET /u/&lt;secret&gt;/episodes_partial</code>.
+  </li>
+</ul>
+
+<h3>Module-level welcome audio cache</h3>
+
+<p>
+  <code>app.py</code> reads <code>static/welcome.mp3</code> bytes once at import time:
+</p>
+
+<pre><code>WELCOME_AUDIO_BYTES = (STATIC_DIR / "welcome.mp3").read_bytes()</code></pre>
+
+<p>
+  The bytes are small enough (~50–100 KB) that holding one copy in memory is fine. This
+  avoids a disk read per signup. <code>STATIC_DIR</code> already exists from v1.4.
+</p>
+
+<h3>Welcome episode `url` field</h3>
+
+<p>
+  The episode JSON has a <code>url</code> field — for shared articles, this is the
+  source URL. For the welcome, we set it to <code>https://feed-me.xyz</code> (the landing
+  page). This shows up as the "source" line in the settings table; harmless and clickable.
+</p>
+
+<h3>Test data dir gotcha</h3>
+
+<p>
+  Tests use a <code>client</code> fixture that monkey-patches <code>app.DATA_DIR</code>
+  to <code>tmp_path</code>. The welcome MP3 lives in <code>STATIC_DIR</code> (the repo
+  static dir), unaffected by the monkey-patch, so <code>WELCOME_AUDIO_BYTES</code> at
+  import time is the real production file. Tests that create users will get real welcome
+  audio seeded. This is fine; tests need to account for the fact that brand-new users
+  have one episode (the welcome) rather than zero.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+
+<h3>Storage test (new)</h3>
+
+<pre><code>def test_seed_welcome_episode_writes_mp3_and_json(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.seed_welcome_episode(tmp_path, secret, welcome_audio=b"FAKE")
+
+    assert (tmp_path / secret / f"{slug}.mp3").read_bytes() == b"FAKE"
+    meta = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert meta["title"] == "Welcome to Feed Me"
+    assert "error" not in meta
+    assert "pending" not in meta</code></pre>
+
+<h3>App tests (updated)</h3>
+
+<ul>
+  <li>
+    <code>test_post_create_makes_user_dir</code>: assert that a brand-new user dir
+    contains both <code>settings.json</code> AND exactly one welcome episode (any
+    <code>*.mp3</code> file present, any <code>*.json</code> with title "Welcome to Feed Me").
+  </li>
+  <li>
+    <code>test_settings_renders_for_known_user</code>: after creation, assert the welcome
+    episode title <code>"Welcome to Feed Me"</code> appears on the page (because the user
+    has one episode by default).
+  </li>
+</ul>
+
+<h3>App tests (new)</h3>
+
+<ul>
+  <li>
+    <code>test_episodes_partial_returns_html</code>: create a user, GET
+    <code>/u/&lt;secret&gt;/episodes_partial</code>, assert 200, response text contains
+    <code>"Welcome to Feed Me"</code> (because seeding ran) and includes the table
+    markup (<code>&lt;table</code> or <code>"Recent episodes"</code>).
+  </li>
+  <li>
+    <code>test_episodes_partial_404_for_unknown_user</code>: GET on an unknown secret,
+    assert 404.
+  </li>
+  <li>
+    <code>test_episodes_partial_reflects_new_pending_episodes</code>: create a user,
+    write a pending episode via storage, GET the partial, assert the new title appears
+    AND <code>"Pending"</code> appears.
+  </li>
+</ul>
+
+<h3>Generator script (no test)</h3>
+
+<p>
+  <code>gen_welcome.py</code> is build-time tooling. Verified by ear after running.
+  No automated test.
+</p>
+
+<h2 id="scope">7 · Out of scope</h2>
+
+<ul>
+  <li><strong>Per-friend welcome customization.</strong> One MP3 for everyone.</li>
+  <li><strong>WebSocket / SSE.</strong> Polling is fine for the realistic load.</li>
+  <li><strong>Removing the welcome from a user's feed.</strong> No UI for episode deletion; the welcome stays in their library forever (or until they unsubscribe).</li>
+  <li><strong>Polling cadence configurability.</strong> Hardcoded 3s; not user-tunable.</li>
+  <li><strong>Live updates of the Voice picker, ingest URL, etc.</strong> Only the episode section polls.</li>
+</ul>
+
+<h2 id="followups">8 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Per-episode duration tag.</strong> Was already a v1.4 known follow-up.
+    Especially useful once friends have a real "Welcome" episode that's pre-known to
+    be ~30 s — could special-case the duration in the seed metadata.
+  </li>
+  <li>
+    <strong>Smart polling cadence.</strong> Slow down to every 10s when no pending
+    episodes; back to 3s on activity. Useful at higher friend counts.
+  </li>
+  <li>
+    <strong>"Remove from feed" per-episode.</strong> Useful when a friend wants to
+    delete a botched share. Out of v1.5; raise when it actually bites.
+  </li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+
+<ul>
+  <li><code>static/welcome.mp3</code> committed; playing it speaks the script in §3</li>
+  <li>Creating a brand new feed (<code>POST /create</code>) results in exactly one episode in the user's directory titled "Welcome to Feed Me"</li>
+  <li>That feed's <code>/u/&lt;secret&gt;/feed.xml</code> contains the welcome as an item with a working enclosure URL</li>
+  <li>Subscribing to that feed in Apple Podcasts succeeds (Follow button enables)</li>
+  <li>Settings page polls <code>/u/&lt;secret&gt;/episodes_partial</code> every ~3s while tab is visible</li>
+  <li>After sharing an article via the Shortcut, the new "Pending" row appears in the table within ~3 seconds of polling without manual refresh</li>
+  <li>The "Pending" row transitions to "Ready" within ~3 seconds of ingest completing</li>
+  <li>All existing tests pass; new tests pass; tests that asserted "empty feed" or "len(eps) == 1" after only-share are updated to account for the welcome episode</li>
+  <li>Deployed to <code>https://feed-me.xyz</code></li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-05-26. Welcome script, real-time mechanism,
+  and rotate behavior all chosen explicitly. Visual companion not needed — both decisions
+  were textual.
+</p>
+
+</div>
+</body>
+</html>
