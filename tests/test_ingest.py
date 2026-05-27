@@ -91,3 +91,36 @@ def test_process_writes_failure_on_extraction_error(
     assert len(eps) == 1
     assert eps[0]["has_audio"] is False
     assert eps[0]["error"]
+
+
+def test_process_writes_pending_then_ready(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    fake_http.responses["https://example.com/p"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+
+    secret = storage.create_user(tmp_path)
+
+    # Observe pending state by hooking fetch_article — at the moment fetch
+    # is called, the pending record must already exist.
+    observed_status_during_fetch = []
+    real_fetch = ingest.fetch_article
+    def observing_fetch(url):
+        eps = storage.list_episodes(tmp_path, secret)
+        observed_status_during_fetch.append(
+            [e.get("status") for e in eps]
+        )
+        return real_fetch(url)
+    monkeypatch.setattr(ingest, "fetch_article", observing_fetch)
+
+    ingest.process("https://example.com/p", secret, tmp_path)
+
+    # During fetch: exactly one pending record existed.
+    assert observed_status_during_fetch == [["pending"]]
+    # After process: exactly one record, promoted to ready.
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "ready"

@@ -60,16 +60,18 @@ def synthesize(text: str, voice: str) -> bytes:
 
 
 def process(url: str, secret: str, data_dir: Path) -> None:
+    slug = storage.write_pending_episode(data_dir, secret, source_url=url)
     try:
         title, body = fetch_article(url)
         settings = storage.get_settings(data_dir, secret)
         audio = synthesize(body, settings["voice"])
         storage.write_episode(
-            data_dir, secret,
+            data_dir, secret, slug=slug,
             title=title, source_url=url, audio=audio,
         )
     except Exception as e:
         log.exception("ingest failed user=%s url=%s", secret[:6], url)
         storage.write_failed_episode(
-            data_dir, secret, source_url=url, error=str(e)[:200],
+            data_dir, secret, slug=slug,
+            source_url=url, error=str(e)[:200],
         )
