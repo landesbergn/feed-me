@@ -251,5 +251,33 @@
     }
   </script>
 
+  <script>
+    // Live updates: poll /u/<secret>/episodes_partial every 3s
+    (function () {
+      var POLL_MS = 3000;
+      var target = document.getElementById("episodes-section");
+      if (!target) return;
+      var url = window.location.pathname + "/episodes_partial";
+
+      function refresh() {
+        if (document.hidden) return;
+        fetch(url, { cache: "no-store" })
+          .then(function (resp) {
+            if (!resp.ok) return null;
+            return resp.text();
+          })
+          .then(function (html) {
+            if (html != null) target.innerHTML = html;
+          })
+          .catch(function () { /* silent — page still works */ });
+      }
+
+      setInterval(refresh, POLL_MS);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) refresh();
+      });
+    })();
+  </script>
+
 </body>
 </html>
