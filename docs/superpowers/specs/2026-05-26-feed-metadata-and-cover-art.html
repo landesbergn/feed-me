@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Feed Metadata + Cover Art (v1.4)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+  .swatch {
+    display: inline-block; width: 16px; height: 16px; border-radius: 3px;
+    vertical-align: -3px; margin-right: 4px; border: 1px solid rgba(0,0,0,0.1);
+  }
+  .swatch.s1 { background: #F3DCC1; }
+  .swatch.s2 { background: #E8B289; }
+  .swatch.s3 { background: #C97056; }
+  .swatch.s4 { background: #2D1810; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.4</div>
+  <h1>Feed Metadata + Cover Art</h1>
+  <div class="meta">Feed Me · 2026-05-26 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Two small but high-impact additions to the RSS feed: a richer channel description
+  and a cover image. Both make every user's feed look like a "real" podcast in
+  Apple Podcasts / Overcast / Pocket Casts library views.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#cover">Cover art design</a></li>
+    <li><a href="#rss">RSS additions</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  Today the RSS feed has a one-line description ("Articles you shared, narrated.")
+  and no cover art at all. In a podcast app library, the show appears as a generic
+  grey square with no visual identity. Users who subscribe in Apple Podcasts or
+  similar see something that doesn't look like a real product.
+</p>
+
+<p>
+  Fixing this is a few lines of XML plus one image. Disproportionate UX upside
+  for the effort.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<ol>
+  <li>A single, brand-wide cover image rendered at 3000×3000 JPG (Apple's max recommended size for retina podcast displays), generated from a small Python script and committed to the repo as a binary.</li>
+  <li>A new route <code>GET /cover.jpg</code> that serves the image with long Cache-Control.</li>
+  <li>Three new XML elements in <code>templates/feed.xml</code>: an updated <code>&lt;description&gt;</code>, an <code>&lt;itunes:summary&gt;</code> (same text — some apps prefer this), and an <code>&lt;itunes:image&gt;</code> at channel level.</li>
+</ol>
+
+<p>
+  The cover art is the same for every user — the feed is privately scoped per-user
+  but the brand is one thing. No per-user customization.
+</p>
+
+<h2 id="cover">3 · Cover art design</h2>
+
+<p>Locked direction: <strong>Sunset</strong> (chosen via the brainstorming visual companion on 2026-05-26).</p>
+
+<table>
+  <thead><tr><th>Element</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Canvas size</td><td>3000 × 3000 px (will be served at native resolution; podcast apps downscale as needed)</td></tr>
+    <tr><td>Format</td><td>JPG, quality 90</td></tr>
+    <tr><td>Background</td><td>Linear gradient, 160° angle: <span class="swatch s1"></span><code>#F3DCC1</code> 0% → <span class="swatch s2"></span><code>#E8B289</code> 50% → <span class="swatch s3"></span><code>#C97056</code> 100%</td></tr>
+    <tr><td>Foreground ink</td><td><span class="swatch s4"></span><code>#2D1810</code></td></tr>
+    <tr><td>Play glyph</td><td>Filled circle, <code>#2D1810</code>, ~410px diameter, top-left. A right-pointing triangle inside it in cream (<code>#F3DCC1</code>).</td></tr>
+    <tr><td>Wordmark</td><td>"FEED ME" stacked across two lines, bottom-left. Bold sans-serif (DejaVu Sans Bold or Inter Bold from the system / bundled). Approx 470px font size, letter-spacing -3.5%, line-height 0.92, color <code>#2D1810</code>.</td></tr>
+    <tr><td>Padding</td><td>~280px on all sides</td></tr>
+  </tbody>
+</table>
+
+<p>
+  Layout sketch (positions approximate):
+</p>
+
+<pre style="background: linear-gradient(160deg, #F3DCC1 0%, #E8B289 50%, #C97056 100%); color: #2D1810; padding: 24px;"><code style="background: transparent; color: inherit;">┌───────────────────────────────────────┐
+│  ●                                    │
+│  ▶                                    │
+│                                       │
+│                                       │
+│                                       │
+│                                       │
+│                                       │
+│  FEED                                 │
+│  ME                                   │
+└───────────────────────────────────────┘</code></pre>
+
+<p class="small">
+  The locked mockup (rendered as the cover-card "C · Sunset" at ~280px) is at
+  <code>.superpowers/brainstorm/.../cover-directions.html</code>.
+</p>
+
+<h2 id="rss">4 · RSS additions</h2>
+
+<h3>Description text</h3>
+<p>Chosen via terminal Q&amp;A: <code>Your personal podcast of articles you've saved with Feed Me.</code></p>
+
+<p>Used verbatim in both <code>&lt;description&gt;</code> and <code>&lt;itunes:summary&gt;</code>.</p>
+
+<h3>New / changed XML</h3>
+
+<p>Diff to <code>templates/feed.xml</code> — inside <code>&lt;channel&gt;</code>, add (or update) these elements alongside the existing ones:</p>
+
+<pre><code>&lt;description&gt;Your personal podcast of articles you've saved with Feed Me.&lt;/description&gt;
+&lt;itunes:summary&gt;Your personal podcast of articles you've saved with Feed Me.&lt;/itunes:summary&gt;
+&lt;itunes:image href="{{ cover_url }}"/&gt;</code></pre>
+
+<p>
+  The existing <code>&lt;description&gt;</code> ("Articles you shared, narrated.") is
+  replaced. The other channel-level elements (<code>&lt;title&gt;</code>,
+  <code>&lt;link&gt;</code>, <code>&lt;language&gt;</code>, <code>&lt;itunes:author&gt;</code>,
+  <code>&lt;itunes:explicit&gt;</code>) are unchanged.
+</p>
+
+<h3>What we are NOT adding</h3>
+<ul>
+  <li><code>&lt;itunes:type&gt;</code> — defaults to <code>episodic</code> which is what we want; explicit declaration not required</li>
+  <li><code>&lt;itunes:category&gt;</code> — relevant only for discovery; we're a private feed</li>
+  <li><code>&lt;itunes:owner&gt;</code> — would require an email address, which we deliberately don't collect</li>
+  <li>Per-episode <code>&lt;itunes:image&gt;</code> — channel image is sufficient; podcast apps inherit</li>
+  <li><code>&lt;itunes:duration&gt;</code> — would require parsing each MP3; nice-to-have, out of v1.4</li>
+</ul>
+
+<h2 id="impl">5 · Implementation notes</h2>
+
+<h3>New files</h3>
+<ul>
+  <li><code>scripts/gen_cover.py</code> — Python script that uses Pillow to render <code>static/cover.jpg</code>. Run-once tooling; not invoked at request time.</li>
+  <li><code>static/cover.jpg</code> — committed binary, ~100-300 KB.</li>
+  <li><code>tests/test_cover.py</code> — route test for <code>GET /cover.jpg</code>.</li>
+</ul>
+
+<h3>Modified files</h3>
+<ul>
+  <li><code>app.py</code> — add the <code>GET /cover.jpg</code> route serving <code>static/cover.jpg</code> with <code>Cache-Control: public, max-age=86400</code>; also pass a <code>cover_url</code> into <code>rss.render_feed</code>.</li>
+  <li><code>rss.py</code> — <code>render_feed</code> gains a <code>cover_url: str</code> keyword-only parameter, passed through to the template.</li>
+  <li><code>templates/feed.xml</code> — add the three new XML elements above.</li>
+  <li><code>tests/test_rss.py</code> — tests assert the new elements render with the right text/href.</li>
+  <li><code>pyproject.toml</code> — Pillow added under <code>[dependency-groups] dev</code> (not a runtime dependency; only the script needs it).</li>
+</ul>
+
+<h3>Generator script</h3>
+
+<p>
+  <code>scripts/gen_cover.py</code> is a small standalone script. Run with
+  <code>uv run --group dev python scripts/gen_cover.py</code> — produces
+  <code>static/cover.jpg</code>. Re-run when the design changes; commit both the
+  script change and the regenerated image.
+</p>
+
+<p>Sketch of the algorithm (full code in the plan):</p>
+
+<ol>
+  <li>Create 3000×3000 RGB image, fill with the 160° gradient (vectorized; iterate rows mapped to gradient stops)</li>
+  <li>Draw a filled black circle at center (410, 410) radius 205</li>
+  <li>Draw a centered right-pointing triangle inside the circle in cream</li>
+  <li>Draw "FEED" and "ME" as separate text lines anchored at bottom-left, using a bundled-with-Pillow bold sans font (DejaVu Sans Bold ships with Pillow's <code>ImageFont.truetype("DejaVuSans-Bold.ttf", size)</code>)</li>
+  <li>Save as JPG quality 90</li>
+</ol>
+
+<h3>Route</h3>
+
+<pre><code>STATIC_DIR = Path(__file__).parent / "static"
+
+
+@app.get("/cover.jpg")
+def cover_route():
+    return FileResponse(
+        STATIC_DIR / "cover.jpg",
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )</code></pre>
+
+<h3>RSS render call</h3>
+
+<p>In the <code>feed_route</code> in <code>app.py</code>, pass the cover URL through:</p>
+
+<pre><code>xml = rss.render_feed(
+    feed_url=f"{APP_BASE_URL}/u/{secret}/feed.xml",
+    audio_base=f"{APP_BASE_URL}/u/{secret}/audio",
+    cover_url=f"{APP_BASE_URL}/cover.jpg",
+    episodes=eps,
+)</code></pre>
+
+<p>
+  The cover URL is brand-wide, not per-user; it points at the single static file.
+</p>
+
+<h3>Dockerfile</h3>
+
+<p>
+  No change needed. The <code>COPY . .</code> step already includes the new
+  <code>static/</code> directory and the script. Pillow is dev-only so the
+  production image stays slim.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+
+<h3>RSS tests (updated)</h3>
+<ul>
+  <li>Update existing <code>test_render_feed_has_required_structure</code> to assert the new description text appears.</li>
+  <li>New: <code>test_render_feed_includes_itunes_image_and_summary</code> — pass a <code>cover_url</code>, assert that <code>&lt;itunes:image href="..."/&gt;</code> and <code>&lt;itunes:summary&gt;</code> both appear with the right values.</li>
+</ul>
+
+<h3>Cover route test (new file)</h3>
+<ul>
+  <li><code>test_cover_route_returns_jpeg</code>: GET <code>/cover.jpg</code>, assert status 200, content-type <code>image/jpeg</code>, body length &gt; 1KB (sanity check that the bytes are real), Cache-Control header present.</li>
+</ul>
+
+<h3>Generator script (no test)</h3>
+
+<p>
+  <code>gen_cover.py</code> is build-time tooling. Verified by eye against the spec
+  before commit. If we want, a sanity check that the script exits 0 and produces a
+  file &gt;10KB could be added — but that just tests Pillow, not our design.
+</p>
+
+<h3>App-level test (no change needed)</h3>
+
+<p>
+  Existing <code>test_feed_xml_returns_valid_rss</code> already asserts <code>&lt;rss</code>
+  is in the body. The new elements don't require new app-route tests because the
+  RSS unit tests cover them; the app route is a thin pass-through.
+</p>
+
+<h2 id="scope">7 · Out of scope</h2>
+
+<ul>
+  <li><strong>Per-user cover art.</strong> Friends share the same brand image. Custom uploads would require user-facing image management.</li>
+  <li><strong>Per-episode cover art.</strong> Apps inherit the channel image; no need for per-episode overrides.</li>
+  <li><strong>Per-episode duration.</strong> Would require parsing each MP3 (mutagen or similar); nice-to-have, not v1.4.</li>
+  <li><strong>iTunes podcast category submission.</strong> The feed is private — Apple's category metadata is for the public directory.</li>
+  <li><strong>Owner email.</strong> Deliberately not collected.</li>
+  <li><strong>Settings page preview of the cover.</strong> Users see the cover in their podcast app; no need to render it on the web page too.</li>
+</ul>
+
+<h2 id="followups">8 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Per-episode duration.</strong> Parse MP3 length at ingest time, store in
+    the episode JSON, render in <code>&lt;itunes:duration&gt;</code>. Useful UI for the
+    podcast app's library view. Defer until a friend asks for it.
+  </li>
+  <li>
+    <strong>Per-user accent color or initial overlay on the cover.</strong> If a friend
+    feels their feed looks identical to mine in a shared screenshot, we could
+    generate a per-user JPG with a small monogram. Not worth doing now.
+  </li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+
+<ul>
+  <li><code>scripts/gen_cover.py</code> committed; running it produces <code>static/cover.jpg</code> matching the locked design</li>
+  <li><code>static/cover.jpg</code> committed (3000×3000, JPG, ~100-300 KB)</li>
+  <li><code>GET /cover.jpg</code> returns 200 with <code>image/jpeg</code> content-type and a long Cache-Control</li>
+  <li><code>rss.render_feed</code> accepts and renders <code>cover_url</code> into <code>&lt;itunes:image&gt;</code></li>
+  <li>Description text in <code>&lt;description&gt;</code> and <code>&lt;itunes:summary&gt;</code> matches the chosen string</li>
+  <li>All existing tests still pass; new tests pass</li>
+  <li>Deployed to <code>https://feed-me.xyz</code>; <code>curl https://feed-me.xyz/cover.jpg</code> returns the JPG; <code>curl https://feed-me.xyz/u/&lt;secret&gt;/feed.xml</code> contains both the new description and <code>&lt;itunes:image href="https://feed-me.xyz/cover.jpg"/&gt;</code></li>
+  <li>On a real podcast app (Apple Podcasts), refreshing/re-subscribing the feed shows the cover art and updated description</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Cover direction chosen via brainstorming visual companion on 2026-05-26.
+  Description chosen via terminal Q&amp;A.
+</p>
+
+</div>
+</body>
+</html>
