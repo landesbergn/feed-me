@@ -25,7 +25,20 @@ def test_post_create_redirects_to_user_settings(client):
 def test_post_create_makes_user_dir(client, tmp_path):
     response = client.post("/create", follow_redirects=False)
     secret = response.headers["location"].split("/u/")[1]
+
+    # Settings file exists
     assert (tmp_path / secret / "settings.json").exists()
+
+    # Welcome episode seeded: exactly one mp3 + one episode json
+    user_dir = tmp_path / secret
+    mp3s = list(user_dir.glob("*.mp3"))
+    episode_jsons = [p for p in user_dir.glob("*.json") if p.name != "settings.json"]
+    assert len(mp3s) == 1, f"expected 1 welcome mp3, found {len(mp3s)}"
+    assert len(episode_jsons) == 1, f"expected 1 welcome json, found {len(episode_jsons)}"
+
+    import json
+    meta = json.loads(episode_jsons[0].read_text())
+    assert meta["title"] == "Welcome to Feed Me"
 
 
 def test_settings_404_for_unknown_user(client):
@@ -52,6 +65,8 @@ def test_settings_renders_for_known_user(client):
     assert "Settings" in response.text
     # Ingest URL still appears in the page (for the auto-copy JS)
     assert f"/u/{secret}/ingest" in response.text
+    # v1.5: welcome episode pre-seeded on /create
+    assert "Welcome to Feed Me" in response.text
 
 
 def test_settings_lists_recent_episodes(client, tmp_path):

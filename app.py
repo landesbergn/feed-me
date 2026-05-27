@@ -47,6 +47,7 @@ def spawn_ingest(url: str, secret: str, data_dir: Path) -> None:
 
 DATA_DIR = Path(os.environ.get("FEED_ME_DATA_DIR", "/data"))
 STATIC_DIR = Path(__file__).parent / "static"
+WELCOME_AUDIO_BYTES = (STATIC_DIR / "welcome.mp3").read_bytes()
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
 SHORTCUT_ICLOUD_URL = os.environ.get(
     "SHORTCUT_ICLOUD_URL",
@@ -81,6 +82,9 @@ def landing(request: Request):
 @app.post("/create")
 def create():
     secret = storage.create_user(DATA_DIR)
+    storage.seed_welcome_episode(
+        DATA_DIR, secret, welcome_audio=WELCOME_AUDIO_BYTES,
+    )
     return RedirectResponse(f"/u/{secret}", status_code=303)
 
 
