@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.4 — 2026-05-26
+
+Feed cover art + richer description so every user's feed looks like a real podcast in Apple Podcasts / Overcast / etc.:
+
+- Sunset cover art (warm gradient + play glyph + bold "FEED ME" wordmark), 3000×3000 JPG, served from `/cover.jpg`
+- Channel description updated to "Your personal podcast of articles you've saved with Feed Me."
+- New `<itunes:summary>` (same text) and `<itunes:image>` (channel-level) in the RSS feed
+- Pillow added as a dev-only dependency (one-time `gen_cover.py` script generates the JPG; production never runs Pillow)
+- Spec: `docs/superpowers/specs/2026-05-26-feed-metadata-and-cover-art.html`
+
 ## v1.3 — 2026-05-26
 
 Settings page redesigned for friend-onboarding:
