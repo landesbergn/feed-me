@@ -37,10 +37,21 @@ def relative_time(ts: int, now: int | None = None) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
 
 
-def spawn_ingest(url: str, secret: str, data_dir: Path) -> None:
+def hostname(url: str) -> str:
+    """Return the hostname portion of a URL (no scheme, no path).
+    On unparseable input, returns the input unchanged so the template stays sane."""
+    try:
+        parsed = urlparse(url)
+        return parsed.netloc or url
+    except Exception:
+        return url
+
+
+def spawn_ingest(url: str, secret: str, data_dir: Path, slug: str) -> None:
     t = threading.Thread(
         target=ingest.process,
         args=(url, secret, data_dir),
+        kwargs={"slug": slug},
         daemon=True,
     )
     t.start()
@@ -58,6 +69,7 @@ SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["hostname"] = hostname
 
 
 @app.get("/healthz", response_class=PlainTextResponse)
@@ -151,7 +163,14 @@ def ingest_route(secret: str, url: str):
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(400, "invalid url")
-    spawn_ingest(url, secret, DATA_DIR)
+    # Quick title fetch so the Pending row shows the real title from ~1s in.
+    # On any failure, fetch_title returns None and the row falls back to the
+    # hostname via the _episodes_section template.
+    title = ingest.fetch_title(url)
+    slug = storage.write_pending_episode(
+        DATA_DIR, secret, source_url=url, title=title,
+    )
+    spawn_ingest(url, secret, DATA_DIR, slug)
     return {"ok": True}
 
 

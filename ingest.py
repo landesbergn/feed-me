@@ -90,8 +90,12 @@ def synthesize(text: str, voice: str) -> bytes:
     return response.content
 
 
-def process(url: str, secret: str, data_dir: Path) -> None:
-    slug = storage.write_pending_episode(data_dir, secret, source_url=url)
+def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> None:
+    """If slug is provided, use it as the existing pending slug (do not write a new
+    pending stub). If slug is None, write a fresh pending stub first (used by tests
+    that call process directly)."""
+    if slug is None:
+        slug = storage.write_pending_episode(data_dir, secret, source_url=url)
     try:
         title, body = fetch_article(url)
         settings = storage.get_settings(data_dir, secret)
