@@ -272,3 +272,35 @@ def test_cover_route_returns_jpeg(client):
     assert response.content[:2] == b"\xff\xd8"
     # Long-cache header present
     assert "max-age" in response.headers.get("cache-control", "")
+
+
+def test_episodes_partial_returns_html(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}/episodes_partial")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    # Welcome was seeded on /create, so partial shows it
+    assert "Welcome to Feed Me" in response.text
+    # Outer section structure (h2 header + table or empty state)
+    assert "Recent episodes" in response.text
+
+
+def test_episodes_partial_404_for_unknown_user(client):
+    response = client.get("/u/nope/episodes_partial")
+    assert response.status_code == 404
+
+
+def test_episodes_partial_reflects_new_pending_episode(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_pending_episode(tmp_path, secret,
+                                   source_url="https://example.com/p")
+
+    response = client.get(f"/u/{secret}/episodes_partial")
+    # Partial picks up the newly-written pending episode
+    assert "Pending" in response.text
+    assert "example.com/p" in response.text

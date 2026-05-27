@@ -198,40 +198,9 @@
     </div>
   </div>
 
-  <h2>Recent episodes</h2>
-  {% if episodes %}
-    <table class="ep-table">
-      <thead>
-        <tr>
-          <th class="col-title">Article</th>
-          <th class="col-time">When</th>
-          <th class="col-status">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ep in episodes %}
-          <tr>
-            <td class="col-title">
-              {{ ep.title or "(couldn't extract article)" }}
-              <span class="src">{{ ep.url }}</span>
-            </td>
-            <td class="col-time">{{ ep.when }}</td>
-            <td class="col-status">
-              {% if ep.status == "ready" %}
-                <span class="status-chip ready">Ready</span>
-              {% elif ep.status == "pending" %}
-                <span class="status-chip pending">Pending</span>
-              {% else %}
-                <span class="status-chip failed">Failed</span>
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="ep-empty">No episodes yet. Share an article to test.</p>
-  {% endif %}
+  <div id="episodes-section">
+    {% include "_episodes_section.html" %}
+  </div>
 
   <details class="settings">
     <summary>Settings</summary>

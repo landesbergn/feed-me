@@ -112,6 +112,19 @@ def settings(request: Request, secret: str):
     })
 
 
+@app.get("/u/{secret}/episodes_partial", response_class=HTMLResponse)
+def episodes_partial(request: Request, secret: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    eps = storage.list_episodes(DATA_DIR, secret)[:30]
+    now_ts = int(_time.time())
+    for ep in eps:
+        ep["when"] = relative_time(ep["ts"], now=now_ts)
+    return templates.TemplateResponse(request, "_episodes_section.html", {
+        "episodes": eps,
+    })
+
+
 @app.post("/u/{secret}/voice")
 def set_voice_route(secret: str, voice: str = Form(...)):
     if not storage.user_exists(DATA_DIR, secret):
