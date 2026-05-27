@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.6 — 2026-05-27
+
+Episode metadata + Apple Podcasts compatibility:
+
+- Pending rows now show the article's real title (via a quick `<title>` fetch at /ingest time, before TTS runs). Falls back to "Loading from <hostname>…" if the fetch fails. The misleading "(couldn't extract article)" is now reserved for actual failures.
+- Every RSS item carries a `<description>` and `<itunes:summary>` — first ~200 chars of the article body for ready episodes, source URL for pending, hand-written for the welcome.
+- Apple Podcasts compatibility:
+  - Real byte-count `length` attribute on every `<enclosure>` (was `length="0"` — Apple often rejects)
+  - `<atom:link rel="self">` added to channel
+  - `<itunes:type>episodic</itunes:type>` added to channel
+  - "Add to Apple Podcasts" button uses `podcast://` (singular — Apple's documented scheme; plural `podcasts://` was wrong)
+- Spec: `docs/superpowers/specs/2026-05-27-episode-metadata-and-apple-podcasts.html`
+
 ## v1.5 — 2026-05-27
 
 First-run smoothness:
