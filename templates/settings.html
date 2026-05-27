@@ -219,7 +219,7 @@
 
       <div class="label">Ingest URL</div>
       <p>For re-pasting into the Shortcut later, or setting up another device. Step 1 already copied this for you.</p>
-      <div class="url-pill" id="ingest-url">{{ ingest_url }}</div>
+      <div class="url-pill" id="ingest-url">{{ ingest_url }}?url=</div>
       <button class="btn-secondary" type="button" onclick="copyIngestUrl()">Copy ingest URL</button>
 
       <div class="label danger-label">Rotate URL</div>
@@ -236,18 +236,22 @@
     var INGEST_URL = {{ ingest_url | tojson }};
     var SHORTCUT_URL = {{ shortcut_url | tojson }};
     var FEED_URL = {{ feed_url | tojson }};
+    // The Shortcut appends Shortcut Input to this string, so we hand it
+    // the URL with ?url= already on the end. Friend pastes the whole thing
+    // during Import Question install.
+    var INGEST_URL_WITH_PARAM = INGEST_URL + "?url=";
 
     function installShortcut() {
       var go = function () { window.location.href = SHORTCUT_URL; };
       try {
-        navigator.clipboard.writeText(INGEST_URL).then(go, go);
+        navigator.clipboard.writeText(INGEST_URL_WITH_PARAM).then(go, go);
       } catch (e) { go(); }
     }
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
     }
     function copyIngestUrl() {
-      try { navigator.clipboard.writeText(INGEST_URL); } catch (e) {}
+      try { navigator.clipboard.writeText(INGEST_URL_WITH_PARAM); } catch (e) {}
     }
   </script>
 
