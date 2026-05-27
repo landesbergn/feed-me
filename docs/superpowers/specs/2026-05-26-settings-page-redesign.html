@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Settings Page Redesign (v1.3)</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-soft: #4a4a4a;
+    --ink-mute: #6a6a6a;
+    --rule: #e5e5e5;
+    --bg: #fafaf7;
+    --paper: #ffffff;
+    --accent: #b04a00;
+    --good: #2f7a3d;
+    --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.warn { background: #f6efd6; color: var(--warn); }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .pill.good { background: #e3f1e3; color: var(--good); }
+  .callout {
+    border-left: 3px solid var(--warn); background: var(--paper);
+    padding: 12px 16px; margin: 16px 0; font-size: 15px; color: var(--ink-soft);
+  }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+  .ascii {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.45; white-space: pre;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 18px; overflow-x: auto; color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.3</div>
+  <h1>Settings Page Redesign</h1>
+  <div class="meta">Feed Me · 2026-05-26 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  The settings page (<code>templates/settings.html</code>) was built fast in v1.0 and never
+  rethought after the friend-onboarding flow landed. It mixes setup, reference info, and
+  settings into a flat 3-step list. This spec restructures it into clear phases so a friend
+  who's never seen Feed Me before can self-serve end-to-end without confusion.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#layout">Visual direction</a></li>
+    <li><a href="#copy">Copy</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  Today's settings page has three numbered "Step" sections that aren't actually a sequence:
+  Step 1 is an action (Install Shortcut), Step 2 mixes an action with a feed URL display,
+  Step 3 is purely reference info (the ingest URL with a manual copy button). The voice
+  picker, recent episodes list, and rotate URL are jammed in below with no hierarchy.
+  Friends opening this page can't tell what to do, in what order, or what they can ignore.
+</p>
+
+<p>
+  Missing entirely: any guidance on how to actually <em>use</em> the Shortcut after install
+  ("Share an article from Safari → tap Feed Me"). New friends have to figure out the
+  share-sheet flow from cold.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<p>A redesigned <code>templates/settings.html</code> that organizes content into three clear phases:</p>
+
+<ol>
+  <li><strong>Set up · do this once</strong> — install the Shortcut, subscribe in a podcast app</li>
+  <li><strong>Share an article · do this anytime</strong> — three numbered sub-steps for the Safari share flow, with the actual iOS share-sheet icon inline</li>
+  <li><strong>Recent episodes</strong> — table view: article, when shared, status chip (Ready / Pending / Failed)</li>
+</ol>
+
+<p>
+  All settings (voice picker, ingest URL, rotate URL) move into a single collapsible
+  <strong>Settings</strong> section at the bottom, collapsed by default. Apple Podcasts
+  subscribe and Copy feed URL buttons are paired side-by-side in the same setup step.
+</p>
+
+<p>
+  This requires a small backend change: episodes need a <strong>"pending" state</strong> so
+  friends can see that a just-shared article is being worked on (rather than wondering if it
+  was even received). Today's storage writes a record only on success or failure; we need to
+  write a record at ingest start too.
+</p>
+
+<h2 id="layout">3 · Visual direction</h2>
+
+<p>
+  Same minimal Linear/Vercel aesthetic as the v1.1 landing page — white background, system
+  fonts, near-black text, one accent (the black button). Specific UI mockup proven via the
+  brainstorming visual companion; see <code>.superpowers/brainstorm/.../settings-restructure-v7.html</code>
+  for the locked layout.
+</p>
+
+<div class="ascii">┌─────────────────────────────────────────────┐
+│ Feed Me                                     │  ← brand mark, 10px uppercase
+│ Your feed is ready.                         │  ← h1
+│ ┌─ Bookmark this page — it's your account. ─┐
+│ │ Losing the URL means losing the feed.    │  ← warning callout (cream)
+│ └────────────────────────────────────────────┘
+│                                             │
+│ ── SET UP · DO THIS ONCE ──                 │  ← small uppercase phase header
+│ ① Install the Shortcut                      │  ← numbered circles same as landing
+│ │   We'll copy your ingest URL...           │
+│ │   [ Install Shortcut ]                    │  ← black pill button
+│ │                                           │
+│ ② Subscribe in your podcast app             │
+│     One tap for Apple Podcasts...           │
+│     [ Add to Apple Podcasts ] [ Copy feed URL ]  ← paired buttons, no URL display
+│                                             │
+│ ── SHARE AN ARTICLE · DO THIS ANYTIME ──    │
+│ In Safari (or Mail, Reader, anywhere...):   │  ← small phase note
+│ ① Tap ⬆ at the bottom of the screen        │  ← inline iOS share-icon SVG, system blue
+│ │   That's the iOS Share button.            │
+│ │                                           │
+│ ② Scroll to [Feed Me] and tap it            │  ← "Feed Me" styled as kbd tag
+│ │   You'll get a "Sent ✓" notification.     │
+│ │                                           │
+│ ③ Wait ~60 seconds                          │
+│     The article appears as a new episode.   │
+│                                             │
+│ ── RECENT EPISODES ──                       │
+│ Article                  │ When     │ Status│
+│ ─────────────────────────┼──────────┼───────│
+│ On Time, Paul Graham     │ 2 min ago│ [Ready]│
+│   paulgraham.com/winc.html                  │
+│ Why the world needs more │ 3 h ago  │[Pending]│
+│   css-tricks.com/why-span                   │
+│ (couldn't extract...)    │ Yesterday│[Failed]│
+│   nyt.com/2026/...                          │
+│                                             │
+│ ▸ SETTINGS                                  │  ← collapsible; default closed
+│     Voice: [shimmer][alloy][nova][echo]     │
+│     Ingest URL: feed-me.xyz/u/abc.../ingest │
+│     [ Copy ingest URL ]                     │
+│     Rotate URL: [ Rotate ]                  │
+└─────────────────────────────────────────────┘</div>
+
+<p>Same envelope as today's settings page: <code>max-width: 480px; margin: 40px auto; padding: 0 20px</code>.</p>
+
+<h2 id="copy">4 · Copy</h2>
+
+<p class="small">Editable later; the structure governs, not the exact words.</p>
+
+<table>
+  <thead><tr><th style="width: 35%;">Slot</th><th>Text</th></tr></thead>
+  <tbody>
+    <tr><td>Brand</td><td><code>Feed Me</code> (uppercase, tracked)</td></tr>
+    <tr><td>h1</td><td>Your feed is ready.</td></tr>
+    <tr><td>Bookmark warning</td><td>Bookmark this page — it's your account. Losing the URL means losing the feed.</td></tr>
+    <tr><td>Phase 1 header</td><td>Set up · do this once</td></tr>
+    <tr><td>Step 1 title / desc</td><td>Install the Shortcut / We'll copy your ingest URL to your clipboard first, then iOS will ask you to paste it during install.</td></tr>
+    <tr><td>Step 1 button</td><td>Install Shortcut (existing JS: auto-copies ingest URL then navigates to <code>SHORTCUT_ICLOUD_URL</code>)</td></tr>
+    <tr><td>Step 2 title / desc</td><td>Subscribe in your podcast app / One tap for Apple Podcasts. For Overcast, Pocket Casts, Castro, etc., copy the URL and paste it in.</td></tr>
+    <tr><td>Step 2 buttons</td><td><code>Add to Apple Podcasts</code> (deep-link <code>podcasts://</code>) + <code>Copy feed URL</code> (JS clipboard.writeText on the feed.xml URL)</td></tr>
+    <tr><td>Phase 2 header</td><td>Share an article · do this anytime</td></tr>
+    <tr><td>Phase 2 note</td><td>In Safari (or Mail, Reader, anywhere with a Share button):</td></tr>
+    <tr><td>Share step 1</td><td>Tap [iOS share SVG] at the bottom of the screen / That's the iOS Share button.</td></tr>
+    <tr><td>Share step 2</td><td>Scroll to <code>Feed Me</code> and tap it / It lives in the row of app icons. You'll get a "Sent ✓" notification.</td></tr>
+    <tr><td>Share step 3</td><td>Wait ~60 seconds / The article appears as a new episode in your podcast app. Pull-to-refresh if it's slow.</td></tr>
+    <tr><td>Phase 3 header</td><td>Recent episodes</td></tr>
+    <tr><td>Table columns</td><td>Article, When, Status</td></tr>
+    <tr><td>Empty state</td><td><em>(reuse existing: "No episodes yet. Share an article to test.")</em></td></tr>
+    <tr><td>Settings header</td><td>Settings (collapsible, closed by default)</td></tr>
+    <tr><td>Voice label / hint</td><td>Voice / Choose how the narration sounds. Affects future episodes only.</td></tr>
+    <tr><td>Ingest URL label / hint</td><td>Ingest URL / For re-pasting into the Shortcut later, or setting up another device. Step 1 already copied this for you.</td></tr>
+    <tr><td>Rotate URL label / hint</td><td>Rotate URL / Use only if you suspect someone else has your URL. Old one stops working.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="impl">5 · Implementation notes</h2>
+
+<h3>Files modified</h3>
+<ul>
+  <li><code>templates/settings.html</code> — full rewrite</li>
+  <li><code>storage.py</code> — new function <code>write_pending_episode</code>; update <code>list_episodes</code> to expose a normalized <code>status</code> field (<code>"ready" | "pending" | "failed"</code>)</li>
+  <li><code>ingest.py</code> — <code>process()</code> writes a pending stub before fetch, then overwrites with the real record on success/failure</li>
+  <li><code>app.py</code> — the <code>settings</code> route already passes <code>episodes</code> to the template; just augment its render context with a <code>now_ts</code> for the "When" relative-time helper</li>
+  <li><code>tests/test_storage.py</code> — tests for <code>write_pending_episode</code> and the <code>status</code> field</li>
+  <li><code>tests/test_ingest.py</code> — assert <code>process()</code> writes a pending record at start and converts it to ready/failed at end</li>
+  <li><code>tests/test_app.py</code> — update <code>test_settings_renders_for_known_user</code> assertions for the new phase headers and table</li>
+</ul>
+
+<h3>Pending state mechanics</h3>
+
+<p>
+  Today, <code>ingest.process()</code> writes one record at the end — either via
+  <code>write_episode</code> (success) or <code>write_failed_episode</code> (failure).
+  The new flow:
+</p>
+
+<ol>
+  <li>At start of <code>process()</code>, call <code>write_pending_episode(data_dir, secret, url=url) → slug</code>. This writes <code>&lt;slug&gt;.json</code> with <code>{"title": None, "url": url, "ts": now, "pending": true}</code> and no <code>.mp3</code>.</li>
+  <li>On success, overwrite <code>&lt;slug&gt;.json</code> with the real title and remove the <code>"pending"</code> flag (or rewrite without it), and write <code>&lt;slug&gt;.mp3</code>.</li>
+  <li>On failure, overwrite <code>&lt;slug&gt;.json</code> with the error message, remove <code>"pending"</code>, leave no <code>.mp3</code>.</li>
+</ol>
+
+<p>
+  <code>list_episodes</code> derives <code>status</code> from the record's fields:
+  <code>"failed"</code> if <code>error</code> is set; <code>"pending"</code> if
+  <code>pending</code> is true; <code>"ready"</code> otherwise (must have audio).
+</p>
+
+<p>
+  The new <code>write_episode</code> / <code>write_failed_episode</code> signatures gain a
+  <code>slug</code> parameter so the pending record can be promoted in place. Existing call
+  sites in tests need updating.
+</p>
+
+<h3>Relative time display</h3>
+
+<p>
+  Render in the Python route, not in JS — the page is server-rendered, no live updates needed.
+  Buckets:
+</p>
+<ul>
+  <li>&lt; 60 s → <code>"just now"</code></li>
+  <li>&lt; 60 min → <code>"N min ago"</code></li>
+  <li>&lt; 24 hr → <code>"N h ago"</code></li>
+  <li>&lt; 7 d → <code>"N d ago"</code></li>
+  <li>otherwise → <code>"YYYY-MM-DD"</code></li>
+</ul>
+
+<p>
+  Implemented as a small helper in <code>app.py</code> (no new module needed) and called per
+  episode at render time. Tabular-nums applied via CSS so columns align.
+</p>
+
+<h3>Inline iOS Share SVG</h3>
+
+<p>
+  Defined once in the template head as an <code>&lt;svg&gt;&lt;symbol id="ios-share"&gt;…</code>,
+  referenced inline via <code>&lt;svg&gt;&lt;use href="#ios-share"/&gt;&lt;/svg&gt;</code>.
+  Sized at <code>1em</code> with <code>vertical-align: -0.15em</code> so it sits on the
+  baseline next to the surrounding text. Stroked in iOS system blue <code>#007AFF</code>.
+</p>
+
+<h3>Color palette</h3>
+
+<table>
+  <thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+  <tbody>
+    <tr><td>Text primary</td><td><code>#0a0a0a</code></td><td>headings, body</td></tr>
+    <tr><td>Text secondary</td><td><code>#6a6a6a</code></td><td>descriptions, source URLs</td></tr>
+    <tr><td>Text tertiary</td><td><code>#767676</code></td><td>brand, phase headers, table labels</td></tr>
+    <tr><td>Border / divider</td><td><code>#eaeaea</code> / <code>#eee</code> / <code>#f3f3f3</code></td><td>row separators, section breaks</td></tr>
+    <tr><td>Code / URL pill bg</td><td><code>#f3f1ec</code></td><td>monospace URLs</td></tr>
+    <tr><td>Warning callout</td><td>bg <code>#FFF8DC</code> / border <code>#B8860B</code> / text <code>#5a4a14</code></td><td>bookmark warning</td></tr>
+    <tr><td>Status: Ready</td><td>bg <code>#e3f1e3</code> / text <code>#2f7a3d</code></td><td>chip</td></tr>
+    <tr><td>Status: Failed</td><td>bg <code>#f6e0d6</code> / text <code>#b04a00</code></td><td>chip</td></tr>
+    <tr><td>Status: Pending</td><td>bg <code>#f3f1ec</code> / text <code>#767676</code></td><td>chip</td></tr>
+    <tr><td>iOS Share icon</td><td><code>#007AFF</code></td><td>SVG stroke (iOS system blue)</td></tr>
+  </tbody>
+</table>
+
+<h3>Timeline hairline</h3>
+
+<p>
+  Same idiom as the landing page: <code>.step-row:not(:last-child)::before</code> renders a
+  1.5px vertical line at <code>#eaeaea</code> from just below one circle to the top of the
+  next, behind the circle (<code>z-index: 1</code> on the circle, white background fills).
+  The line is per-phase — both Setup steps connect, both Share steps connect. The hairline
+  does not cross the phase header boundary.
+</p>
+
+<h3>Collapsible Settings</h3>
+
+<p>
+  Native <code>&lt;details&gt;</code> / <code>&lt;summary&gt;</code> — no JavaScript needed.
+  Summary styled as a small uppercase label with a chevron that rotates on open. Voice
+  picker, ingest URL display + copy button, and rotate URL button all live inside.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+
+<h3>Storage tests (new)</h3>
+<ul>
+  <li><code>test_write_pending_episode_writes_json_only</code>: creates user, calls <code>write_pending_episode</code>, asserts JSON has <code>pending: True</code> and no MP3 exists.</li>
+  <li><code>test_list_episodes_status_field</code>: write one pending, one ready, one failed; assert <code>status</code> field equals <code>"pending" | "ready" | "failed"</code> respectively.</li>
+  <li><code>test_write_episode_promotes_pending</code>: write_pending → write_episode with the same slug → final JSON has no <code>pending</code> flag, has title, MP3 exists.</li>
+</ul>
+
+<h3>Ingest tests (updated)</h3>
+<ul>
+  <li><code>test_process_writes_pending_then_ready</code>: monkeypatch with a fake-http that blocks until released; assert that at the mid-point of <code>process()</code> a pending record exists; release; assert the record promoted to ready.</li>
+  <li>Existing failure-path test asserts the promoted record has <code>error</code> set and no <code>pending</code>.</li>
+</ul>
+
+<h3>App tests (updated)</h3>
+<ul>
+  <li><code>test_settings_renders_for_known_user</code>: update assertions — <code>"Install Shortcut"</code>, <code>"Add to Apple Podcasts"</code>, <code>"Copy feed URL"</code>, <code>"Share an article"</code>, <code>"Tap"</code> in the share step.</li>
+  <li><code>test_settings_lists_recent_episodes</code>: update to assert table column headers (<code>"Article"</code>, <code>"When"</code>, <code>"Status"</code>) appear, plus the existing title assertion.</li>
+  <li><strong>New</strong>: <code>test_settings_pending_episode_renders_with_pending_status</code> — write a pending episode via storage, render settings, assert <code>"Pending"</code> chip appears.</li>
+</ul>
+
+<h2 id="scope">7 · Out of scope</h2>
+
+<ul>
+  <li><strong>Live status updates.</strong> Page is server-rendered; pending → ready transition only visible after a manual refresh.</li>
+  <li><strong>Episode playback on the settings page.</strong> Listening happens in the podcast app, not here.</li>
+  <li><strong>Per-episode delete / retry.</strong> A failed episode stays in the table indefinitely as a signal; no UI to remove or retry.</li>
+  <li><strong>Pagination.</strong> Existing 30-record cap is fine.</li>
+  <li><strong>Landing page changes.</strong> Out of scope; that was v1.1.</li>
+</ul>
+
+<h2 id="followups">8 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Live status updates via polling or SSE.</strong> If pending → ready transitions
+    take more than a refresh to notice, a small JS poll could update the chips in place.
+    Not worth doing until friends complain.
+  </li>
+  <li>
+    <strong>Auto-bookmark prompt.</strong> Friends who skip bookmarking lose their feed
+    forever. A more aggressive interrupt (full-screen confirmation between <code>/create</code>
+    and the settings page) was raised in v1.1 and is still open.
+  </li>
+  <li>
+    <strong>Per-episode retry on failure.</strong> Single tap to re-fetch a failed URL.
+    Would be useful for transient errors (timeouts, 429s) but not for permanent ones
+    (paywalls). Out of v1.3 to keep scope tight.
+  </li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+
+<ul>
+  <li><code>templates/settings.html</code> rewritten with the three-phase structure above</li>
+  <li><code>storage.py</code> exports <code>write_pending_episode</code>; <code>list_episodes</code> returns records with a <code>status</code> field</li>
+  <li><code>ingest.process()</code> writes a pending stub before fetch and promotes it on success or failure</li>
+  <li>All existing tests still pass; new tests for pending state pass</li>
+  <li>Deployed to <code>https://feed-me.xyz</code>; visiting <code>/u/&lt;secret&gt;</code> shows the new layout</li>
+  <li>On iPhone Safari portrait (iPhone 14-class), the page is readable end-to-end without horizontal scroll</li>
+  <li>Sharing an article via the Shortcut results in a row appearing on the settings page with <strong>Pending</strong> status within the first refresh after sharing, then <strong>Ready</strong> after ~60 s</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Designed via brainstorming visual companion on 2026-05-26. Locked layout:
+  <code>.superpowers/brainstorm/.../settings-restructure-v7.html</code>.
+</p>
+
+</div>
+</body>
+</html>
