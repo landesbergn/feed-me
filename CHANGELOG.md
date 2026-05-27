@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3 — 2026-05-26
+
+Settings page redesigned for friend-onboarding:
+
+- Three-phase layout: Set up (Install Shortcut + Subscribe in podcast app, paired buttons) → Share an article (3 numbered steps with inline iOS Share icon SVG and "Feed Me" rendered as a kbd-style tag) → Recent episodes (3-column table with Ready / Pending / Failed status chips and friendly "When" column)
+- Voice picker, Ingest URL, and Rotate moved into a collapsible Settings drawer at the bottom (closed by default)
+- Backend gains a "pending" episode state: `ingest.process` now writes a pending stub before fetch and promotes it to ready/failed on completion, so just-shared articles show up on the next refresh instead of vanishing into the void
+- `app.relative_time` helper buckets timestamps into "just now / N min ago / N h ago / N d ago / YYYY-MM-DD"
+- `storage.write_episode` and `write_failed_episode` gain an optional `slug` param for in-place promotion
+- Spec: `docs/superpowers/specs/2026-05-26-settings-page-redesign.html`
+
 ## v1.2 — 2026-05-26
 
 Friends can self-serve end-to-end:
