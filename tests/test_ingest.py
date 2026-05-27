@@ -124,3 +124,61 @@ def test_process_writes_pending_then_ready(
     eps = storage.list_episodes(tmp_path, secret)
     assert len(eps) == 1
     assert eps[0]["status"] == "ready"
+
+
+def test_fetch_title_extracts_from_html(monkeypatch, fake_http):
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200,
+        text="<html><head><title>Hello World</title></head><body>x</body></html>",
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    assert ingest.fetch_title("https://example.com/x") == "Hello World"
+
+
+def test_fetch_title_returns_none_on_http_error(monkeypatch, fake_http):
+    fake_http.responses["https://example.com/x"] = FakeResponse(status_code=500)
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    assert ingest.fetch_title("https://example.com/x") is None
+
+
+def test_fetch_title_returns_none_when_no_title_tag(monkeypatch, fake_http):
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200,
+        text="<html><body>no title here</body></html>",
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    assert ingest.fetch_title("https://example.com/x") is None
+
+
+def test_fetch_title_strips_whitespace(monkeypatch, fake_http):
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200,
+        text="<html><head><title>  Padded Title  \n</title></head></html>",
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    assert ingest.fetch_title("https://example.com/x") == "Padded Title"
+
+
+def test_process_writes_description_from_body(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    fake_http.responses["https://example.com/d"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/d", secret, tmp_path)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    desc = eps[0].get("description")
+    assert desc is not None
+    assert len(desc) > 0
+    # Description should contain text from the body (excerpt) — not just the URL
+    assert "first paragraph" in desc.lower() or "substantive" in desc.lower()
