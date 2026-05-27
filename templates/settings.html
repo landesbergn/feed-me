@@ -5,94 +5,282 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your Feed Me feed</title>
   <style>
-    body { font-family: -apple-system, sans-serif; max-width: 480px;
-           margin: 40px auto; padding: 0 20px; line-height: 1.5; color: #1a1a1a; }
-    h1 { font-size: 26px; letter-spacing: -0.01em; }
-    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
-         color: #6a6a6a; margin-top: 28px; }
-    .warn { background: #f6efd6; border-left: 3px solid #8a6500;
-            padding: 10px 14px; font-size: 14px; color: #4a4a4a; }
-    .btn { display: block; width: 100%; padding: 12px; text-align: center;
-           background: #1a1a1a; color: #fff; border: none; border-radius: 999px;
-           font-size: 14px; font-weight: 600; cursor: pointer;
-           text-decoration: none; margin-top: 10px; box-sizing: border-box; }
-    .btn.secondary { background: #fff; color: #1a1a1a; border: 1px solid #e5e5e5; }
-    .url { font-family: monospace; font-size: 12px; background: #f3f1ec;
-           padding: 8px 10px; border-radius: 4px; word-break: break-all;
-           margin: 6px 0; }
+    body {
+      font-family: -apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif;
+      max-width: 480px; margin: 40px auto; padding: 0 20px;
+      line-height: 1.5; color: #0a0a0a; background: #fff;
+      -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-size: 10px; color: #767676; text-transform: uppercase;
+      letter-spacing: 0.14em; font-weight: 700; margin-bottom: 16px;
+    }
+    h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
+         line-height: 1.15; margin: 0 0 6px; }
+    .bookmark-tip {
+      background: #FFF8DC; border-left: 3px solid #B8860B;
+      padding: 10px 13px; font-size: 12px; color: #5a4a14;
+      margin: 14px 0 28px; border-radius: 3px;
+    }
+    h2 {
+      font-size: 11px; color: #767676; text-transform: uppercase;
+      letter-spacing: 0.14em; font-weight: 700;
+      margin: 32px 0 4px; padding-top: 18px; border-top: 1px solid #eee;
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 24px; }
+    .phase-note { font-size: 12px; color: #6a6a6a; margin: 0 0 8px; }
+    .step-row {
+      display: grid; grid-template-columns: 26px 1fr; gap: 14px;
+      padding: 10px 0; align-items: start; position: relative;
+    }
+    .step-row:not(:last-of-type)::before {
+      content: ''; position: absolute;
+      left: 12px; top: 36px; bottom: -6px;
+      width: 1.5px; background: #eaeaea;
+    }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 1.5px solid #0a0a0a; display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 700;
+      background: #fff; position: relative; z-index: 1;
+    }
+    .step-body { font-size: 14px; }
+    .step-body .title { font-weight: 600; color: #0a0a0a; margin-bottom: 3px; }
+    .step-body .desc { font-size: 12px; color: #6a6a6a; line-height: 1.45; }
+    .step-body kbd {
+      font-family: -apple-system, sans-serif;
+      background: #f3f1ec; padding: 1px 6px; border-radius: 3px;
+      font-size: 12px; font-weight: 600; color: #0a0a0a;
+      border: 1px solid #e5e3dd;
+    }
+    .ios-share {
+      display: inline-block; width: 1em; height: 1em;
+      vertical-align: -0.15em; margin: 0 1px; color: #007AFF;
+    }
+    .btn-primary, .btn-secondary {
+      display: inline-block; padding: 10px 18px; font-size: 13px;
+      border-radius: 999px; font-weight: 600; cursor: pointer;
+      text-decoration: none; margin-top: 8px; border: none;
+      font-family: inherit; box-sizing: border-box;
+    }
+    .btn-primary { background: #0a0a0a; color: #fff; }
+    .btn-secondary { background: #fff; color: #0a0a0a; border: 1px solid #d0d0d0; }
+    .btn-pair { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .btn-pair .btn-primary, .btn-pair .btn-secondary { margin-top: 0; }
+    .url-pill {
+      font-family: "SF Mono", Menlo, monospace; font-size: 11px;
+      background: #f3f1ec; padding: 7px 10px; border-radius: 4px;
+      word-break: break-all; margin: 8px 0 6px; color: #4a4a4a;
+    }
+    .ep-table { margin-top: 10px; width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ep-table thead th {
+      font-size: 10px; color: #767676; text-transform: uppercase;
+      letter-spacing: 0.08em; font-weight: 600; text-align: left;
+      padding: 6px 0; border-bottom: 1px solid #eee;
+    }
+    .ep-table th.col-time { width: 70px; }
+    .ep-table th.col-status { width: 64px; text-align: right; }
+    .ep-table tbody td {
+      padding: 11px 8px 11px 0; border-bottom: 1px solid #f3f3f3; vertical-align: top;
+    }
+    .ep-table td.col-title { color: #0a0a0a; font-weight: 500; }
+    .ep-table td.col-title .src {
+      display: block; font-size: 10px; color: #767676;
+      font-family: "SF Mono", Menlo, monospace; margin-top: 2px;
+      word-break: break-all;
+    }
+    .ep-table td.col-time { color: #767676; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .ep-table td.col-status { text-align: right; }
+    .status-chip {
+      display: inline-block; padding: 2px 8px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; border-radius: 999px;
+    }
+    .status-chip.ready { background: #e3f1e3; color: #2f7a3d; }
+    .status-chip.failed { background: #f6e0d6; color: #b04a00; }
+    .status-chip.pending { background: #f3f1ec; color: #767676; }
+    .ep-empty { color: #767676; font-size: 12px; font-style: italic; padding: 14px 0; }
+    .voices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .voice-chip {
+      padding: 5px 12px; border: 1px solid #d0d0d0; background: #fff;
+      border-radius: 999px; font-size: 12px; cursor: pointer;
+      font-family: inherit;
+    }
+    .voice-chip.active { background: #0a0a0a; color: #fff; border-color: #0a0a0a; }
     form { display: inline; }
-    .voices { display: flex; flex-wrap: wrap; gap: 6px; }
-    .voice-btn { padding: 6px 12px; border: 1px solid #e5e5e5; background: #fff;
-                 border-radius: 999px; font-size: 13px; cursor: pointer; }
-    .voice-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-    .ep { padding: 10px 0; border-bottom: 1px solid #e5e5e5; font-size: 14px; }
-    .ep.failed { color: #b04a00; }
-    .ep .meta { font-size: 11px; color: #6a6a6a; }
+    details.settings { margin-top: 36px; padding-top: 14px; border-top: 1px solid #eee; }
+    details.settings > summary {
+      cursor: pointer; font-size: 10px; color: #767676;
+      text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700;
+      padding: 6px 0; list-style: none; user-select: none;
+    }
+    details.settings > summary::-webkit-details-marker { display: none; }
+    details.settings > summary::before {
+      content: '▸ '; font-size: 9px; transition: transform 0.15s;
+      display: inline-block; margin-right: 4px;
+    }
+    details.settings[open] > summary::before { transform: rotate(90deg); }
+    details.settings .body { padding: 8px 0 4px; }
+    details.settings .body .label {
+      font-size: 12px; font-weight: 600; color: #0a0a0a; margin-top: 18px;
+    }
+    details.settings .body .label:first-child { margin-top: 6px; }
+    details.settings .body p { font-size: 11px; color: #6a6a6a; margin: 4px 0 6px; }
+    .danger-label { color: #b04a00 !important; }
+    .danger-btn { border-color: #e5b8a0 !important; color: #b04a00 !important; }
   </style>
 </head>
 <body>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ios-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="3" x2="12" y2="15"/>
+      <polyline points="7 8 12 3 17 8"/>
+      <path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>
+    </symbol>
+  </svg>
+
+  <div class="brand">Feed Me</div>
   <h1>Your feed is ready.</h1>
-  <div class="warn">Bookmark this page — it's your account.
-    Losing the URL means losing the feed.</div>
+  <div class="bookmark-tip">
+    Bookmark this page — it's your account. Losing the URL means losing the feed.
+  </div>
 
-  <h2>Step 1 · Shortcut</h2>
-  <button class="btn" type="button" onclick="installShortcut()">Install Shortcut</button>
-  <p style="font-size: 13px; color: #6a6a6a; margin-top: 8px;">
-    When iOS asks for your ingest URL, tap <strong>Paste</strong> — we copied it to your clipboard.
-  </p>
-  <script>
-    function installShortcut() {
-      var url = {{ ingest_url | tojson }};
-      var shortcut = {{ shortcut_url | tojson }};
-      // best-effort copy; if it fails (perms denied, http, etc.) still proceed to install
-      var nav = function () { window.location.href = shortcut; };
-      try {
-        navigator.clipboard.writeText(url).then(nav, nav);
-      } catch (e) {
-        nav();
-      }
-    }
-  </script>
+  <h2>Set up · do this once</h2>
 
-  <h2>Step 2 · Podcast app</h2>
-  <a class="btn secondary" href="podcasts://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
-  <div class="url">{{ feed_url }}</div>
+  <div class="step-row">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="title">Install the Shortcut</div>
+      <div class="desc">We'll copy your ingest URL to your clipboard first, then iOS will ask you to paste it during install.</div>
+      <button class="btn-primary" type="button" onclick="installShortcut()">Install Shortcut</button>
+    </div>
+  </div>
 
-  <h2>Step 3 · Your ingest URL</h2>
-  <div class="url" id="ingest-url">{{ ingest_url }}</div>
-  <button class="btn secondary" onclick="navigator.clipboard.writeText(document.getElementById('ingest-url').textContent.trim())">Copy ingest URL</button>
-  <p style="font-size: 13px; color: #6a6a6a;">Step 1 already copied this for you. Use this if you need to re-paste later or set up another device.</p>
+  <div class="step-row">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="title">Subscribe in your podcast app</div>
+      <div class="desc">One tap for Apple Podcasts. For Overcast, Pocket Casts, Castro, etc., copy the URL and paste it in.</div>
+      <div class="btn-pair">
+        <a class="btn-primary" href="podcasts://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
+        <button class="btn-secondary" type="button" onclick="copyFeedUrl()">Copy feed URL</button>
+      </div>
+    </div>
+  </div>
 
-  <h2>Voice</h2>
-  <div class="voices">
-    {% for v in voices %}
-    <form action="/u/{{ secret }}/voice" method="post">
-      <input type="hidden" name="voice" value="{{ v }}">
-      <button class="voice-btn {% if v == current_voice %}active{% endif %}" type="submit">{{ v }}</button>
-    </form>
-    {% endfor %}
+  <h2>Share an article · do this anytime</h2>
+  <p class="phase-note">In Safari (or Mail, Reader, anywhere with a Share button):</p>
+
+  <div class="step-row">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="title">
+        Tap <svg class="ios-share"><use href="#ios-share"/></svg> at the bottom of the screen
+      </div>
+      <div class="desc">That's the iOS Share button.</div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="title">Scroll to <kbd>Feed Me</kbd> and tap it</div>
+      <div class="desc">It lives in the row of app icons. You'll get a "Sent ✓" notification.</div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="title">Wait ~60 seconds</div>
+      <div class="desc">The article appears as a new episode in your podcast app. Pull-to-refresh if it's slow.</div>
+    </div>
   </div>
 
   <h2>Recent episodes</h2>
   {% if episodes %}
-    {% for ep in episodes %}
-      <div class="ep {% if ep.error %}failed{% endif %}">
-        {{ ep.title or "(failed)" }}
-        <div class="meta">
-          {% if ep.error %}error: {{ ep.error }}{% else %}ready{% endif %} · {{ ep.url }}
-        </div>
-      </div>
-    {% endfor %}
+    <table class="ep-table">
+      <thead>
+        <tr>
+          <th class="col-title">Article</th>
+          <th class="col-time">When</th>
+          <th class="col-status">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ep in episodes %}
+          <tr>
+            <td class="col-title">
+              {{ ep.title or "(couldn't extract article)" }}
+              <span class="src">{{ ep.url }}</span>
+            </td>
+            <td class="col-time">{{ ep.when }}</td>
+            <td class="col-status">
+              {% if ep.status == "ready" %}
+                <span class="status-chip ready">Ready</span>
+              {% elif ep.status == "pending" %}
+                <span class="status-chip pending">Pending</span>
+              {% else %}
+                <span class="status-chip failed">Failed</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% else %}
-    <p style="color: #6a6a6a; font-size: 14px;">No episodes yet. Share an article to test.</p>
+    <p class="ep-empty">No episodes yet. Share an article to test.</p>
   {% endif %}
 
-  <h2>Rotate URL (use only if you suspect leak)</h2>
-  <form action="/u/{{ secret }}/rotate" method="post">
-    <button class="btn secondary" type="submit"
-            onclick="return confirm('Generate a new URL? Old one will stop working.')">
-      Rotate
-    </button>
-  </form>
+  <details class="settings">
+    <summary>Settings</summary>
+    <div class="body">
+
+      <div class="label">Voice</div>
+      <p>Choose how the narration sounds. Affects future episodes only.</p>
+      <div class="voices">
+        {% for v in voices %}
+          <form action="/u/{{ secret }}/voice" method="post">
+            <input type="hidden" name="voice" value="{{ v }}">
+            <button class="voice-chip {% if v == current_voice %}active{% endif %}" type="submit">{{ v }}</button>
+          </form>
+        {% endfor %}
+      </div>
+
+      <div class="label">Ingest URL</div>
+      <p>For re-pasting into the Shortcut later, or setting up another device. Step 1 already copied this for you.</p>
+      <div class="url-pill" id="ingest-url">{{ ingest_url }}</div>
+      <button class="btn-secondary" type="button" onclick="copyIngestUrl()">Copy ingest URL</button>
+
+      <div class="label danger-label">Rotate URL</div>
+      <p>Use only if you suspect someone else has your URL. Old one stops working.</p>
+      <form action="/u/{{ secret }}/rotate" method="post">
+        <button class="btn-secondary danger-btn" type="submit"
+                onclick="return confirm('Generate a new URL? Old one will stop working.')">Rotate</button>
+      </form>
+
+    </div>
+  </details>
+
+  <script>
+    var INGEST_URL = {{ ingest_url | tojson }};
+    var SHORTCUT_URL = {{ shortcut_url | tojson }};
+    var FEED_URL = {{ feed_url | tojson }};
+
+    function installShortcut() {
+      var go = function () { window.location.href = SHORTCUT_URL; };
+      try {
+        navigator.clipboard.writeText(INGEST_URL).then(go, go);
+      } catch (e) { go(); }
+    }
+    function copyFeedUrl() {
+      try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
+    }
+    function copyIngestUrl() {
+      try { navigator.clipboard.writeText(INGEST_URL); } catch (e) {}
+    }
+  </script>
+
 </body>
 </html>

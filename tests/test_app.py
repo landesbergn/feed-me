@@ -39,10 +39,18 @@ def test_settings_renders_for_known_user(client):
 
     response = client.get(f"/u/{secret}")
     assert response.status_code == 200
+    # v1.3 structure: three-phase layout
+    assert "Set up" in response.text
     assert "Install Shortcut" in response.text
     assert "Add to Apple Podcasts" in response.text
-    assert "Copy ingest URL" in response.text
-    # Ingest URL must appear so the page can copy it
+    assert "Copy feed URL" in response.text
+    assert "Share an article" in response.text
+    assert "Feed Me" in response.text
+    # Episode table headers
+    assert "Recent episodes" in response.text
+    # Settings drawer
+    assert "Settings" in response.text
+    # Ingest URL still appears in the page (for the auto-copy JS)
     assert f"/u/{secret}/ingest" in response.text
 
 
@@ -56,6 +64,19 @@ def test_settings_lists_recent_episodes(client, tmp_path):
 
     response = client.get(f"/u/{secret}")
     assert "My Article" in response.text
+    assert "Ready" in response.text  # status chip
+
+
+def test_settings_shows_pending_episode(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_pending_episode(tmp_path, secret,
+                                   source_url="https://example.com/p")
+
+    response = client.get(f"/u/{secret}")
+    assert "Pending" in response.text
 
 
 def test_post_voice_updates_setting(client, tmp_path):

@@ -80,6 +80,9 @@ def settings(request: Request, secret: str):
         raise HTTPException(404)
     s = storage.get_settings(DATA_DIR, secret)
     eps = storage.list_episodes(DATA_DIR, secret)[:30]
+    now_ts = int(_time.time())
+    for ep in eps:
+        ep["when"] = relative_time(ep["ts"], now=now_ts)
     feed_url = f"{APP_BASE_URL}/u/{secret}/feed.xml"
     ingest_url = f"{APP_BASE_URL}/u/{secret}/ingest"
     feed_host_and_path = feed_url.split("://", 1)[1]
