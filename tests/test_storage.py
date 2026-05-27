@@ -249,3 +249,73 @@ def test_seed_welcome_episode_appears_in_list_as_ready(tmp_path):
     assert len(eps) == 1
     assert eps[0]["title"] == "Welcome to Feed Me"
     assert eps[0]["status"] == "ready"
+
+
+def test_write_pending_episode_accepts_title(tmp_path):
+    secret = storage.create_user(tmp_path)
+
+    slug = storage.write_pending_episode(
+        tmp_path, secret,
+        source_url="https://example.com/x",
+        title="My Cool Article",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["title"] == "My Cool Article"
+    assert eps[0]["status"] == "pending"
+
+
+def test_write_episode_accepts_description(tmp_path):
+    secret = storage.create_user(tmp_path)
+
+    slug = storage.write_episode(
+        tmp_path, secret,
+        title="My Article", source_url="https://a", audio=b"X",
+        description="The first paragraph or so of the article body...",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["description"] == "The first paragraph or so of the article body..."
+
+
+def test_write_failed_episode_accepts_description(tmp_path):
+    secret = storage.create_user(tmp_path)
+
+    storage.write_failed_episode(
+        tmp_path, secret,
+        source_url="https://b", error="boom",
+        description="paywall: nytimes.com/...",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["description"] == "paywall: nytimes.com/..."
+
+
+def test_list_episodes_exposes_audio_bytes(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.write_episode(
+        tmp_path, secret,
+        title="A", source_url="https://a", audio=b"FAKEMP3DATA",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["audio_bytes"] == len(b"FAKEMP3DATA")
+
+
+def test_list_episodes_audio_bytes_is_none_when_no_mp3(tmp_path):
+    """Pending and failed episodes have no .mp3, so audio_bytes should be None."""
+    secret = storage.create_user(tmp_path)
+    storage.write_pending_episode(tmp_path, secret, source_url="https://p")
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["audio_bytes"] is None
+
+
+def test_seed_welcome_episode_writes_description(tmp_path):
+    """The welcome episode should always carry the hard-coded description."""
+    secret = storage.create_user(tmp_path)
+    storage.seed_welcome_episode(tmp_path, secret, welcome_audio=b"X")
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["description"] == "Share an article from your phone — it'll show up here a minute later."

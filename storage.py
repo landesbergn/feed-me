@@ -5,6 +5,7 @@ from pathlib import Path
 
 DEFAULT_VOICE = "shimmer"
 ALLOWED_VOICES = {"shimmer", "alloy", "nova", "echo"}
+WELCOME_DESCRIPTION = "Share an article from your phone — it'll show up here a minute later."
 
 
 def create_user(data_dir: Path) -> str:
@@ -30,16 +31,20 @@ def write_episode(
     data_dir: Path, secret: str, *,
     title: str, source_url: str, audio: bytes,
     slug: str | None = None,
+    description: str | None = None,
 ) -> str:
     if slug is None:
         slug = _new_slug()
     user_dir = data_dir / secret
     (user_dir / f"{slug}.mp3").write_bytes(audio)
-    (user_dir / f"{slug}.json").write_text(json.dumps({
+    record = {
         "title": title,
         "url": source_url,
         "ts": int(time.time()),
-    }))
+    }
+    if description is not None:
+        record["description"] = description
+    (user_dir / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
 
@@ -47,29 +52,38 @@ def write_failed_episode(
     data_dir: Path, secret: str, *,
     source_url: str, error: str,
     slug: str | None = None,
+    description: str | None = None,
 ) -> str:
     if slug is None:
         slug = _new_slug()
-    (data_dir / secret / f"{slug}.json").write_text(json.dumps({
+    record = {
         "title": None,
         "url": source_url,
         "ts": int(time.time()),
         "error": error,
-    }))
+    }
+    if description is not None:
+        record["description"] = description
+    (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
 
 def write_pending_episode(
     data_dir: Path, secret: str, *,
     source_url: str,
+    title: str | None = None,
+    description: str | None = None,
 ) -> str:
     slug = _new_slug()
-    (data_dir / secret / f"{slug}.json").write_text(json.dumps({
-        "title": None,
+    record = {
+        "title": title,
         "url": source_url,
         "ts": int(time.time()),
         "pending": True,
-    }))
+    }
+    if description is not None:
+        record["description"] = description
+    (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
 
@@ -79,8 +93,8 @@ def seed_welcome_episode(
 ) -> str:
     """Write a pre-rendered welcome episode (mp3 + json) into a new user's dir.
 
-    Returns the slug. Unlike write_episode, the title and URL are fixed since
-    the welcome is identical for every user.
+    Returns the slug. Unlike write_episode, the title, URL, and description are
+    fixed since the welcome is identical for every user.
     """
     slug = _new_slug()
     user_dir = data_dir / secret
@@ -89,6 +103,7 @@ def seed_welcome_episode(
         "title": "Welcome to Feed Me",
         "url": "https://feed-me.xyz",
         "ts": int(time.time()),
+        "description": WELCOME_DESCRIPTION,
     }))
     return slug
 
@@ -105,7 +120,13 @@ def list_episodes(data_dir: Path, secret: str) -> list[dict]:
             data = json.loads(p.read_text())
             data["slug"] = p.stem
             data["mtime"] = p.stat().st_mtime
-            data["has_audio"] = (user_dir / f"{p.stem}.mp3").exists()
+            mp3_path = user_dir / f"{p.stem}.mp3"
+            if mp3_path.exists():
+                data["has_audio"] = True
+                data["audio_bytes"] = mp3_path.stat().st_size
+            else:
+                data["has_audio"] = False
+                data["audio_bytes"] = None
             if data.get("error"):
                 data["status"] = "failed"
             elif data.get("pending"):
