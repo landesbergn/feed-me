@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.5 — 2026-05-27
+
+First-run smoothness:
+
+- Pre-seeded "Welcome to Feed Me" episode (~30s AI-narrated MP3) on every new feed, so podcast apps can subscribe even before the user has shared any articles
+- Settings page now polls `/u/<secret>/episodes_partial` every 3s while tab is visible — new shares show up as "Pending" then "Ready" without manual refresh (~6s total perceived latency)
+- Episode section extracted to a Jinja partial so the polling endpoint and the main settings render share one source of truth
+- Spec: `docs/superpowers/specs/2026-05-26-welcome-episode-and-live-updates.html`
+
 ## v1.4 — 2026-05-26
 
 Feed cover art + richer description so every user's feed looks like a real podcast in Apple Podcasts / Overcast / etc.:
