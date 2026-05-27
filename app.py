@@ -146,6 +146,7 @@ def feed_route(secret: str):
     xml = rss.render_feed(
         feed_url=f"{APP_BASE_URL}/u/{secret}/feed.xml",
         audio_base=f"{APP_BASE_URL}/u/{secret}/audio",
+        cover_url=f"{APP_BASE_URL}/cover.jpg",
         episodes=eps,
     )
     return Response(

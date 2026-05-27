@@ -10,7 +10,7 @@ _env = Environment(
 )
 
 
-def render_feed(*, feed_url: str, audio_base: str, episodes: list[dict]) -> str:
+def render_feed(*, feed_url: str, audio_base: str, cover_url: str, episodes: list[dict]) -> str:
     ready = [e for e in episodes if e.get("has_audio")]
     enriched = [
         {
@@ -25,5 +25,6 @@ def render_feed(*, feed_url: str, audio_base: str, episodes: list[dict]) -> str:
     return template.render(
         feed_url=feed_url,
         audio_base=audio_base,
+        cover_url=cover_url,
         episodes=enriched,
     )

@@ -3,7 +3,9 @@
   <channel>
     <title>Feed Me</title>
     <link>{{ feed_url }}</link>
-    <description>Articles you shared, narrated.</description>
+    <description>Your personal podcast of articles you've saved with Feed Me.</description>
+    <itunes:summary>Your personal podcast of articles you've saved with Feed Me.</itunes:summary>
+    <itunes:image href="{{ cover_url }}"/>
     <language>en-us</language>
     <itunes:author>Feed Me</itunes:author>
     <itunes:explicit>false</itunes:explicit>
