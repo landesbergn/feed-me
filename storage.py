@@ -55,6 +55,20 @@ def write_failed_episode(
     return slug
 
 
+def write_pending_episode(
+    data_dir: Path, secret: str, *,
+    source_url: str,
+) -> str:
+    slug = _new_slug()
+    (data_dir / secret / f"{slug}.json").write_text(json.dumps({
+        "title": None,
+        "url": source_url,
+        "ts": int(time.time()),
+        "pending": True,
+    }))
+    return slug
+
+
 def list_episodes(data_dir: Path, secret: str) -> list[dict]:
     user_dir = data_dir / secret
     if not user_dir.is_dir():
@@ -68,6 +82,12 @@ def list_episodes(data_dir: Path, secret: str) -> list[dict]:
             data["slug"] = p.stem
             data["mtime"] = p.stat().st_mtime
             data["has_audio"] = (user_dir / f"{p.stem}.mp3").exists()
+            if data.get("error"):
+                data["status"] = "failed"
+            elif data.get("pending"):
+                data["status"] = "pending"
+            else:
+                data["status"] = "ready"
             records.append(data)
         except (json.JSONDecodeError, OSError):
             continue

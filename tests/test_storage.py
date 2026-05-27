@@ -138,3 +138,48 @@ def test_rotate_secret_moves_data_and_returns_new_secret(tmp_path):
     eps = storage.list_episodes(tmp_path, new)
     assert len(eps) == 1
     assert eps[0]["title"] == "A"
+
+
+def test_write_pending_episode_writes_json_only(tmp_path):
+    secret = storage.create_user(tmp_path)
+
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://example.com/x",
+    )
+
+    assert not (tmp_path / secret / f"{slug}.mp3").exists()
+    meta = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert meta["pending"] is True
+    assert meta["url"] == "https://example.com/x"
+    assert meta.get("title") is None
+    assert "error" not in meta
+
+
+def test_list_episodes_status_field_pending(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.write_pending_episode(tmp_path, secret, source_url="https://a")
+
+    eps = storage.list_episodes(tmp_path, secret)
+
+    assert len(eps) == 1
+    assert eps[0]["status"] == "pending"
+
+
+def test_list_episodes_status_field_ready(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.write_episode(tmp_path, secret, title="Hi",
+                          source_url="https://a", audio=b"X")
+
+    eps = storage.list_episodes(tmp_path, secret)
+
+    assert eps[0]["status"] == "ready"
+
+
+def test_list_episodes_status_field_failed(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.write_failed_episode(tmp_path, secret,
+                                  source_url="https://b", error="boom")
+
+    eps = storage.list_episodes(tmp_path, secret)
+
+    assert eps[0]["status"] == "failed"
