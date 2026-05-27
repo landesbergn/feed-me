@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2 — 2026-05-26
+
+Friends can self-serve end-to-end:
+
+- Canonical iOS Shortcut now shared via iCloud with an Import Question that prompts the installer for their own ingest URL
+- `SHORTCUT_ICLOUD_URL` Fly secret set to the real iCloud link
+- "Install Shortcut" button on settings page now auto-copies the friend's ingest URL to clipboard before opening the iCloud install card — so iOS's Paste suggestion appears above the keyboard during the Import Question prompt
+- Step 3's "Copy ingest URL" is now a manual fallback, captioned accordingly
+- Investigated and ruled out per-user server-generated shortcuts: iOS no longer permits installing unsigned shortcuts ("Importing unsigned shortcut files is not supported")
+
 ## v1.1 — 2026-05-26
 
 Landing page redesign + custom domain:
