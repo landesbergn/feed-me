@@ -222,3 +222,30 @@ def test_write_failed_episode_promotes_pending(tmp_path):
     assert len(eps) == 1
     assert eps[0]["status"] == "failed"
     assert eps[0]["error"] == "paywalled"
+
+
+def test_seed_welcome_episode_writes_mp3_and_json(tmp_path):
+    secret = storage.create_user(tmp_path)
+
+    slug = storage.seed_welcome_episode(
+        tmp_path, secret, welcome_audio=b"FAKEMP3",
+    )
+
+    assert (tmp_path / secret / f"{slug}.mp3").read_bytes() == b"FAKEMP3"
+    meta = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert meta["title"] == "Welcome to Feed Me"
+    assert meta["url"] == "https://feed-me.xyz"
+    assert isinstance(meta["ts"], int)
+    assert "error" not in meta
+    assert "pending" not in meta
+
+
+def test_seed_welcome_episode_appears_in_list_as_ready(tmp_path):
+    secret = storage.create_user(tmp_path)
+    storage.seed_welcome_episode(tmp_path, secret, welcome_audio=b"X")
+
+    eps = storage.list_episodes(tmp_path, secret)
+
+    assert len(eps) == 1
+    assert eps[0]["title"] == "Welcome to Feed Me"
+    assert eps[0]["status"] == "ready"

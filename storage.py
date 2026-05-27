@@ -73,6 +73,26 @@ def write_pending_episode(
     return slug
 
 
+def seed_welcome_episode(
+    data_dir: Path, secret: str, *,
+    welcome_audio: bytes,
+) -> str:
+    """Write a pre-rendered welcome episode (mp3 + json) into a new user's dir.
+
+    Returns the slug. Unlike write_episode, the title and URL are fixed since
+    the welcome is identical for every user.
+    """
+    slug = _new_slug()
+    user_dir = data_dir / secret
+    (user_dir / f"{slug}.mp3").write_bytes(welcome_audio)
+    (user_dir / f"{slug}.json").write_text(json.dumps({
+        "title": "Welcome to Feed Me",
+        "url": "https://feed-me.xyz",
+        "ts": int(time.time()),
+    }))
+    return slug
+
+
 def list_episodes(data_dir: Path, secret: str) -> list[dict]:
     user_dir = data_dir / secret
     if not user_dir.is_dir():
