@@ -247,3 +247,13 @@ def test_relative_time_absolute_after_week():
     # 2001-09-09 01:46:40 UTC (the famous 1_000_000_000 epoch)
     result = app.relative_time(1_000_000_000, now=1_000_000_000 + 8 * 86400)
     assert result == "2001-09-09"
+
+
+def test_cover_route_returns_jpeg(client):
+    response = client.get("/cover.jpg")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    # Sanity: real JPEG starts with the magic bytes FF D8
+    assert response.content[:2] == b"\xff\xd8"
+    # Long-cache header present
+    assert "max-age" in response.headers.get("cache-control", "")

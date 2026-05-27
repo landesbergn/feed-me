@@ -46,6 +46,7 @@ def spawn_ingest(url: str, secret: str, data_dir: Path) -> None:
     t.start()
 
 DATA_DIR = Path(os.environ.get("FEED_ME_DATA_DIR", "/data"))
+STATIC_DIR = Path(__file__).parent / "static"
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
 SHORTCUT_ICLOUD_URL = os.environ.get(
     "SHORTCUT_ICLOUD_URL",
@@ -61,6 +62,15 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/healthz", response_class=PlainTextResponse)
 def healthz():
     return "ok"
+
+
+@app.get("/cover.jpg")
+def cover_route():
+    return FileResponse(
+        STATIC_DIR / "cover.jpg",
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
