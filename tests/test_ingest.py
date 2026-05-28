@@ -47,14 +47,32 @@ def test_synthesize_returns_audio_bytes(monkeypatch, fake_openai):
     assert fake_openai.calls[0]["input"] == "hello world"
 
 
-def test_synthesize_truncates_long_text(monkeypatch, fake_openai):
+def test_synthesize_long_text_calls_tts_for_each_chunk(monkeypatch, fake_openai):
+    """Long input is chunked; synthesize calls TTS once per chunk and concatenates."""
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
-    long = "x" * 10_000
+    one_sentence = "This is a sentence that takes up some text. "
+    long_body = one_sentence * 200  # ~9000 chars
 
-    ingest.synthesize(long, "alloy")
+    audio = ingest.synthesize(long_body, "shimmer")
 
-    sent = fake_openai.calls[0]["input"]
-    assert len(sent) <= ingest.TTS_CHAR_LIMIT
+    # synthesize called the fake TTS multiple times
+    assert len(fake_openai.calls) >= 2
+    # Each call got a chunk under the limit
+    for call in fake_openai.calls:
+        assert len(call["input"]) <= ingest.TTS_CHAR_LIMIT
+    # Returned bytes are the concatenation of all the fake response bodies
+    assert audio == fake_openai.audio_bytes * len(fake_openai.calls)
+
+
+def test_synthesize_short_text_calls_tts_once(monkeypatch, fake_openai):
+    """Body shorter than TTS_CHAR_LIMIT → single call, no chunking visible."""
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+
+    audio = ingest.synthesize("Short body.", "shimmer")
+
+    assert len(fake_openai.calls) == 1
+    assert fake_openai.calls[0]["input"] == "Short body."
+    assert audio == fake_openai.audio_bytes
 
 
 def test_process_writes_episode_on_success(
@@ -230,3 +248,33 @@ def test_chunk_text_drops_empty_chunks():
     chunks = ingest.chunk_text(body, max_chars=4000)
     assert all(c.strip() for c in chunks)
     assert len(chunks) == 1
+
+
+def test_process_writes_failure_when_body_exceeds_cap(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """Bodies > MAX_BODY_CHARS fail with a clear error, no TTS calls made."""
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+
+    # Build HTML with a body that, after Readability extraction, is > 100k chars.
+    huge_paragraph = "<p>" + ("This sentence is very long and detailed and exists " * 50) + "</p>"
+    huge_html = (
+        "<!doctype html><html><head><title>Huge</title></head>"
+        "<body><article><h1>Big</h1>"
+        + (huge_paragraph * 100)
+        + "</article></body></html>"
+    )
+    fake_http.responses["https://example.com/huge"] = FakeResponse(
+        status_code=200, text=huge_html,
+    )
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/huge", secret, tmp_path)
+
+    # No TTS calls were made (we bailed before synthesize)
+    assert len(fake_openai.calls) == 0
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "failed"
+    assert "too long" in eps[0]["error"].lower()

@@ -27,6 +27,7 @@ TTS_CHAR_LIMIT = 4000
 TTS_MODEL = "tts-1"
 DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
+MAX_BODY_CHARS = 100_000  # ~50 min of TTS audio, ~$1.50 max cost per article
 
 
 def fetch_article(url: str) -> tuple[str, str]:
@@ -123,12 +124,22 @@ def chunk_text(body: str, max_chars: int) -> list[str]:
 
 
 def synthesize(text: str, voice: str) -> bytes:
-    response = openai_client.audio.speech.create(
-        model=TTS_MODEL,
-        voice=voice,
-        input=text[:TTS_CHAR_LIMIT],
-    )
-    return response.content
+    """Generate MP3 audio for the full text, chunking at sentence boundaries
+    so each TTS call is within OpenAI's per-call cap.
+
+    Returns the concatenated MP3 bytes (naive byte concat — each chunk's MP3
+    frames are self-contained, so the combined file plays as one continuous
+    track in podcast apps)."""
+    chunks = chunk_text(text, TTS_CHAR_LIMIT)
+    parts = []
+    for chunk in chunks:
+        response = openai_client.audio.speech.create(
+            model=TTS_MODEL,
+            voice=voice,
+            input=chunk,
+        )
+        parts.append(response.content)
+    return b"".join(parts)
 
 
 def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> None:
@@ -139,6 +150,11 @@ def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> N
         slug = storage.write_pending_episode(data_dir, secret, source_url=url)
     try:
         title, body = fetch_article(url)
+        if len(body) > MAX_BODY_CHARS:
+            raise ValueError(
+                f"Article too long: {len(body):,} chars (limit: {MAX_BODY_CHARS:,}). "
+                f"Try sharing a shorter article."
+            )
         settings = storage.get_settings(data_dir, secret)
         audio = synthesize(body, settings["voice"])
         description = _excerpt(body, DESCRIPTION_EXCERPT_CHARS)
