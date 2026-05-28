@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Share Sheet Onboarding (v1.9)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .pill.warn { background: #f6efd6; color: var(--warn); }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+  blockquote {
+    margin: 14px 0; padding: 10px 16px;
+    border-left: 3px solid var(--ink-mute); color: var(--ink-soft);
+    background: var(--paper); font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.9</div>
+  <h1>Share Sheet Onboarding</h1>
+  <div class="meta">Feed Me · 2026-05-28 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Friends installing Feed Me for the first time can't find the Shortcut in iOS's share sheet
+  — it's buried under a "More" expander and then alphabetically at the bottom of a long
+  list. The user tested this directly and confirmed: the current Share-section instructions
+  on the settings page skip the most important step (tap More with ▼) entirely.
+  This spec rewrites those instructions to mirror what iOS actually does, and adds a
+  one-time "Pin Feed Me" tip that converts every future share into a single tap.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#share">Revised Share-an-article steps</a></li>
+    <li><a href="#pin">New Pin-Feed-Me tip</a></li>
+    <li><a href="#illustration">Inline illustration</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  Today's Share section reads:
+</p>
+
+<blockquote>
+  1. Tap [share icon] at the bottom of the screen — that's the iOS Share button.<br>
+  2. Scroll to <kbd>Feed Me</kbd> and tap it.<br>
+  3. Wait ~60 seconds.
+</blockquote>
+
+<p>
+  Step 2 is dead wrong as written. On modern iOS (verified by the user on 2026-05-28),
+  custom Shortcuts don't appear in the default share-sheet view at all. You have to tap a
+  <strong>More ▼</strong> button to reveal the full list of actions, then scroll to the
+  bottom (Shortcuts are listed alphabetically, after the built-in actions). Friends who
+  follow the current instructions will tap Share and see no Feed Me, conclude their install
+  is broken, and bounce.
+</p>
+
+<p>
+  Separately: once a friend completes one share, they're going to want every future share
+  to be one tap instead of "Share → More → scroll → tap". iOS supports pinning a Shortcut
+  to the top of the share sheet via an Edit mode. Most non-technical friends don't know
+  this. A small "Pin Feed Me" tip on the settings page recovers a huge UX win.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<ol>
+  <li><strong>Revised Share-section copy</strong> in <code>templates/settings.html</code>: four steps that mirror what iOS actually does, including the now-required <strong>More ▼</strong> tap.</li>
+  <li><strong>New "Pin Feed Me" tip callout</strong> below the steps: small bordered box with 4 sub-steps explaining the pin flow. Visual treatment is friendly (cream background, accent-orange border) so it reads as helpful, not as a warning.</li>
+  <li><strong>Inline CSS-rendered illustration</strong> of the iOS share sheet showing where the More ▼ button sits relative to the app row and the actions. Helps visual learners locate the button without a screenshot.</li>
+</ol>
+
+<p>Pure frontend change. No backend, no new routes, no template variables.</p>
+
+<h2 id="share">3 · Revised Share-an-article steps</h2>
+
+<p>The phase note remains: <code>In Safari (or Mail, Reader, anywhere with a Share button):</code></p>
+
+<p>Steps (4 instead of 3):</p>
+
+<table>
+  <thead><tr><th>#</th><th>Title</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>Tap <span style="display:inline-block; width: 1em; height: 1em; vertical-align: -0.15em; background: #007AFF; mask: url('data:image/svg+xml;utf8,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22&gt;&lt;line x1=%2212%22 y1=%223%22 x2=%2212%22 y2=%2215%22/&gt;&lt;polyline points=%227 8 12 3 17 8%22/&gt;&lt;path d=%22M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6%22/&gt;&lt;/svg&gt;') no-repeat center / contain;"></span> at the bottom of the screen</td>
+      <td>That's the iOS Share button.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Tap <kbd>More ▼</kbd> at the bottom of the share sheet</td>
+      <td>iOS hides Shortcuts behind this. Tapping it reveals the full list of actions.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Scroll to the bottom and tap <kbd>Feed Me</kbd></td>
+      <td>Shortcuts are listed alphabetically at the end of the actions. You'll get a "Sent ✓" notification.</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Wait ~60 seconds</td>
+      <td>The article appears in your podcast app. Pull-to-refresh if it's slow.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  The only structural change vs. v1.5 is splitting the old Step 2 into two steps (Tap
+  More, then scroll to Feed Me). The renumbering shifts "Wait" from step 3 to step 4.
+  CSS for the existing 3-row timeline already handles a 4-row layout — no styling work.
+</p>
+
+<h2 id="pin">4 · New Pin-Feed-Me tip</h2>
+
+<p>
+  Placed immediately after the 4 Share steps, before "Recent episodes". A bordered box
+  styled to read as friendly/helpful, not as a warning.
+</p>
+
+<h3>Copy</h3>
+
+<p><strong>Title:</strong> <code>💡 Pin Feed Me for one-tap sharing</code> (recommended, one-time)</p>
+
+<p><strong>Body:</strong></p>
+
+<ol>
+  <li>Open the share sheet on any article (Share → More)</li>
+  <li>Scroll to the bottom and tap <strong>Edit Actions</strong> (or <strong>Edit Suggestions</strong> on newer iOS)</li>
+  <li>Find Feed Me in the list, tap the green <strong>+</strong> next to it</li>
+  <li>Tap <strong>Done</strong>. Feed Me is now at the top of your share sheet — one tap from any article forever after.</li>
+</ol>
+
+<h3>Visual treatment</h3>
+
+<table>
+  <thead><tr><th>Element</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Background</td><td><code>#FFF8DC</code> (cream — same as bookmark-tip)</td></tr>
+    <tr><td>Border-left</td><td>3px solid <code>#b04a00</code> (accent orange — different from the warning yellow on bookmark-tip, signals "helpful tip" not "be careful")</td></tr>
+    <tr><td>Padding</td><td><code>14px 16px</code></td></tr>
+    <tr><td>Margin</td><td><code>20px 0 0</code> (under the steps; before "Recent episodes" heading)</td></tr>
+    <tr><td>Border-radius</td><td><code>3px</code> (matches existing callouts)</td></tr>
+    <tr><td>Title font-size</td><td><code>13px</code> (semibold), color <code>#0a0a0a</code></td></tr>
+    <tr><td>Body font-size</td><td><code>12px</code>, color <code>#4a4a4a</code></td></tr>
+    <tr><td>Step bullets</td><td>Default <code>&lt;ol&gt;</code> styling</td></tr>
+  </tbody>
+</table>
+
+<h2 id="illustration">5 · Inline illustration</h2>
+
+<p>
+  Placed between Step 1 and Step 2 of the Share section, OR as a small inline diagram next
+  to Step 2. Shows the iOS share sheet layout with the <strong>More ▼</strong> location
+  highlighted.
+</p>
+
+<p>
+  Implementation: pure CSS-rendered "mockup" — no images. A simplified vertical stack
+  approximating the share sheet:
+</p>
+
+<pre><code>┌─────────────────────────────────────┐  ← rounded panel
+│  AirDrop  Messages  Mail   ⋯         │  ← apps row
+├─────────────────────────────────────┤
+│  ▢  Copy                             │  ← top actions (a few)
+│  ▢  Add to Reading List              │
+│  ▢  Find on Page                     │
+│  ⌄  More                             │  ← highlighted with arrow callout
+└─────────────────────────────────────┘</code></pre>
+
+<p>
+  Implemented as a small <code>&lt;div&gt;</code> with stacked rows, a subtle border, and
+  rounded corners. The "More" row has a bold style + small "tap here" arrow/pointer to make
+  it unmissable. ~80 lines of CSS + markup. Same minimal aesthetic as the rest of the
+  settings page.
+</p>
+
+<p>
+  Constraints: must look reasonable at the settings-page max-width (480px) on mobile.
+  Renders inside the Share section. Doesn't try to be pixel-accurate to iOS — just
+  conveys the structure and the "More" location.
+</p>
+
+<h2 id="impl">6 · Implementation notes</h2>
+
+<h3>Files modified</h3>
+
+<ul>
+  <li><code>templates/settings.html</code> — rewrite Share-section steps; add the Pin tip callout; add CSS + markup for the inline share-sheet illustration.</li>
+  <li><code>tests/test_app.py</code> — update <code>test_settings_renders_for_known_user</code> assertions to check for the new content; add a small test for the pin-tip and the More keyword.</li>
+</ul>
+
+<h3>Template change scope</h3>
+
+<p>
+  All three changes (steps, pin tip, illustration) sit inside the existing
+  <code>&lt;h2&gt;Share an article · do this anytime&lt;/h2&gt;</code> block. No
+  cross-section changes. Existing CSS classes for <code>.step-row</code>,
+  <code>.step-num</code>, <code>.step-body</code> are reused for the new 4th step.
+  New CSS goes inside the existing <code>&lt;style&gt;</code> block at the top of
+  settings.html for two new classes: <code>.pin-tip</code> (the callout) and
+  <code>.share-sheet-illo</code> (the illustration).
+</p>
+
+<h3>Existing tests to update</h3>
+
+<p>
+  <code>test_settings_renders_for_known_user</code> currently asserts the page contains
+  <code>"Share an article"</code>. That still holds. Add two new substring checks for the
+  new content:
+</p>
+
+<ul>
+  <li><code>"More"</code> — appears in step 2 ("Tap More ▼...")</li>
+  <li><code>"Pin Feed Me"</code> — appears in the new tip callout</li>
+</ul>
+
+<h2 id="tests">7 · Testing</h2>
+
+<p>
+  Template-only change. Test coverage is via substring assertions in
+  <code>test_settings_renders_for_known_user</code>:
+</p>
+
+<ol>
+  <li>Existing assertions for <code>"Share an article"</code>, <code>"Install Shortcut"</code>, etc. continue to pass.</li>
+  <li>New assertion: <code>"More"</code> appears (verifies step 2 has the More ▼ instruction).</li>
+  <li>New assertion: <code>"Pin Feed Me"</code> appears (verifies the new tip is rendered).</li>
+</ol>
+
+<p>
+  Visual treatment of the callout and the illustration are not testable at the request
+  level. Verified by eye after deploy.
+</p>
+
+<h2 id="scope">8 · Out of scope</h2>
+
+<ul>
+  <li><strong>Real iOS screenshots.</strong> The CSS illustration is good enough and doesn't rot when iOS UI changes (it's intentionally schematic, not literal).</li>
+  <li><strong>Per-iOS-version copy.</strong> Older iOS may call the edit button something different. The spec mentions both "Edit Actions" and "Edit Suggestions" inline, so the user can find whichever applies.</li>
+  <li><strong>Detecting whether the user has already pinned.</strong> No way to detect from a web page; the tip stays visible always.</li>
+  <li><strong>iOS-version detection / conditional copy.</strong> Same text for all iOS versions; trust the user to map between phrasings.</li>
+  <li><strong>Video walkthrough.</strong> Was offered, user declined.</li>
+</ul>
+
+<h2 id="followups">9 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Replace the CSS illustration with a real screenshot or short video.</strong>
+    The CSS schematic is good for v1.9 but a real screenshot would convey the actual look
+    better. Costs maintenance (UI rot) and a screenshot pipeline. Out of v1.9.
+  </li>
+  <li>
+    <strong>Auto-pin during install.</strong> Apple Shortcuts has no API to programmatically
+    pin a shortcut to the share sheet. If they ever add it, automate this.
+  </li>
+  <li>
+    <strong>Detect first-time user vs returning, hide the tip after first share.</strong>
+    Would require server-side state and per-user JS — feels heavier than the value. Skip
+    unless friends complain the tip clutters.
+  </li>
+</ul>
+
+<h2 id="accept">10 · Acceptance criteria</h2>
+
+<ul>
+  <li>Share section has 4 steps, with step 2 explicitly mentioning "More" and a down arrow.</li>
+  <li>"Pin Feed Me" tip callout renders below the 4 steps, before "Recent episodes".</li>
+  <li>Inline CSS-rendered illustration appears in the Share section showing the More button location.</li>
+  <li>All existing tests pass; new assertions for <code>"More"</code> and <code>"Pin Feed Me"</code> pass.</li>
+  <li>Deployed to <code>feed-me.xyz</code>; visual check on iPhone Safari confirms layout is sensible at 390px viewport.</li>
+  <li>User confirms that a fresh-eyes test (e.g., asking a non-technical friend) successfully completes the share flow without help, including pinning Feed Me to the top.</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Verified iOS behavior from user testing on 2026-05-28 — they confirmed Feed Me is hidden
+  behind a "More" expander and that pinning via "Edit Suggested/Actions" works to move it
+  to the top. CSS illustration chosen over real screenshot for maintenance simplicity.
+</p>
+
+</div>
+</body>
+</html>
