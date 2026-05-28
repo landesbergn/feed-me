@@ -17,11 +17,6 @@
     }
     h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
          line-height: 1.15; margin: 0 0 6px; }
-    .bookmark-tip {
-      background: #FFF8DC; border-left: 3px solid #B8860B;
-      padding: 10px 13px; font-size: 12px; color: #5a4a14;
-      margin: 14px 0 28px; border-radius: 3px;
-    }
     h2 {
       font-size: 11px; color: #767676; text-transform: uppercase;
       letter-spacing: 0.14em; font-weight: 700;
@@ -175,23 +170,28 @@
 
   <div class="brand">Feed Me</div>
   <h1>Your feed is ready.</h1>
-  <div class="bookmark-tip">
-    Bookmark this page — it's your account. Losing the URL means losing the feed.
-  </div>
 
   <h2>Set up · do this once</h2>
 
   <div class="step-row">
     <div class="step-num">1</div>
     <div class="step-body">
-      <div class="title">Install the Shortcut</div>
+      <div class="title">Bookmark this page</div>
+      <div class="desc">It's your account — losing the URL means losing the feed.</div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="title">Install the iOS Shortcut</div>
       <div class="desc">We'll copy your ingest URL to your clipboard first, then iOS will ask you to paste it during install.</div>
       <button class="btn-primary" type="button" onclick="installShortcut()">Install Shortcut</button>
     </div>
   </div>
 
   <div class="step-row">
-    <div class="step-num">2</div>
+    <div class="step-num">3</div>
     <div class="step-body">
       <div class="title">Subscribe in your podcast app</div>
       <div class="desc">One tap for Apple Podcasts. For Overcast, Pocket Casts, Castro, etc., copy the URL and paste it in.</div>
