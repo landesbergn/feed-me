@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.9 — 2026-05-28
+
+Share-sheet onboarding:
+
+- Share section now correctly explains the iOS share-sheet flow: tap Share → tap **More ▼** → scroll to bottom → tap Feed Me. Previous instructions skipped the "More" step entirely, which meant friends following the page couldn't find Feed Me at all.
+- New "💡 Pin Feed Me for one-tap sharing" tip callout: 4-step instructions for moving Feed Me to the top of the share sheet via Edit Actions / Edit Suggestions. Future shares become one tap.
+- Small inline CSS-rendered illustration of the share sheet showing where More ▼ sits.
+- Spec: `docs/superpowers/specs/2026-05-28-share-sheet-onboarding.html`
+
 ## v1.8 — 2026-05-28
 
 Parallel TTS — 10 min → ~90s for long articles:
