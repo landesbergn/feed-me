@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.8 — 2026-05-28
+
+Parallel TTS — 10 min → ~90s for long articles:
+
+- `synthesize()` now issues all chunked TTS calls in parallel via `ThreadPoolExecutor` instead of a sequential `for` loop. `pool.map()` preserves input order so MP3 bytes are still concatenated chronologically.
+- No bounded concurrency: worst-case 25 chunks (100k char cap) stays under OpenAI's 50 req/min tier-1 rate limit.
+- New regression test guards against switching back to completion-order output.
+- Spec: `docs/superpowers/specs/2026-05-27-parallel-tts.html`
+
 ## v1.7 — 2026-05-27
 
 Fixes silent audio truncation on long articles:
