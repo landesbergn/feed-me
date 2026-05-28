@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — TTS Chunking + Length Cap (v1.7)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.7</div>
+  <h1>TTS Chunking + Length Cap</h1>
+  <div class="meta">Feed Me · 2026-05-27 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Today every article body is silently truncated to <code>TTS_CHAR_LIMIT = 4000</code>
+  before going to OpenAI TTS, because that's the model's per-call input cap. A typical
+  article runs 6-15k chars, so most audio cuts off mid-sentence around the four-minute
+  mark. This fixes that with sentence-aware chunking, plus a 100k char hard ceiling
+  (~50 min of audio, ~$1.50 of TTS) above which we fail the episode rather than risk a
+  surprise bill.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#chunk">Chunking strategy</a></li>
+    <li><a href="#cap">100k cap behavior</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  <code>synthesize</code> in <code>ingest.py</code> does:
+</p>
+
+<pre><code>response = openai_client.audio.speech.create(
+    model=TTS_MODEL,
+    voice=voice,
+    input=text[:TTS_CHAR_LIMIT],  # ← silently truncated to 4000 chars
+)</code></pre>
+
+<p>
+  The 4000-char limit is OpenAI's, not ours — <code>tts-1</code> rejects longer input.
+  The fix is to call TTS multiple times and concatenate the MP3 bytes. MP3 frames are
+  self-contained, so naive byte concatenation produces a valid playable file (verified by
+  the user with their Notion article observation; modern podcast apps handle this fine).
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<ol>
+  <li>A new helper <code>chunk_text(body, max_chars) → list[str]</code> that splits long
+    text into chunks ≤ max_chars at sentence boundaries when possible, falling back to
+    word boundaries, then hard cuts only if a single word/sentence is longer than max_chars.</li>
+  <li>Replace <code>synthesize</code>'s single TTS call with a loop over chunks; concatenate
+    the response bytes; return the combined MP3.</li>
+  <li>In <code>process()</code>, before chunking, check <code>len(body) > 100_000</code>.
+    If so, raise an explicit exception with a clear message; <code>write_failed_episode</code>
+    records it.</li>
+</ol>
+
+<h2 id="chunk">3 · Chunking strategy</h2>
+
+<p>For each chunk we want it to be ≤ 4000 chars (the TTS-1 hard cap). Three priorities:</p>
+
+<ol>
+  <li>Split at the last sentence boundary (<code>.</code> + space, <code>!</code> + space,
+    <code>?</code> + space) before the cap.</li>
+  <li>If no sentence boundary in the window, split at the last word boundary (space) before the cap.</li>
+  <li>If no spaces (unlikely — a 4000-char run with no spaces is extraordinary), hard-cut at the cap.</li>
+</ol>
+
+<h3>Algorithm</h3>
+
+<pre><code>def chunk_text(body: str, max_chars: int) -> list[str]:
+    """Split body into chunks <= max_chars, preferring sentence boundaries."""
+    chunks = []
+    pos = 0
+    while pos < len(body):
+        end = pos + max_chars
+        if end >= len(body):
+            chunks.append(body[pos:].strip())
+            break
+        window = body[pos:end]
+        # 1. Try sentence boundary
+        split_at = max(
+            window.rfind(". "),
+            window.rfind("! "),
+            window.rfind("? "),
+        )
+        if split_at == -1 or split_at &lt; max_chars * 0.5:
+            # 2. Fall back to word boundary
+            split_at = window.rfind(" ")
+        if split_at == -1:
+            # 3. Hard cut
+            split_at = max_chars
+        else:
+            split_at += 1  # include the punctuation/space in chunk
+        chunks.append(body[pos:pos + split_at].strip())
+        pos += split_at
+    return [c for c in chunks if c]
+</code></pre>
+
+<p>
+  The 50%-of-cap minimum (<code>split_at &lt; max_chars * 0.5</code>) avoids producing
+  tiny chunks when sentence boundaries happen to land near the start of the window.
+</p>
+
+<h3>MP3 concatenation</h3>
+
+<p>
+  OpenAI returns raw MP3 bytes per chunk. Naive concatenation produces a valid playable
+  MP3 stream — each chunk is independent ID3-less frames. Tested in practice; podcast
+  apps handle it.
+</p>
+
+<h3>Latency note</h3>
+
+<p>
+  Each TTS-1 call takes ~3-5 seconds. A 4-chunk article takes ~15-20s. The user's
+  experience: Pending row appears within ~3s (unchanged — fetch_title runs before
+  chunking), then Ready chip appears 15-30s later instead of the current 30-60s for
+  truncated single-call episodes. Net feeling: slower per share, but the episode is
+  complete.
+</p>
+
+<h2 id="cap">4 · 100k cap behavior</h2>
+
+<p>
+  Before invoking <code>chunk_text</code>, <code>process()</code> checks:
+</p>
+
+<pre><code>MAX_BODY_CHARS = 100_000  # ~50 minutes of TTS audio, ~$1.50 max cost
+
+if len(body) &gt; MAX_BODY_CHARS:
+    raise ValueError(
+        f"Article too long: {len(body):,} chars (limit: {MAX_BODY_CHARS:,}). "
+        f"Try sharing a shorter article, or the original URL works in browser."
+    )</code></pre>
+
+<p>
+  The exception propagates to the existing <code>except Exception as e</code> block in
+  <code>process()</code>, which calls <code>write_failed_episode</code> with
+  <code>str(e)[:200]</code>. The failed row appears in the settings table with the
+  error message visible to the user.
+</p>
+
+<h3>UX effect on the failed row</h3>
+
+<p>
+  Today a failed row reads "(couldn't extract article)" in the title slot and shows
+  the error in the source URL area. With this change, the same UI applies — the error
+  string starts with "Article too long: N,NNN chars..." which is clearly self-explanatory.
+</p>
+
+<h2 id="impl">5 · Implementation notes</h2>
+
+<h3>Modified files</h3>
+
+<ul>
+  <li><code>ingest.py</code> — new <code>chunk_text(body, max_chars) → list[str]</code>
+    helper, new <code>MAX_BODY_CHARS = 100_000</code> constant, updated
+    <code>synthesize</code> to chunk and concatenate, updated <code>process()</code> to
+    check the body cap before synthesize.</li>
+  <li><code>tests/test_ingest.py</code> — tests for chunk_text (short body returns one
+    chunk, long body splits at sentence boundary, very long body splits multiple times,
+    no-sentence body falls back to word boundary); test that synthesize calls TTS
+    multiple times and concatenates bytes; test that process raises and writes
+    a failed episode when body exceeds the cap.</li>
+</ul>
+
+<h3>synthesize signature stays the same</h3>
+
+<p>
+  Externally, <code>synthesize(text, voice) → bytes</code> still returns combined MP3
+  bytes. Internally it now loops:
+</p>
+
+<pre><code>def synthesize(text: str, voice: str) -> bytes:
+    chunks = chunk_text(text, TTS_CHAR_LIMIT)
+    parts = []
+    for chunk in chunks:
+        response = openai_client.audio.speech.create(
+            model=TTS_MODEL,
+            voice=voice,
+            input=chunk,
+        )
+        parts.append(response.content)
+    return b"".join(parts)</code></pre>
+
+<p>
+  The <code>text[:TTS_CHAR_LIMIT]</code> truncation is gone — replaced by proper
+  chunking.
+</p>
+
+<h3>FakeOpenAI test fixture</h3>
+
+<p>
+  The existing <code>FakeOpenAI</code> fixture in <code>tests/conftest.py</code> records
+  each TTS call's kwargs in <code>fake_openai.calls</code>. With chunking, multiple
+  calls are made — tests can assert <code>len(fake_openai.calls)</code> equals the
+  expected chunk count, and concatenate <code>fake_openai.audio_bytes</code> N times to
+  match the returned bytes.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+
+<h3>chunk_text tests</h3>
+<ul>
+  <li><code>test_chunk_text_short_body_returns_one_chunk</code> — body shorter than max returns single chunk.</li>
+  <li><code>test_chunk_text_splits_at_sentence_boundary</code> — body with several "Sentence. " markers gets split between sentences.</li>
+  <li><code>test_chunk_text_falls_back_to_word_boundary</code> — body with no sentence punctuation but spaces splits at word boundary.</li>
+  <li><code>test_chunk_text_handles_body_longer_than_two_chunks</code> — 9k-char body with 3000-char limit produces 3 chunks.</li>
+  <li><code>test_chunk_text_drops_empty_chunks</code> — trailing whitespace doesn't create an empty final chunk.</li>
+</ul>
+
+<h3>synthesize tests</h3>
+<ul>
+  <li><code>test_synthesize_one_chunk_calls_tts_once</code> — short text → 1 TTS call (existing test should already cover this).</li>
+  <li><code>test_synthesize_long_text_calls_tts_multiple_times</code> — text spanning multiple chunks → multiple TTS calls; bytes concatenated.</li>
+  <li>Existing <code>test_synthesize_truncates_long_text</code> needs to be UPDATED (renamed) — truncation no longer happens; new test should assert chunking instead.</li>
+</ul>
+
+<h3>process tests</h3>
+<ul>
+  <li><code>test_process_writes_failure_when_body_exceeds_cap</code> — fake HTTP returns
+    a body longer than 100k chars; process() runs; final episode is failed with the
+    "Article too long" error.</li>
+</ul>
+
+<h3>No changes needed</h3>
+
+<p>
+  The existing storage / RSS / app / template tests are unaffected — chunking is purely
+  internal to <code>synthesize</code>.
+</p>
+
+<h2 id="scope">7 · Out of scope</h2>
+
+<ul>
+  <li><strong>Configurable per-user limits.</strong> 100k applies to everyone.</li>
+  <li><strong>Switching to a longer-context TTS model.</strong> Even <code>tts-1-hd</code>
+    has the same 4096 cap. OpenAI's newer <code>gpt-4o-mini-tts</code> may have different
+    limits; not v1.7.</li>
+  <li><strong>Parallel chunked TTS calls.</strong> Could halve latency by parallelizing
+    via <code>asyncio.gather</code> or a thread pool, but adds complexity. v1.7 stays
+    sequential.</li>
+  <li><strong>Progress indication during multi-chunk processing.</strong> Pending row
+    just shows "Pending" the whole time. No "chunk 2 of 5" updates.</li>
+  <li><strong>MP3 stitching with re-encoding.</strong> Naive concat works; we don't need
+    ffmpeg.</li>
+</ul>
+
+<h2 id="followups">8 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Parallel TTS calls.</strong> If you regularly share long-form essays, halving
+    latency by running chunks concurrently is worth it. Adds ~30 LOC.
+  </li>
+  <li>
+    <strong>Switch to gpt-4o-mini-tts.</strong> Better quality, possibly different
+    char limits. Worth evaluating once it's stable.
+  </li>
+  <li>
+    <strong>Stream the audio bytes to the volume as chunks arrive.</strong> Today we
+    buffer everything in memory before writing the MP3. For 50-min articles that's
+    50-100MB in RAM. Streaming would be more memory-friendly. Not urgent for hobby use.
+  </li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+
+<ul>
+  <li>A 6-15k char article (most real articles) is fully narrated end-to-end — no truncation, no cutoff at the 4-minute mark.</li>
+  <li>A 100k+ char article produces a Failed episode with the error message "Article too long: NNN,NNN chars (limit: 100,000)…" visible in the settings table.</li>
+  <li>The Notion article that triggered this report, when re-shared, plays through to the end.</li>
+  <li>All existing tests pass; new tests pass.</li>
+  <li>No new dependencies. No changes to storage, RSS, or template layer.</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-05-27. Chunking at sentence boundaries chosen
+  for narration quality. 100k cap with hard error chosen over silent truncation for
+  cost-control transparency.
+</p>
+
+</div>
+</body>
+</html>
