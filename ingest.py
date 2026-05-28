@@ -81,6 +81,47 @@ def _excerpt(body: str, max_chars: int) -> str:
     return cut + "…"
 
 
+def chunk_text(body: str, max_chars: int) -> list[str]:
+    """Split body into chunks <= max_chars, preferring sentence boundaries.
+
+    Algorithm: for each window of up to max_chars,
+      1. Split at the last sentence boundary ('. ', '! ', '? ').
+      2. If no sentence boundary, fall back to the last word boundary (space).
+      3. If no spaces, hard cut at max_chars.
+
+    Returns a list of non-empty chunks.
+    """
+    chunks = []
+    pos = 0
+    while pos < len(body):
+        end = pos + max_chars
+        if end >= len(body):
+            tail = body[pos:].strip()
+            if tail:
+                chunks.append(tail)
+            break
+        window = body[pos:end]
+        # 1. Try sentence boundary
+        split_at = max(
+            window.rfind(". "),
+            window.rfind("! "),
+            window.rfind("? "),
+        )
+        if split_at == -1 or split_at < max_chars * 0.5:
+            # 2. Fall back to word boundary
+            split_at = window.rfind(" ")
+        if split_at == -1:
+            # 3. Hard cut
+            split_at = max_chars
+        else:
+            split_at += 1  # include the punctuation/space in chunk
+        chunk = body[pos:pos + split_at].strip()
+        if chunk:
+            chunks.append(chunk)
+        pos += split_at
+    return chunks
+
+
 def synthesize(text: str, voice: str) -> bytes:
     response = openai_client.audio.speech.create(
         model=TTS_MODEL,

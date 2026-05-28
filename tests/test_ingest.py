@@ -182,3 +182,51 @@ def test_process_writes_description_from_body(
     assert len(desc) > 0
     # Description should contain text from the body (excerpt) — not just the URL
     assert "first paragraph" in desc.lower() or "substantive" in desc.lower()
+
+
+def test_chunk_text_short_body_returns_one_chunk():
+    body = "Short text under the limit."
+    chunks = ingest.chunk_text(body, max_chars=4000)
+    assert chunks == ["Short text under the limit."]
+
+
+def test_chunk_text_splits_at_sentence_boundary():
+    body = (
+        "First sentence here. "
+        "Second sentence here. "
+        "Third sentence here."
+    )
+    chunks = ingest.chunk_text(body, max_chars=42)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert len(c) <= 42
+    assert "First sentence" in chunks[0]
+    assert "Third sentence" in chunks[-1]
+
+
+def test_chunk_text_falls_back_to_word_boundary_when_no_sentences():
+    body = "one two three four five six seven eight nine ten eleven twelve"
+    chunks = ingest.chunk_text(body, max_chars=20)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert len(c) <= 20
+        assert not c.endswith("-")
+    combined = " ".join(chunks).split()
+    original = body.split()
+    assert combined == original
+
+
+def test_chunk_text_handles_body_longer_than_two_chunks():
+    body = " ".join([f"Sentence number {i} here." for i in range(1, 10)])
+    chunks = ingest.chunk_text(body, max_chars=100)
+    assert len(chunks) >= 2
+    for c in chunks:
+        assert len(c) <= 100
+
+
+def test_chunk_text_drops_empty_chunks():
+    """Trailing whitespace shouldn't create an empty final chunk."""
+    body = "Real content here.   "
+    chunks = ingest.chunk_text(body, max_chars=4000)
+    assert all(c.strip() for c in chunks)
+    assert len(chunks) == 1
