@@ -128,6 +128,63 @@
     details.settings .body p { font-size: 11px; color: #6a6a6a; margin: 4px 0 6px; }
     .danger-label { color: #b04a00 !important; }
     .danger-btn { border-color: #e5b8a0 !important; color: #b04a00 !important; }
+    /* v1.9: Share-sheet illustration */
+    .share-sheet-illo {
+      margin: 10px 0 4px;
+      background: #f5f5f7;
+      border: 1px solid #e5e5ea;
+      border-radius: 12px;
+      padding: 8px;
+      font-family: -apple-system, sans-serif;
+      font-size: 11px;
+    }
+    .share-sheet-illo .ssi-row {
+      padding: 6px 8px;
+    }
+    .share-sheet-illo .ssi-row + .ssi-row {
+      border-top: 1px solid #e5e5ea;
+    }
+    .share-sheet-illo .ssi-row.apps {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      padding-bottom: 8px;
+    }
+    .share-sheet-illo .ssi-pill {
+      display: inline-block; padding: 2px 8px;
+      background: #fff; border: 1px solid #d0d0d5; border-radius: 999px;
+      color: #3a3a3a;
+    }
+    .share-sheet-illo .ssi-row.action { color: #1a1a1a; }
+    .share-sheet-illo .ssi-row.ssi-more {
+      font-weight: 700; color: #007AFF;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .share-sheet-illo .ssi-arrow {
+      font-size: 10px; color: #b04a00; font-weight: 600;
+    }
+
+    /* v1.9: Pin Feed Me tip callout */
+    .pin-tip {
+      background: #FFF8DC;
+      border-left: 3px solid #b04a00;
+      padding: 14px 16px;
+      margin: 20px 0 0;
+      border-radius: 3px;
+      font-family: -apple-system, sans-serif;
+    }
+    .pin-tip-title {
+      font-size: 13px; font-weight: 600;
+      color: #0a0a0a; margin-bottom: 6px;
+    }
+    .pin-tip-sub {
+      font-weight: 400; color: #6a6a6a; font-size: 11px;
+    }
+    .pin-tip ol {
+      font-size: 12px; color: #4a4a4a;
+      padding-left: 18px; margin: 4px 0 0;
+      line-height: 1.5;
+    }
+    .pin-tip ol li { margin: 4px 0; }
+    .pin-tip strong { color: #0a0a0a; }
   </style>
 </head>
 <body>
@@ -185,17 +242,47 @@
   <div class="step-row">
     <div class="step-num">2</div>
     <div class="step-body">
-      <div class="title">Scroll to <kbd>Feed Me</kbd> and tap it</div>
-      <div class="desc">It lives in the row of app icons. You'll get a "Sent ✓" notification.</div>
+      <div class="title">Tap <kbd>More ▼</kbd> at the bottom of the share sheet</div>
+      <div class="desc">iOS hides Shortcuts behind this. Tapping it reveals the full list of actions.</div>
+      <div class="share-sheet-illo" aria-hidden="true">
+        <div class="ssi-row apps">
+          <span class="ssi-pill">AirDrop</span>
+          <span class="ssi-pill">Messages</span>
+          <span class="ssi-pill">Mail</span>
+          <span class="ssi-pill">…</span>
+        </div>
+        <div class="ssi-row action">Copy</div>
+        <div class="ssi-row action">Add to Reading List</div>
+        <div class="ssi-row action">Find on Page</div>
+        <div class="ssi-row action ssi-more">More ▼ <span class="ssi-arrow">← tap here</span></div>
+      </div>
     </div>
   </div>
 
   <div class="step-row">
     <div class="step-num">3</div>
     <div class="step-body">
+      <div class="title">Scroll to the bottom and tap <kbd>Feed Me</kbd></div>
+      <div class="desc">Shortcuts are listed alphabetically at the end of the actions. You'll get a "Sent ✓" notification.</div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">4</div>
+    <div class="step-body">
       <div class="title">Wait ~60 seconds</div>
       <div class="desc">The article appears as a new episode in your podcast app. Pull-to-refresh if it's slow.</div>
     </div>
+  </div>
+
+  <div class="pin-tip">
+    <div class="pin-tip-title">💡 Pin Feed Me for one-tap sharing <span class="pin-tip-sub">(recommended, one-time)</span></div>
+    <ol>
+      <li>Open the share sheet on any article (Share → More)</li>
+      <li>Scroll to the bottom and tap <strong>Edit Actions</strong> (or <strong>Edit Suggestions</strong> on newer iOS)</li>
+      <li>Find Feed Me in the list, tap the green <strong>+</strong> next to it</li>
+      <li>Tap <strong>Done</strong>. Feed Me is now at the top of your share sheet — one tap from any article forever after.</li>
+    </ol>
   </div>
 
   <div id="episodes-section">

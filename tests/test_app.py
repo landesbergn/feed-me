@@ -67,6 +67,9 @@ def test_settings_renders_for_known_user(client):
     assert f"/u/{secret}/ingest" in response.text
     # v1.5: welcome episode pre-seeded on /create
     assert "Welcome to Feed Me" in response.text
+    # v1.9: revised share sheet onboarding
+    assert "More" in response.text  # the "Tap More ▼" instruction
+    assert "Pin Feed Me" in response.text  # the new tip callout
 
 
 def test_settings_lists_recent_episodes(client, tmp_path):
