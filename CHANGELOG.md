@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.7 — 2026-05-27
+
+Fixes silent audio truncation on long articles:
+
+- `synthesize()` now chunks the article body at sentence boundaries and makes multiple TTS calls instead of truncating to the first 4000 chars. MP3 bytes are concatenated naively (works because tts-1 frames are self-contained). Articles over 4 min (~600 words) now play through to the end.
+- Hard cap at 100k chars per article (~50 min of audio, ~$1.50 max cost). Articles over the cap fail with the message "Article too long: NNN,NNN chars (limit: 100,000)..." visible on the settings page, instead of silently running up cost.
+- Spec: `docs/superpowers/specs/2026-05-27-tts-chunking-and-length-cap.html`
+
 ## v1.6 — 2026-05-27
 
 Episode metadata + Apple Podcasts compatibility:
