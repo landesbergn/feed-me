@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Parallel TTS (v1.8)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v1.8</div>
+  <h1>Parallel TTS</h1>
+  <div class="meta">Feed Me · 2026-05-27 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  v1.7 fixed the silent audio truncation by chunking long articles into multiple TTS calls,
+  but those calls run sequentially. A 50-minute article takes ~10 minutes to ingest. This
+  spec parallelizes the calls so the same article finishes in roughly the time of the
+  slowest single chunk — about 60-90 seconds.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  Verified end-to-end: a 50,400-char Notion article takes 10:02 from share to ready
+  (13 chunks × ~45s/chunk sequentially). The chunks are independent — each TTS call
+  is a pure function of the chunk text plus voice. There's no reason to serialize.
+</p>
+
+<p>
+  OpenAI's rate limit for the user's billing tier is 50 req/min for <code>tts-1</code>.
+  Even a worst-case 25-chunk article (100k char cap ÷ 4k chars/chunk) burst all at
+  once is well under that ceiling. No bounded concurrency needed.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<p>
+  One change to <code>synthesize()</code> in <code>ingest.py</code>: replace the
+  sequential <code>for chunk in chunks: …</code> loop with a
+  <code>ThreadPoolExecutor</code> that issues all TTS calls in parallel and collects
+  results in order via <code>executor.map()</code>.
+</p>
+
+<p>
+  Naive byte concatenation of the returned chunks still produces a valid MP3 — same as
+  v1.7. The fact that they were generated in parallel doesn't change the output.
+</p>
+
+<h2 id="impl">3 · Implementation notes</h2>
+
+<h3>Single change to <code>synthesize</code></h3>
+
+<p>Replace the existing function in <code>/Users/noah/Desktop/feed-me/ingest.py</code>:</p>
+
+<pre><code>from concurrent.futures import ThreadPoolExecutor
+
+
+def synthesize(text: str, voice: str) -> bytes:
+    """Generate MP3 audio for the full text. Chunks at sentence boundaries
+    and issues ALL TTS calls in parallel; returns the concatenated MP3 bytes."""
+    chunks = chunk_text(text, TTS_CHAR_LIMIT)
+    if not chunks:
+        return b""
+
+    def render_one(chunk: str) -> bytes:
+        response = openai_client.audio.speech.create(
+            model=TTS_MODEL,
+            voice=voice,
+            input=chunk,
+        )
+        return response.content
+
+    # max_workers=len(chunks) → unbounded parallelism (one worker per chunk).
+    # Even for a 100k-char article that's ≤25 concurrent calls, well under
+    # OpenAI's 50 req/min rate limit for tier-1 paid accounts.
+    with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
+        parts = list(pool.map(render_one, chunks))
+    return b"".join(parts)
+</code></pre>
+
+<h3>Order preservation</h3>
+
+<p>
+  <code>executor.map()</code> returns results in the same order as inputs, regardless of
+  completion order. The concatenated bytes are therefore in the right sequence —
+  audio plays chronologically with the article body.
+</p>
+
+<h3>Failure behavior</h3>
+
+<p>
+  If any single TTS call raises (network error, 429, etc.), <code>pool.map()</code>
+  re-raises the first exception when its result is requested. The exception propagates
+  out of the <code>with</code> block, then out of <code>synthesize</code>, into
+  <code>process</code>'s existing <code>except Exception</code> handler, which writes
+  a failed episode. Other in-flight chunks finish their work but their results are
+  discarded. Acceptable: failed audio is more useful (user sees the failure on the
+  settings page) than partial audio.
+</p>
+
+<h3>Memory</h3>
+
+<p>
+  25 concurrent chunks × ~4 MB MP3 each ≈ 100 MB peak. Comfortable on the 1 GB Fly
+  machine.
+</p>
+
+<h3>Worker thread context</h3>
+
+<p>
+  <code>synthesize</code> is called from <code>process</code>, which runs in a daemon
+  thread spawned by <code>/ingest</code>. The <code>ThreadPoolExecutor</code> creates
+  additional worker threads inside that daemon thread. Standard Python threading; no
+  special handling needed.
+</p>
+
+<h2 id="tests">4 · Testing</h2>
+
+<h3>Existing tests still pass</h3>
+
+<ul>
+  <li><code>test_synthesize_long_text_calls_tts_for_each_chunk</code> — asserts each chunk
+    triggers a TTS call and bytes concatenate. Still passes; the order of <code>fake_openai.calls</code>
+    may differ from input order under parallelism, but the count and the byte concat assertion
+    don't depend on order.</li>
+  <li><code>test_synthesize_short_text_calls_tts_once</code> — 1 chunk → 1 worker → 1 call. Identical behavior.</li>
+  <li>All other <code>process</code> and ingest tests are unaffected (single-chunk happy path uses the same code).</li>
+</ul>
+
+<h3>Updated test for order preservation under parallelism</h3>
+
+<p>
+  The existing long-text test asserts <code>audio == fake_openai.audio_bytes * len(fake_openai.calls)</code>.
+  This works because the fake returns the SAME bytes every time, so order is invisible.
+  To verify order preservation under real parallelism, add one new test where each call
+  returns distinguishable bytes per chunk content:
+</p>
+
+<pre><code>def test_synthesize_preserves_chunk_order(monkeypatch):
+    """Even when chunks complete out of order, output bytes are in input order."""
+    import ingest
+
+    # A fake that returns the chunk text itself as the "audio" so we can
+    # verify ordering. Also adds variable delay to encourage out-of-order completion.
+    import time
+    class OrderFake:
+        def __init__(self):
+            self.calls = []
+        @property
+        def audio(self):
+            return self
+        @property
+        def speech(self):
+            return self
+        def create(self, *, model, voice, input):
+            self.calls.append(input)
+            # Simulate variable latency: earlier chunks take longer than later ones
+            # to encourage them to finish AFTER later chunks.
+            chunk_index = int(input.split()[-1])  # last word is the chunk number
+            time.sleep(0.05 * (5 - chunk_index))
+            return type("R", (), {"content": input.encode("utf-8")})()
+
+    fake = OrderFake()
+    monkeypatch.setattr(ingest, "openai_client", fake)
+
+    # Build a body with clearly distinguishable chunks. Each "sentence" ends with
+    # a unique trailing number, and chunk_text will split between sentences.
+    body = ". ".join([f"Chunk number {i}" for i in range(5)]) + "."
+    audio = ingest.synthesize(body, "shimmer")
+
+    # The bytes must read in input order, regardless of which TTS call finished first.
+    assert audio.startswith(b"Chunk number 0")
+    assert audio.endswith(b"Chunk number 4.") or audio.endswith(b"Chunk number 4")
+</code></pre>
+
+<p>
+  (The exact assertion may need to be tweaked depending on how <code>chunk_text</code>
+  splits the synthetic body — the goal is just to verify order survives parallelism.)
+</p>
+
+<h2 id="scope">5 · Out of scope</h2>
+
+<ul>
+  <li><strong>Bounded concurrency / rate-limit retry.</strong> User is on tier-1 paid;
+    25 concurrent calls is under the 50 req/min limit. If we ever hit 429s we add backoff
+    + retry then.</li>
+  <li><strong>Progress UI during pending.</strong> Friend still just sees "Pending" until
+    the whole article is done. Now Pending lasts 60-90s instead of 10 min, so the bar for
+    progress UI is lower.</li>
+  <li><strong>Async/await refactor.</strong> Using sync OpenAI client + ThreadPoolExecutor
+    is simpler than rewriting <code>synthesize</code> as async. No benefit to async here.</li>
+  <li><strong>Streaming MP3 to disk as chunks complete.</strong> All chunks still buffered
+    in memory before writing. ~100 MB peak is fine.</li>
+</ul>
+
+<h2 id="followups">6 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Pending-row progress indicator.</strong> Even at 60-90s, "Pending" with no
+    estimate is opaque. Could show "Generating chunk 7 of 13" or just an ETA. Would need
+    a way to surface progress from the worker thread; trivially possible by writing
+    intermediate state to the episode JSON.
+  </li>
+  <li>
+    <strong>Retry on 429.</strong> If parallelism + a higher-traffic future state ever
+    starts hitting rate limits, add exponential backoff. Out of v1.8.
+  </li>
+  <li>
+    <strong>Stuck-Pending cleanup.</strong> Daemon worker threads die on machine restart;
+    pending stubs from interrupted ingests live forever. Garbage-collect stuck Pendings
+    older than ~5 min as Failed on startup. Independent v1.x.
+  </li>
+</ul>
+
+<h2 id="accept">7 · Acceptance criteria</h2>
+
+<ul>
+  <li>Re-sharing the same Notion article that took 10:02 in v1.7 completes in &lt; 2 minutes wall time on prod.</li>
+  <li>Order is preserved — the audio plays chronologically through the article.</li>
+  <li>All existing tests pass; one new test verifies order preservation under parallel completion.</li>
+  <li>No new dependencies. Just <code>concurrent.futures.ThreadPoolExecutor</code> from stdlib.</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Decided via terminal Q&amp;A on 2026-05-27. Unlimited concurrency chosen because
+  worst-case chunk count (25) is well under the user's tier-1 rate limit (50 req/min).
+  No retry, no bounded pool, no async — kept as minimal as the change permits.
+</p>
+
+</div>
+</body>
+</html>
