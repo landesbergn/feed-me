@@ -278,3 +278,43 @@ def test_process_writes_failure_when_body_exceeds_cap(
     assert len(eps) == 1
     assert eps[0]["status"] == "failed"
     assert "too long" in eps[0]["error"].lower()
+
+
+def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch):
+    """When TTS calls complete out of order, output bytes are still in input order.
+
+    Monkey-patches chunk_text to return a known list (bypassing chunking heuristics)
+    so we can directly verify that synthesize concatenates in INPUT order even when
+    later chunks finish their TTS call first.
+    """
+    import time
+
+    # Force chunk_text to return three known inputs.
+    known_chunks = ["alpha", "bravo", "charlie"]
+    monkeypatch.setattr(ingest, "chunk_text", lambda body, max_chars: known_chunks)
+
+    # Fake TTS: returns the input text as bytes, but sleeps inversely to chunk index
+    # so the FIRST input finishes LAST (forcing out-of-order completion).
+    class OrderingFake:
+        def __init__(self):
+            self.calls = []
+        @property
+        def audio(self):
+            return self
+        @property
+        def speech(self):
+            return self
+        def create(self, *, model, voice, input):
+            self.calls.append(input)
+            idx = known_chunks.index(input)
+            # Earlier chunks sleep longer → finish later
+            time.sleep(0.05 * (len(known_chunks) - idx))
+            return type("R", (), {"content": input.encode("utf-8")})()
+
+    monkeypatch.setattr(ingest, "openai_client", OrderingFake())
+
+    audio = ingest.synthesize("any body", "shimmer")
+
+    # Bytes must be in INPUT order (alpha, bravo, charlie), not completion order
+    # (charlie finished first, alpha finished last).
+    assert audio == b"alphabravocharlie"

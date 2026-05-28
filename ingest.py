@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import httpx
@@ -124,21 +125,31 @@ def chunk_text(body: str, max_chars: int) -> list[str]:
 
 
 def synthesize(text: str, voice: str) -> bytes:
-    """Generate MP3 audio for the full text, chunking at sentence boundaries
-    so each TTS call is within OpenAI's per-call cap.
+    """Generate MP3 audio for the full text.
 
-    Returns the concatenated MP3 bytes (naive byte concat — each chunk's MP3
-    frames are self-contained, so the combined file plays as one continuous
-    track in podcast apps)."""
+    Chunks at sentence boundaries (via chunk_text) and issues ALL TTS calls in
+    parallel via ThreadPoolExecutor. Returns concatenated MP3 bytes — order is
+    preserved by pool.map() regardless of completion order.
+
+    Naive byte concat works because tts-1 MP3 frames are self-contained.
+    """
     chunks = chunk_text(text, TTS_CHAR_LIMIT)
-    parts = []
-    for chunk in chunks:
+    if not chunks:
+        return b""
+
+    def render_one(chunk: str) -> bytes:
         response = openai_client.audio.speech.create(
             model=TTS_MODEL,
             voice=voice,
             input=chunk,
         )
-        parts.append(response.content)
+        return response.content
+
+    # max_workers=len(chunks) → one worker per chunk, no bound. Worst-case 25
+    # concurrent calls (100k char cap / 4k per chunk), well under OpenAI's
+    # tier-1 limit of 50 req/min.
+    with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
+        parts = list(pool.map(render_one, chunks))
     return b"".join(parts)
 
 
