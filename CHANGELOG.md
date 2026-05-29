@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.0 — 2026-05-29
+
+Pending progress indicator:
+
+- Pending rows now show a smooth percent (e.g., "Pending · 42%") that ticks up every second so friends can see ingest is alive.
+- Percent is computed client-side from elapsed time and `total_chunks` (written to the pending record after `chunk_text` runs). Caps at 95% until the row actually flips to Ready, never goes backwards.
+- New `storage.update_pending_episode(slug, *, total_chunks=N)` helper updates an existing pending record without losing other fields.
+- Spec: `docs/superpowers/specs/2026-05-29-pending-progress-indicator.html`
+
 ## v1.9 — 2026-05-28
 
 Share-sheet onboarding:
