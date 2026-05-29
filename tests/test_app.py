@@ -191,6 +191,39 @@ def test_ingest_404_for_unknown_user(client):
     assert response.status_code == 404
 
 
+def test_ingest_empty_url_writes_visible_failed_episode(client, tmp_path):
+    """When the Shortcut sends ?url= with no value (misconfigured Shortcut), we
+    write a Failed episode so the user sees what happened on the settings page,
+    instead of fail-silently 400-and-vanish."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}/ingest?url=")
+    assert response.status_code == 400
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    failed = [e for e in eps if e["status"] == "failed"]
+    assert len(failed) == 1
+    err = failed[0]["error"].lower()
+    assert "shortcut" in err or "empty" in err
+
+
+def test_ingest_invalid_url_writes_visible_failed_episode(client, tmp_path):
+    """Non-empty but malformed URL also writes a visible Failed episode."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}/ingest?url=not-a-url")
+    assert response.status_code == 400
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    failed = [e for e in eps if e["status"] == "failed"]
+    assert len(failed) == 1
+    assert "not-a-url" in failed[0]["error"] or "invalid" in failed[0]["error"].lower()
+
+
 def test_feed_xml_returns_valid_rss(client, tmp_path):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
