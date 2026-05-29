@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Frictionless Share Capture (v3.0)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .pill.gone { background: #f6e0d6; color: #b04a00; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 4px;
+    padding: 14px 18px; margin: 18px 0;
+    font-family: -apple-system, sans-serif; font-size: 14.5px;
+  }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.0</div>
+  <h1>Frictionless Share Capture</h1>
+  <div class="meta">Feed Me · 2026-05-29 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Today, getting an article into your feed costs a fragile setup: copy your per-user
+  ingest URL, install an iCloud Shortcut, then paste the URL into an import prompt. It's
+  buried under "More" in the share sheet, and it silently breaks the moment you rotate
+  your secret. This spec replaces that front door with <strong>one generic Shortcut</strong>
+  &mdash; no secret baked in, one-tap install, zero paste &mdash; that opens
+  <code>/share?url=&hellip;</code> in Safari, where a long-lived first-party cookie
+  identifies you. The entire ingest pipeline (fetch &rarr; TTS &rarr; RSS &rarr; storage)
+  is untouched; only the capture front door changes.
+</p>
+
+<div class="callout">
+  <strong>No backward compatibility.</strong> Nobody is using the current build, so the
+  per-user <code>/u/&#123;secret&#125;/ingest</code> route and the entire copy/paste install
+  flow are <em>deleted</em>, not deprecated. There is no transition story.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#flow">The capture flow</a></li>
+    <li><a href="#spike">Step zero: the cookie spike</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  The concept is strong but the plumbing is user-hostile. The pain isn't the steady-state
+  tap count &mdash; once the Shortcut is pinned, sharing is ~2 taps. The pain is three
+  specific things:
+</p>
+
+<ol>
+  <li><strong>The copy/paste install.</strong> Each user must paste a personal ingest URL into an import prompt. Error-prone and bewildering.</li>
+  <li><strong>Discoverability.</strong> The Shortcut hides under "More" until manually pinned.</li>
+  <li><strong>Rotation breakage.</strong> Rotating the secret silently breaks the saved Shortcut, with no signal to the user.</li>
+</ol>
+
+<p>
+  The root cause of #1 and #3 is the same: <em>the per-user secret is embedded in the
+  Shortcut.</em> Pull the secret out of the Shortcut and into a browser cookie, and the
+  Shortcut becomes generic &mdash; installable in one tap, identical for everyone, and
+  immune to rotation.
+</p>
+
+<p>
+  We also considered a native app with a Share Extension (best-possible capture) and an
+  email/messaging on-ramp (zero install). Both were rejected for now &mdash; see
+  <a href="#scope">Out of scope</a> and <a href="#followups">Known follow-ups</a>. The
+  decisive argument against the native app: its marquee feature would be an in-app player,
+  but Feed Me's whole premise is that articles land in <em>the podcast app you already
+  use</em>. A standalone player fights that premise. Stripped of the player, a native app
+  is just a Share Extension behind App Store review &mdash; not worth the standing tax.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<p>Three changes, all inside the existing FastAPI app. No new services, no new dependencies.</p>
+
+<ol>
+  <li>
+    <strong>New route <code>GET /share?url=&hellip;</code></strong> &mdash; the generic
+    Shortcut's target. Reads the session cookie to learn who you are, spawns the existing
+    ingest pipeline, and returns an HTML confirmation page ("🎧 Added!").
+  </li>
+  <li>
+    <strong>A long-lived session cookie.</strong> Set on every <code>GET /u/&#123;secret&#125;</code>
+    page view (which the <code>/create</code> flow and every revisit already pass through).
+    The cookie value <em>is</em> the secret.
+  </li>
+  <li>
+    <strong>One generic Shortcut + settings-page cleanup.</strong> A single iCloud Shortcut
+    for all users (Open URL &rarr; <code>/share?url=&lt;input&gt;</code>). The settings page
+    drops the clipboard/paste dance entirely; "install" becomes one tap.
+  </li>
+</ol>
+
+<p><strong>Deleted:</strong></p>
+<ul>
+  <li><code>GET /u/&#123;secret&#125;/ingest</code> route in <code>app.py</code> <span class="pill gone">removed</span></li>
+  <li>The <code>ingest_url</code> context variable + <code>installShortcut()</code>/<code>copyIngestUrl()</code> clipboard JS in <code>settings.html</code> <span class="pill gone">removed</span></li>
+  <li>The "Ingest URL" block in the Settings drawer <span class="pill gone">removed</span></li>
+</ul>
+
+<h2 id="flow">3 · The capture flow</h2>
+
+<h3>Cookie lifecycle</h3>
+
+<ul>
+  <li><strong>Set / refresh:</strong> on <code>GET /u/&#123;secret&#125;</code>, the response carries <code>Set-Cookie: fm_session=&lt;secret&gt;</code>. Because <code>/create</code> 303-redirects there, and rotation 303-redirects to the new feed page, this single touch-point covers create, revisit, and rotation.</li>
+  <li><strong>Attributes:</strong> <code>HttpOnly</code>, <code>Secure</code> (prod only &mdash; see impl), <code>SameSite=Lax</code>, <code>Max-Age</code> = 1 year, <code>Path=/</code>.</li>
+  <li><strong>Why these:</strong> server-set (not JS) dodges Safari's 7-day ITP cap on script cookies. <code>SameSite=Lax</code> is sent on the top-level GET navigation that "Open URLs" performs. <code>HttpOnly</code> keeps the secret out of JS &mdash; arguably safer than today's URL-in-history.</li>
+</ul>
+
+<h3><code>/share</code> behavior</h3>
+
+<table>
+  <thead><tr><th>Condition</th><th>Response</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Valid cookie + valid <code>url</code></td>
+      <td>Quick <code>fetch_title</code> (typically ~1s, 5s timeout), write pending episode, spawn ingest, render <strong>"🎧 Added: &lt;title&gt;"</strong> page (200). This is the near-instant confirmation the product lacks today.</td>
+    </tr>
+    <tr>
+      <td>Valid cookie + missing/invalid <code>url</code></td>
+      <td>Mirror the old <code>/ingest</code> behavior: <code>write_failed_episode</code> so the failure is visible on the feed page, render an error variant (200).</td>
+    </tr>
+    <tr>
+      <td>No cookie / stale secret (dir gone)</td>
+      <td>Render a "connect this browser" page (200): <em>"Open your Feed Me page in this browser once, then share again."</em> No episode written.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="small">
+  All branches return 200 with HTML &mdash; the Shortcut opens this in Safari, so a clean
+  page beats an HTTP error. "Stale secret" (cookie points at a rotated-away secret) is
+  treated identically to "no cookie".
+</p>
+
+<h3>The one assumption everything rests on</h3>
+
+<p>
+  A Shortcut's <strong>"Open URLs"</strong> action must open Safari <em>carrying the
+  first-party <code>feed-me.xyz</code> cookie</em>. This is distinct from "Get Contents of
+  URL" (a background fetch with its own cookie jar &mdash; which is exactly why a silent
+  background POST won't work and we must visibly open Safari). High-confidence, but
+  unverified on-device &mdash; hence the spike below.
+</p>
+
+<h2 id="spike">4 · Step zero: the cookie spike <span class="pill">do this first</span></h2>
+
+<p>
+  Before building anything else, prove the assumption on a real phone against prod (it
+  cannot be reproduced in <code>TestClient</code>: it needs real Safari, the <code>Secure</code>
+  flag, and the Shortcuts "Open URLs" path).
+</p>
+
+<ol>
+  <li>Add the <code>Set-Cookie</code> line to <code>GET /u/&#123;secret&#125;</code>.</li>
+  <li>Add a stub <code>GET /share</code> that renders only: <code>cookie seen: yes (secret=&hellip;)</code> or <code>cookie seen: no</code>.</li>
+  <li>Deploy to Fly. Build a one-action Shortcut: <em>Open URL</em> &rarr; <code>https://feed-me.xyz/share</code>.</li>
+  <li>On iPhone: open your feed page in Safari (sets the cookie) &rarr; run the Shortcut.</li>
+</ol>
+
+<p>
+  <strong>Green light:</strong> <code>/share</code> reports <code>cookie seen: yes</code> &rarr;
+  build the full feature. <strong>Red light:</strong> the cookie doesn't arrive &rarr; stop
+  and reconsider capture (fallback options: re-embed a token via "Get Contents of URL",
+  which reintroduces the paste; or pivot to the email/messaging on-ramp). Either way we've
+  spent ~15 minutes, not a full build.
+</p>
+
+<h2 id="impl">5 · Implementation notes</h2>
+
+<h3>Cookie helper + setting it on the feed page</h3>
+
+<pre><code>COOKIE_NAME = "fm_session"
+COOKIE_MAX_AGE = 60 * 60 * 24 * 365          # 1 year
+COOKIE_SECURE = APP_BASE_URL.startswith("https")  # False on localhost/tests
+
+def set_session_cookie(response, secret: str) -> None:
+    response.set_cookie(
+        COOKIE_NAME, secret,
+        max_age=COOKIE_MAX_AGE, httponly=True,
+        secure=COOKIE_SECURE, samesite="lax", path="/",
+    )</code></pre>
+
+<p>
+  In <code>settings()</code>: build the <code>TemplateResponse</code> as today, call
+  <code>set_session_cookie(resp, secret)</code>, return it. Gating <code>Secure</code> on
+  the <code>https</code> scheme keeps the cookie working under Starlette's
+  <code>TestClient</code> (http), so the cookie-path tests are real.
+</p>
+
+<h3>New <code>/share</code> route (replaces <code>ingest_route</code>)</h3>
+
+<pre><code>@app.get("/share", response_class=HTMLResponse)
+def share_route(request: Request, url: str = ""):
+    secret = request.cookies.get(COOKIE_NAME)
+    if not secret or not storage.user_exists(DATA_DIR, secret):
+        return templates.TemplateResponse(
+            request, "share.html", {"state": "connect"})
+    parsed = urlparse(url)
+    if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
+        error_msg = ("Shortcut sent no article URL." if not url
+                     else f"Invalid URL: {url[:200]!r} — must be http or https.")
+        storage.write_failed_episode(
+            DATA_DIR, secret,
+            source_url=(url or "(empty share)"), error=error_msg)
+        return templates.TemplateResponse(
+            request, "share.html", {"state": "error", "error": error_msg})
+    title = ingest.fetch_title(url)
+    slug = storage.write_pending_episode(
+        DATA_DIR, secret, source_url=url, title=title)
+    spawn_ingest(url, secret, DATA_DIR, slug)
+    return templates.TemplateResponse(
+        request, "share.html",
+        {"state": "added", "title": title or hostname(url)})</code></pre>
+
+<p class="small">
+  Side-effect-on-GET matches the existing house pattern (the old <code>/ingest</code> was
+  also a GET). The bad-URL handling is lifted verbatim from <code>ingest_route</code>, minus
+  the per-secret path param.
+</p>
+
+<h3>New template: <code>templates/share.html</code></h3>
+
+<p>
+  One small page with a <code>state</code> switch (<code>added</code> / <code>error</code> /
+  <code>connect</code>), styled to match <code>landing.html</code>. Content:
+</p>
+<ul>
+  <li><strong>added:</strong> "🎧 Added to your feed" + the title + a line: "Ready in your podcast app in 1&ndash;2 min. You can close this tab."</li>
+  <li><strong>error:</strong> the error message + "Try sharing again."</li>
+  <li><strong>connect:</strong> "This browser isn't linked to a feed yet. Open your Feed Me page (the link you bookmarked) in this browser once, then share again."</li>
+</ul>
+
+<h3><code>settings.html</code> changes</h3>
+
+<ul>
+  <li><strong>Step 2 ("Install the iOS Shortcut"):</strong> drop the clipboard prelude. New desc: "One tap &mdash; no copy/paste. The same Shortcut works for everyone; it knows it's you because this browser is linked to your feed." Button becomes a plain link to <code>shortcut_url</code> (no <code>onclick</code>).</li>
+  <li><strong>Step 3 of "Share an article":</strong> replace "Wait 1&ndash;2 minutes&hellip;" with "Safari shows <strong>🎧 Added!</strong> instantly; the episode lands in your podcast app within 1&ndash;2 min."</li>
+  <li><strong>Settings drawer:</strong> delete the entire "Ingest URL" block (label, pill, copy button).</li>
+  <li><strong>&lt;script&gt;:</strong> delete <code>INGEST_URL</code>, <code>INGEST_URL_WITH_PARAM</code>, <code>installShortcut()</code>, <code>copyIngestUrl()</code>. Keep <code>copyFeedUrl()</code> and <code>SHORTCUT_URL</code>/<code>FEED_URL</code>.</li>
+</ul>
+
+<h3><code>settings()</code> route change</h3>
+
+<p>
+  Drop the <code>ingest_url</code> context var (and its construction). Keep
+  <code>feed_host_and_path</code> (still used by the Apple Podcasts deep link). Set the
+  session cookie on the response.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+
+<p>Follow the existing <code>tests/test_app.py</code> patterns. The project is TDD &mdash; write these first.</p>
+
+<h3>New app tests</h3>
+<ul>
+  <li><code>test_settings_sets_session_cookie</code> &mdash; <code>GET /u/&#123;secret&#125;</code> response sets <code>fm_session</code> = the secret.</li>
+  <li><code>test_create_links_browser</code> &mdash; <code>POST /create</code> following the redirect leaves <code>fm_session</code> set on the client.</li>
+  <li><code>test_share_with_cookie_spawns_ingest</code> &mdash; client carrying a valid <code>fm_session</code>; monkeypatch <code>app.spawn_ingest</code> + <code>ingest.fetch_title</code>; <code>GET /share?url=https://example.com/a</code> returns 200, writes a pending episode, page contains "Added".</li>
+  <li><code>test_share_without_cookie_shows_connect</code> &mdash; no cookie &rarr; 200, contains the connect prompt, <em>no</em> episode written.</li>
+  <li><code>test_share_bad_url_writes_failed</code> &mdash; valid cookie, empty/invalid <code>url</code> &rarr; a Failed episode is written and the error page renders.</li>
+  <li><code>test_share_stale_secret_shows_connect</code> &mdash; cookie set to a secret whose dir doesn't exist &rarr; connect prompt, no write.</li>
+  <li><code>test_old_ingest_route_gone</code> &mdash; <code>GET /u/&#123;secret&#125;/ingest?url=&hellip;</code> returns 404.</li>
+</ul>
+
+<h3>Existing tests to update</h3>
+<ul>
+  <li><code>test_settings_renders_for_known_user</code> asserts <code>f"/u/&#123;secret&#125;/ingest" in response.text</code> and <code>"Install Shortcut"</code>. Update: the ingest URL no longer appears; the button label/flow changed. Re-point these assertions at the new one-tap copy.</li>
+  <li>Any test exercising <code>/u/&#123;secret&#125;/ingest</code> directly &rarr; rewrite against <code>/share</code> with a cookie, or delete.</li>
+</ul>
+
+<h2 id="scope">7 · Out of scope</h2>
+<ul>
+  <li><strong>Login / magic-link auth.</strong> Account model is unchanged: the bookmarked feed URL is the account; recovery = reopen the link. The pain the user explicitly de-prioritized; adding auth here is YAGNI.</li>
+  <li><strong>Email / messaging capture (option B).</strong> A second on-ramp with its own infra and spam surface. Not now.</li>
+  <li><strong>Native app + Share Extension (option C).</strong> Rejected: the player fights the "listen in your existing podcast app" premise; the rest is App Store overhead.</li>
+  <li><strong>Silent (no-Safari-flash) ingest.</strong> Would require re-embedding a token in the Shortcut &mdash; i.e. the paste we're deleting. The flash is a feature here: it's instant confirmation.</li>
+  <li><strong>Cross-browser linking.</strong> You link a browser by opening your feed page in it. No sync beyond that.</li>
+</ul>
+
+<h2 id="followups">8 · Known follow-ups <span class="pill future">future</span></h2>
+<ul>
+  <li><strong>Revisit C only if the Safari flash annoys in daily use</strong> and a native extension is the sole fix. We'll know within a week of living on this. If pursued, ship via App Store (not TestFlight &mdash; external builds expire every 90 days).</li>
+  <li><strong>Email / messaging on-ramp (B)</strong> as an additive channel for people who'd rather not touch Shortcuts.</li>
+  <li><strong>Magic-link login</strong> for real multi-device + recovery, if the secret-URL model starts hurting.</li>
+  <li><strong>Nicer return-to-article after share.</strong> Safari can't be force-closed from a page; explore the smoothest "you're done" affordance.</li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+<ul>
+  <li>Installing capture = tapping one Shortcut link. No copy/paste anywhere in the flow.</li>
+  <li>Sharing an article opens Safari to a "🎧 Added!" confirmation within a second or two (a quick title fetch, then the page).</li>
+  <li>The same generic Shortcut works for any user; identity comes only from the cookie.</li>
+  <li>A browser that has visited its feed page shares successfully; one that hasn't sees the connect prompt (no crash, no error code).</li>
+  <li>Rotating the secret, then visiting the new feed page, re-links the browser; sharing still works. No manual Shortcut reinstall.</li>
+  <li><code>GET /u/&#123;secret&#125;/ingest</code> returns 404.</li>
+  <li>The settings page shows no ingest URL and no paste step.</li>
+  <li>All tests pass; old ingest/paste tests are updated or removed.</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-05-29. Chose a cookie-linked generic Shortcut
+  (option A) over a native Share Extension app (C &mdash; rejected: its player fights the
+  "listen where you already listen" premise) and over email/messaging capture (B &mdash;
+  deferred). Backward compatibility dropped by request &mdash; no current users. Whole plan
+  is gated on a 15-minute on-device spike confirming "Open URLs" carries the Safari cookie.
+  No new dependencies.
+</p>
+
+</div>
+</body>
+</html>
