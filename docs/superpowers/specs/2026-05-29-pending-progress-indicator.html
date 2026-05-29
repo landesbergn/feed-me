@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Pending Progress Indicator (v2.0)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 {
+    font-size: 16px; margin: 26px 0 8px;
+    font-family: -apple-system, sans-serif; font-weight: 700; letter-spacing: 0.01em;
+  }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre {
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px; overflow-x: auto; line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px; margin: 16px 0 36px;
+    font-family: -apple-system, sans-serif; font-size: 14px;
+  }
+  .toc strong {
+    text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .pill {
+    display: inline-block; font-family: -apple-system, sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; background: var(--code-bg);
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v2.0</div>
+  <h1>Pending Progress Indicator</h1>
+  <div class="meta">Feed Me · 2026-05-29 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  After sharing an article, the row sits at "Pending" for 60-90 seconds with no feedback.
+  Friends don't know if it's stuck or making progress. This spec adds a smooth percent
+  indicator computed client-side from elapsed time and the article's chunk count, so the
+  Pending chip becomes "Pending · 42%" ticking up smoothly until the row flips to Ready.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#math">Percent calculation</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#followups">Known follow-ups</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+
+<p>
+  After v1.8 (parallel TTS), typical articles ingest in ~60-90s. That's fast in absolute
+  terms but feels long when you're staring at "Pending" with no movement. The user asked
+  for a progress indicator that ticks smoothly so the page doesn't feel dead.
+</p>
+
+<p>
+  Why not show real "X of N chunks done"? Because TTS calls run fully parallel — chunk
+  completions burst (0/13 for 30s, then 7/13 in two seconds, then 13/13). That's worse
+  UX than a smooth interpolation: the eye sees zero progress for half the wait, then a
+  jump. Better to show a smooth time-based curve.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+
+<ol>
+  <li>
+    <strong>Backend:</strong> after <code>chunk_text</code> runs in <code>ingest.process()</code>,
+    update the pending record with <code>total_chunks</code> via a new
+    <code>storage.update_pending_episode()</code> helper.
+  </li>
+  <li>
+    <strong>Backend:</strong> <code>list_episodes</code> exposes <code>total_chunks</code>
+    on each episode dict (defaults to None when not set).
+  </li>
+  <li>
+    <strong>Frontend:</strong> in <code>templates/_episodes_section.html</code>, each
+    Pending row carries <code>data-ts</code> (start timestamp) and
+    <code>data-chunks</code> (total chunk count) attributes on a new
+    <code>&lt;span class="pending-progress"&gt;</code>.
+  </li>
+  <li>
+    <strong>Frontend:</strong> a small JS ticker (1Hz) in <code>templates/settings.html</code>
+    recomputes the percent for each pending row and updates the text in place.
+  </li>
+</ol>
+
+<h2 id="math">3 · Percent calculation</h2>
+
+<p>Client-side, recomputed every second:</p>
+
+<pre><code>const SECONDS_PER_CHUNK = 5;
+const MIN_EXPECTED_SECONDS = 30;
+const MAX_DISPLAY_PERCENT = 95;
+
+function computePercent(startTs, totalChunks) {
+  const nowTs = Math.floor(Date.now() / 1000);
+  const elapsed = nowTs - startTs;
+  const expected = Math.max(MIN_EXPECTED_SECONDS, (totalChunks || 1) * SECONDS_PER_CHUNK);
+  const raw = (elapsed / expected) * 100;
+  return Math.min(MAX_DISPLAY_PERCENT, Math.max(0, Math.round(raw)));
+}</code></pre>
+
+<table>
+  <thead><tr><th>Scenario</th><th>total_chunks</th><th>expected seconds</th><th>% at 30s</th><th>% at 60s</th></tr></thead>
+  <tbody>
+    <tr><td>1-chunk article (short)</td><td>1</td><td>30 (min floor)</td><td>95%</td><td>95% (capped)</td></tr>
+    <tr><td>13-chunk article (Notion)</td><td>13</td><td>65</td><td>46%</td><td>92%</td></tr>
+    <tr><td>25-chunk article (cap)</td><td>25</td><td>125</td><td>24%</td><td>48%</td></tr>
+    <tr><td>total_chunks not yet set</td><td>null</td><td>30 (min floor)</td><td>95%</td><td>95%</td></tr>
+  </tbody>
+</table>
+
+<p>
+  The 95% cap exists so we never claim "100% done" while still processing. When the row
+  actually flips to Ready via the 3s polling, the status chip changes from "Pending · 92%"
+  to "Ready" — visually distinct enough that the cap isn't jarring.
+</p>
+
+<p>
+  The 5s-per-chunk constant is calibrated to v1.8's observed wall time for the Notion
+  article (~67s for 13 chunks ≈ 5.2s/chunk). Tunable as a module-level constant.
+</p>
+
+<h2 id="impl">4 · Implementation notes</h2>
+
+<h3>New storage helper</h3>
+
+<pre><code>def update_pending_episode(
+    data_dir: Path, secret: str, slug: str, *,
+    total_chunks: int | None = None,
+) -> None:
+    """Update fields on an existing pending episode record.
+
+    Reads the JSON, updates the specified fields, writes back. Existing
+    fields preserved. No-op if the record doesn't exist.
+    """
+    path = data_dir / secret / f"{slug}.json"
+    if not path.exists():
+        return
+    record = json.loads(path.read_text())
+    if total_chunks is not None:
+        record["total_chunks"] = total_chunks
+    path.write_text(json.dumps(record))
+</code></pre>
+
+<h3><code>process()</code> change in <code>ingest.py</code></h3>
+
+<p>Insert the chunking + write between <code>fetch_article</code> and <code>synthesize</code>:</p>
+
+<pre><code>def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> None:
+    if slug is None:
+        slug = storage.write_pending_episode(data_dir, secret, source_url=url)
+    try:
+        title, body = fetch_article(url)
+        if len(body) &gt; MAX_BODY_CHARS:
+            raise ValueError(...)
+        # NEW: write total_chunks to pending record so JS can compute %
+        chunks = chunk_text(body, TTS_CHAR_LIMIT)
+        storage.update_pending_episode(
+            data_dir, secret, slug, total_chunks=len(chunks),
+        )
+        settings = storage.get_settings(data_dir, secret)
+        audio = synthesize(body, settings["voice"])
+        ...
+</code></pre>
+
+<p>
+  Note: <code>chunk_text</code> runs twice (here AND inside <code>synthesize</code>).
+  That's fine — it's pure-Python string ops on ~50k chars, &lt;10ms. Avoids changing
+  <code>synthesize</code>'s public signature.
+</p>
+
+<h3><code>list_episodes</code> change</h3>
+
+<p>
+  Already returns <code>data</code> dict directly from the JSON. The new
+  <code>total_chunks</code> key flows through unchanged. No code change needed —
+  callers (template) can just access <code>ep.total_chunks</code> when present.
+</p>
+
+<h3>Template change in <code>_episodes_section.html</code></h3>
+
+<p>Inside the Pending branch of the status cell:</p>
+
+<pre><code>{% elif ep.status == "pending" %}
+  &lt;span class="status-chip pending"&gt;Pending&lt;/span&gt;
+  &lt;span class="pending-progress"
+        data-ts="{{ ep.ts }}"
+        data-chunks="{{ ep.total_chunks or 0 }}"&gt;&lt;/span&gt;
+{% endif %}</code></pre>
+
+<p>
+  The empty <code>&lt;span&gt;</code> is filled by JS with text like
+  <code>"42%"</code>. On first render before JS ticks, it's empty (acceptable — fills
+  within 1s).
+</p>
+
+<h3>JS ticker in <code>settings.html</code></h3>
+
+<p>Add a new IIFE inside the existing <code>&lt;script&gt;</code> area at the bottom of settings.html:</p>
+
+<pre><code>&lt;script&gt;
+  (function () {
+    const SECONDS_PER_CHUNK = 5;
+    const MIN_EXPECTED_SECONDS = 30;
+    const MAX_DISPLAY_PERCENT = 95;
+
+    function tick() {
+      const nowTs = Math.floor(Date.now() / 1000);
+      document.querySelectorAll(".pending-progress").forEach(function (el) {
+        const startTs = parseInt(el.dataset.ts, 10);
+        const totalChunks = parseInt(el.dataset.chunks, 10) || 1;
+        if (!startTs) return;
+        const elapsed = nowTs - startTs;
+        const expected = Math.max(MIN_EXPECTED_SECONDS, totalChunks * SECONDS_PER_CHUNK);
+        const pct = Math.min(MAX_DISPLAY_PERCENT, Math.max(0, Math.round((elapsed / expected) * 100)));
+        el.textContent = pct + "%";
+      });
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+&lt;/script&gt;</code></pre>
+
+<p>
+  Runs every second regardless of tab visibility (cheap; no fetch). The existing 3s
+  episodes-partial polling replaces <code>#episodes-section</code> innerHTML when new
+  data arrives; the next <code>tick()</code> after the swap picks up the fresh
+  <code>data-ts</code>/<code>data-chunks</code> attributes from the new DOM.
+</p>
+
+<h3>CSS for <code>.pending-progress</code></h3>
+
+<p>Small uppercase secondary text below the chip:</p>
+
+<pre><code>.status-chip.pending + .pending-progress {
+  display: block;
+  font-size: 10px;
+  color: #6a6a6a;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}</code></pre>
+
+<h2 id="tests">5 · Testing</h2>
+
+<h3>Storage tests (new)</h3>
+
+<ul>
+  <li>
+    <code>test_update_pending_episode_sets_total_chunks</code> — write pending, call
+    <code>update_pending_episode</code> with <code>total_chunks=13</code>,
+    <code>list_episodes</code> returns the record with <code>total_chunks == 13</code>
+    and all other fields (title, url, ts, pending) preserved.
+  </li>
+  <li>
+    <code>test_update_pending_episode_noop_when_missing</code> — call on a non-existent
+    slug, returns without raising; no file created.
+  </li>
+</ul>
+
+<h3>Ingest tests (new)</h3>
+
+<ul>
+  <li>
+    <code>test_process_writes_total_chunks_before_synthesize</code> — fake HTTP returns
+    a body that produces &gt;1 chunk; run process; assert the resulting episode dict
+    has <code>total_chunks &gt;= 2</code> at some point during processing. (Implementation
+    detail: assert post-completion on the ready record.)
+  </li>
+</ul>
+
+<h3>App tests (new)</h3>
+
+<ul>
+  <li>
+    <code>test_settings_pending_row_has_data_attributes</code> — write a pending
+    episode with <code>total_chunks=5</code> via <code>update_pending_episode</code>;
+    render settings; assert the response contains both
+    <code>data-ts="</code> and <code>data-chunks="5"</code>.
+  </li>
+</ul>
+
+<h3>No JS test</h3>
+
+<p>
+  The percent calculation is ~5 lines of pure math. Verified by eye + the % values in
+  the table above. Not worth a JS test harness.
+</p>
+
+<h2 id="scope">6 · Out of scope</h2>
+
+<ul>
+  <li><strong>chunks_done tracking.</strong> Parallel completion bursts make this misleading; smooth time-based progress is better UX.</li>
+  <li><strong>Separate ETA number.</strong> Percent + the existing "When" column tell the story together.</li>
+  <li><strong>Real-time WebSocket updates.</strong> The existing 3s polling is fast enough for status transitions.</li>
+  <li><strong>Calibrating SECONDS_PER_CHUNK from real data.</strong> Hardcoded 5s for v2.0; could tune later based on logs.</li>
+  <li><strong>Pause/cancel button.</strong> No way to stop an in-flight ingest from the UI.</li>
+</ul>
+
+<h2 id="followups">7 · Known follow-ups <span class="pill future">future</span></h2>
+
+<ul>
+  <li>
+    <strong>Adaptive timing.</strong> Track real ingest durations server-side, use a rolling
+    average as the per-chunk estimate instead of a hardcoded constant.
+  </li>
+  <li>
+    <strong>Visible progress bar.</strong> A small horizontal bar instead of (or in addition
+    to) the percent text. More work, marginal UX gain.
+  </li>
+  <li>
+    <strong>Stuck-pending detection.</strong> If percent has been at 95% for &gt;5min, show
+    "Taking longer than usual..." or auto-mark failed.
+  </li>
+</ul>
+
+<h2 id="accept">8 · Acceptance criteria</h2>
+
+<ul>
+  <li>After sharing a long article, the Pending row shows a percent that ticks up every second.</li>
+  <li>Percent never goes backwards.</li>
+  <li>Percent caps at 95% until the actual completion happens (then row flips to Ready).</li>
+  <li>For the typical 13-chunk Notion article, the percent reads ~46% at 30s elapsed, ~92% at 60s.</li>
+  <li>Tab switching doesn't break anything: tick runs in background; on tab refocus the next swap from polling refreshes the data attributes.</li>
+  <li>All existing tests pass; 3 new tests pass.</li>
+</ul>
+
+<hr>
+
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-05-29. Time-based smooth percent chosen over
+  real chunks-done count to avoid burstiness UX. 5s-per-chunk calibration based on v1.8's
+  observed 67s wall time for 13 chunks. No new dependencies.
+</p>
+
+</div>
+</body>
+</html>
