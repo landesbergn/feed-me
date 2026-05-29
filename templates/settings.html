@@ -156,6 +156,14 @@
     }
     .pin-tip ol li { margin: 4px 0; }
     .pin-tip strong { color: #0a0a0a; }
+    /* v2.0: pending progress percent under the Pending chip */
+    .status-chip.pending + .pending-progress {
+      display: block;
+      font-size: 10px;
+      color: #6a6a6a;
+      margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
   </style>
 </head>
 <body>
@@ -331,6 +339,39 @@
       document.addEventListener("visibilitychange", function () {
         if (!document.hidden) refresh();
       });
+    })();
+  </script>
+
+  <script>
+    // v2.0: tick a smooth % under each Pending chip every 1s.
+    (function () {
+      var SECONDS_PER_CHUNK = 5;
+      var MIN_EXPECTED_SECONDS = 30;
+      var MAX_DISPLAY_PERCENT = 95;
+
+      function tick() {
+        var nowTs = Math.floor(Date.now() / 1000);
+        var nodes = document.querySelectorAll(".pending-progress");
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          var startTs = parseInt(el.dataset.ts, 10);
+          var totalChunks = parseInt(el.dataset.chunks, 10);
+          if (!startTs) continue;
+          // Hide percent until total_chunks is real. Without this, the
+          // fallback expected-time estimate would later jump DOWN when
+          // total_chunks arrives via polling, violating "never backwards".
+          if (!totalChunks || totalChunks < 1) {
+            el.textContent = "";
+            continue;
+          }
+          var elapsed = nowTs - startTs;
+          var expected = Math.max(MIN_EXPECTED_SECONDS, totalChunks * SECONDS_PER_CHUNK);
+          var pct = Math.min(MAX_DISPLAY_PERCENT, Math.max(0, Math.round((elapsed / expected) * 100)));
+          el.textContent = pct + "%";
+        }
+      }
+      tick();
+      setInterval(tick, 1000);
     })();
   </script>
 

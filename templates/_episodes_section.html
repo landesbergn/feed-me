@@ -21,6 +21,9 @@
               <span class="status-chip ready">Ready</span>
             {% elif ep.status == "pending" %}
               <span class="status-chip pending">Pending</span>
+              <span class="pending-progress"
+                    data-ts="{{ ep.ts }}"
+                    data-chunks="{{ ep.total_chunks or 0 }}"></span>
             {% else %}
               <span class="status-chip failed">Failed</span>
             {% endif %}

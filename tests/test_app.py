@@ -442,3 +442,22 @@ def test_settings_apple_podcasts_uses_singular_podcast_scheme(client):
     assert 'href="podcast://' in response.text
     # The old plural form should not appear
     assert 'href="podcasts://' not in response.text
+
+
+def test_settings_pending_row_has_data_attributes(client, tmp_path):
+    """Pending rows must carry data-ts and data-chunks for the JS ticker."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://example.com/x", title="Loading",
+    )
+    storage.update_pending_episode(tmp_path, secret, slug, total_chunks=7)
+
+    response = client.get(f"/u/{secret}")
+    # JS ticker reads these to compute % live
+    assert 'data-ts="' in response.text
+    assert 'data-chunks="7"' in response.text
+    # The pending-progress span exists (initially empty; JS fills it)
+    assert 'pending-progress' in response.text
