@@ -319,3 +319,35 @@ def test_seed_welcome_episode_writes_description(tmp_path):
 
     eps = storage.list_episodes(tmp_path, secret)
     assert eps[0]["description"] == "Share an article from your phone — it'll show up here a minute later."
+
+
+def test_update_pending_episode_sets_total_chunks(tmp_path):
+    """Updating total_chunks on an existing pending record preserves other fields."""
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret,
+        source_url="https://example.com/x",
+        title="Some Article",
+    )
+
+    storage.update_pending_episode(tmp_path, secret, slug, total_chunks=13)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "pending"
+    assert eps[0]["title"] == "Some Article"  # preserved
+    assert eps[0]["url"] == "https://example.com/x"  # preserved
+    assert eps[0]["total_chunks"] == 13
+
+
+def test_update_pending_episode_noop_when_missing(tmp_path):
+    """Updating a non-existent slug returns without raising and doesn't create a file."""
+    secret = storage.create_user(tmp_path)
+
+    # Should not raise
+    storage.update_pending_episode(tmp_path, secret, "missing_slug", total_chunks=5)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps == []
+    # No phantom files created
+    assert not (tmp_path / secret / "missing_slug.json").exists()

@@ -154,9 +154,6 @@ def synthesize(text: str, voice: str) -> bytes:
 
 
 def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> None:
-    """If slug is provided, use it as the existing pending slug (do not write a new
-    pending stub). If slug is None, write a fresh pending stub first (used by tests
-    that call process directly)."""
     if slug is None:
         slug = storage.write_pending_episode(data_dir, secret, source_url=url)
     try:
@@ -166,6 +163,13 @@ def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> N
                 f"Article too long: {len(body):,} chars (limit: {MAX_BODY_CHARS:,}). "
                 f"Try sharing a shorter article."
             )
+        # Write total_chunks so the settings page can show smooth % progress.
+        # chunk_text runs again inside synthesize — small re-cost (<10ms on 50k chars),
+        # avoids changing synthesize's public signature.
+        chunks = chunk_text(body, TTS_CHAR_LIMIT)
+        storage.update_pending_episode(
+            data_dir, secret, slug, total_chunks=len(chunks),
+        )
         settings = storage.get_settings(data_dir, secret)
         audio = synthesize(body, settings["voice"])
         description = _excerpt(body, DESCRIPTION_EXCERPT_CHARS)

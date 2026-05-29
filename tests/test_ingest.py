@@ -318,3 +318,38 @@ def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch):
     # Bytes must be in INPUT order (alpha, bravo, charlie), not completion order
     # (charlie finished first, alpha finished last).
     assert audio == b"alphabravocharlie"
+
+
+def test_process_writes_total_chunks_before_synthesize(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """process() must write total_chunks to the pending record BEFORE calling synthesize,
+    so the polling endpoint can pick it up while the worker is still running."""
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    fake_http.responses["https://example.com/t"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+
+    secret = storage.create_user(tmp_path)
+
+    # Monkey-patch synthesize to observe storage at the moment it's called.
+    # At that moment the pending record MUST have total_chunks set.
+    observed_total_chunks = []
+    real_synthesize = ingest.synthesize
+    def observing_synthesize(text, voice):
+        eps = storage.list_episodes(tmp_path, secret)
+        # Find the pending row for our URL and capture its total_chunks
+        for e in eps:
+            if e.get("status") == "pending" and e.get("url") == "https://example.com/t":
+                observed_total_chunks.append(e.get("total_chunks"))
+                break
+        return real_synthesize(text, voice)
+    monkeypatch.setattr(ingest, "synthesize", observing_synthesize)
+
+    ingest.process("https://example.com/t", secret, tmp_path)
+
+    # synthesize was called once, and at that moment total_chunks was a positive int
+    assert len(observed_total_chunks) == 1
+    assert observed_total_chunks[0] is not None
+    assert observed_total_chunks[0] >= 1

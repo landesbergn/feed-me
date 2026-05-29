@@ -87,6 +87,24 @@ def write_pending_episode(
     return slug
 
 
+def update_pending_episode(
+    data_dir: Path, secret: str, slug: str, *,
+    total_chunks: int | None = None,
+) -> None:
+    """Update fields on an existing pending episode record.
+
+    Reads the JSON, updates the specified fields, writes back. Existing
+    fields preserved. No-op if the record doesn't exist (caller can fire-and-forget).
+    """
+    path = data_dir / secret / f"{slug}.json"
+    if not path.exists():
+        return
+    record = json.loads(path.read_text())
+    if total_chunks is not None:
+        record["total_chunks"] = total_chunks
+    path.write_text(json.dumps(record))
+
+
 def seed_welcome_episode(
     data_dir: Path, secret: str, *,
     welcome_audio: bytes,
