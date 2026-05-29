@@ -270,8 +270,16 @@ function computePercent(startTs, totalChunks) {
       const nowTs = Math.floor(Date.now() / 1000);
       document.querySelectorAll(".pending-progress").forEach(function (el) {
         const startTs = parseInt(el.dataset.ts, 10);
-        const totalChunks = parseInt(el.dataset.chunks, 10) || 1;
+        const totalChunks = parseInt(el.dataset.chunks, 10);
         if (!startTs) return;
+        // If total_chunks isn't set yet (fetch_article still running),
+        // don't show a percent — the unknown-window estimate would later
+        // jump DOWN when the real total_chunks arrives, violating
+        // "percent never goes backwards".
+        if (!totalChunks || totalChunks &lt; 1) {
+          el.textContent = "";
+          return;
+        }
         const elapsed = nowTs - startTs;
         const expected = Math.max(MIN_EXPECTED_SECONDS, totalChunks * SECONDS_PER_CHUNK);
         const pct = Math.min(MAX_DISPLAY_PERCENT, Math.max(0, Math.round((elapsed / expected) * 100)));
@@ -288,6 +296,16 @@ function computePercent(startTs, totalChunks) {
   episodes-partial polling replaces <code>#episodes-section</code> innerHTML when new
   data arrives; the next <code>tick()</code> after the swap picks up the fresh
   <code>data-ts</code>/<code>data-chunks</code> attributes from the new DOM.
+</p>
+
+<p>
+  <strong>Why we hide percent until <code>total_chunks</code> is real:</strong> the row
+  exists from <code>t=0</code> (pending stub written immediately) but <code>total_chunks</code>
+  only lands after <code>fetch_article</code> completes (1-10s later, depending on the URL).
+  If we showed a percent based on a fallback expected-time during that window, the percent
+  could be 33% at t=10s on the fallback (10/30) and then drop to 11/65 = 17% once the real
+  <code>total_chunks=13</code> arrives. That violates the "never backwards" acceptance criterion.
+  Showing nothing until real data is the simplest fix.
 </p>
 
 <h3>CSS for <code>.pending-progress</code></h3>
@@ -323,10 +341,12 @@ function computePercent(startTs, totalChunks) {
 
 <ul>
   <li>
-    <code>test_process_writes_total_chunks_before_synthesize</code> — fake HTTP returns
-    a body that produces &gt;1 chunk; run process; assert the resulting episode dict
-    has <code>total_chunks &gt;= 2</code> at some point during processing. (Implementation
-    detail: assert post-completion on the ready record.)
+    <code>test_process_writes_total_chunks_before_synthesize</code> — mirrors v1.7's
+    <code>test_process_writes_pending_then_ready</code> pattern. Monkey-patch
+    <code>ingest.synthesize</code> to observe storage state at call time; assert the
+    pending record visible at that moment has <code>total_chunks &gt;= 1</code>. (Cannot
+    assert on the post-completion record: <code>write_episode</code> writes a fresh dict
+    without <code>total_chunks</code>, by design — the field is only meaningful while pending.)
   </li>
 </ul>
 
