@@ -100,6 +100,16 @@ def healthz():
     return "ok"
 
 
+@app.get("/share", response_class=PlainTextResponse)
+def share_spike(request: Request, url: str = ""):
+    # SPIKE — throwaway. Confirms a Shortcut "Open URLs" navigation carries
+    # the first-party fm_session cookie. Replaced by the real route in Task 3.
+    secret = request.cookies.get(COOKIE_NAME)
+    if secret:
+        return f"cookie seen: yes (secret={secret[:8]}…) url={url!r}"
+    return "cookie seen: no"
+
+
 @app.get("/cover.jpg")
 def cover_route():
     return FileResponse(
