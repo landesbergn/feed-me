@@ -494,3 +494,18 @@ def test_settings_pending_row_has_data_attributes(client, tmp_path):
     assert 'data-chunks="7"' in response.text
     # The pending-progress span exists (initially empty; JS fills it)
     assert 'pending-progress' in response.text
+
+
+def test_settings_sets_session_cookie(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    response = client.get(f"/u/{secret}")
+    assert response.cookies.get("fm_session") == secret
+
+
+def test_create_links_browser(client):
+    # Following the redirect lands on GET /u/{secret}, which sets the cookie.
+    response = client.post("/create")  # default: follows redirect
+    assert response.status_code == 200
+    assert client.cookies.get("fm_session")  # now in the client's jar

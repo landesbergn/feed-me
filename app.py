@@ -65,6 +65,29 @@ SHORTCUT_ICLOUD_URL = os.environ.get(
     "https://www.icloud.com/shortcuts/PLACEHOLDER",
 )
 
+COOKIE_NAME = "fm_session"
+COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
+
+
+def set_session_cookie(response, secret: str) -> None:
+    """Link this browser to a feed. The cookie value IS the secret.
+
+    HttpOnly so JS can't read it; Secure only when serving over https
+    (APP_BASE_URL is read at call time so tests/local-dev over http still
+    round-trip the cookie); SameSite=Lax so it rides the top-level GET
+    navigation that the Shortcut's "Open URLs" action performs.
+    """
+    response.set_cookie(
+        COOKIE_NAME,
+        secret,
+        max_age=COOKIE_MAX_AGE,
+        httponly=True,
+        secure=APP_BASE_URL.startswith("https"),
+        samesite="lax",
+        path="/",
+    )
+
+
 SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 app = FastAPI()
@@ -112,7 +135,7 @@ def settings(request: Request, secret: str):
     feed_url = f"{APP_BASE_URL}/u/{secret}/feed.xml"
     ingest_url = f"{APP_BASE_URL}/u/{secret}/ingest"
     feed_host_and_path = feed_url.split("://", 1)[1]
-    return templates.TemplateResponse(request, "settings.html", {
+    response = templates.TemplateResponse(request, "settings.html", {
         "secret": secret,
         "current_voice": s["voice"],
         "voices": sorted(storage.ALLOWED_VOICES),
@@ -122,6 +145,8 @@ def settings(request: Request, secret: str):
         "feed_host_and_path": feed_host_and_path,
         "shortcut_url": SHORTCUT_ICLOUD_URL,
     })
+    set_session_cookie(response, secret)
+    return response
 
 
 @app.get("/u/{secret}/episodes_partial", response_class=HTMLResponse)
