@@ -502,6 +502,12 @@ def test_settings_sets_session_cookie(client):
 
     response = client.get(f"/u/{secret}")
     assert response.cookies.get("fm_session") == secret
+    set_cookie = response.headers["set-cookie"]
+    assert "HttpOnly" in set_cookie
+    assert "Secure" in set_cookie
+    assert "SameSite=lax" in set_cookie
+    assert "Max-Age=" in set_cookie
+    assert "Path=/" in set_cookie
 
 
 def test_create_links_browser(client):
@@ -509,3 +515,14 @@ def test_create_links_browser(client):
     response = client.post("/create")  # default: follows redirect
     assert response.status_code == 200
     assert client.cookies.get("fm_session")  # now in the client's jar
+
+
+def test_rotate_updates_session_cookie(client):
+    create = client.post("/create", follow_redirects=False)
+    old = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{old}")  # set initial cookie
+
+    client.post(f"/u/{old}/rotate")  # follows redirect to /u/{new}
+    new = client.cookies.get("fm_session")
+    assert new is not None
+    assert new != old

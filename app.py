@@ -69,7 +69,7 @@ COOKIE_NAME = "fm_session"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
 
 
-def set_session_cookie(response, secret: str) -> None:
+def set_session_cookie(response: Response, secret: str) -> None:
     """Link this browser to a feed. The cookie value IS the secret.
 
     HttpOnly so JS can't read it; Secure only when serving over https
