@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feed Me</title>
+  <style>
+    body {
+      font-family: -apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif;
+      max-width: 480px; margin: 64px auto; padding: 0 24px;
+      line-height: 1.5; color: #0a0a0a; background: #fff; text-align: center;
+      -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-size: 10px; color: #767676; text-transform: uppercase;
+      letter-spacing: 0.14em; font-weight: 700; margin-bottom: 24px;
+    }
+    .emoji { font-size: 44px; line-height: 1; margin-bottom: 12px; }
+    h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+    p { font-size: 14px; color: #4a4a4a; margin: 8px 0; }
+    .title { font-weight: 600; color: #0a0a0a; }
+    .hint { font-size: 12px; color: #767676; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="brand">Feed Me</div>
+  {% if state == "added" %}
+    <div class="emoji">🎧</div>
+    <h1>Added to your feed</h1>
+    <p class="title">{{ title }}</p>
+    <p>It'll be ready in your podcast app in 1–2 minutes.</p>
+    <p class="hint">You can close this tab.</p>
+  {% elif state == "error" %}
+    <div class="emoji">⚠️</div>
+    <h1>Couldn't add that</h1>
+    <p>{{ error }}</p>
+    <p class="hint">Try sharing again.</p>
+  {% else %}{# connect #}
+    <div class="emoji">🔗</div>
+    <h1>Link this browser first</h1>
+    <p>This browser isn't connected to a Feed Me feed yet.</p>
+    <p>Open your Feed Me page (the link you bookmarked) in this browser once, then share again.</p>
+  {% endif %}
+</body>
+</html>

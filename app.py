@@ -100,14 +100,38 @@ def healthz():
     return "ok"
 
 
-@app.get("/share", response_class=PlainTextResponse)
-def share_spike(request: Request, url: str = ""):
-    # SPIKE — throwaway. Confirms a Shortcut "Open URLs" navigation carries
-    # the first-party fm_session cookie. Replaced by the real route in Task 3.
+@app.get("/share", response_class=HTMLResponse)
+def share_route(request: Request, url: str = ""):
     secret = request.cookies.get(COOKIE_NAME)
-    if secret:
-        return f"cookie seen: yes (secret={secret[:8]}…) url={url!r}"
-    return "cookie seen: no"
+    if not secret or not storage.user_exists(DATA_DIR, secret):
+        return templates.TemplateResponse(request, "share.html", {"state": "connect"})
+
+    parsed = urlparse(url)
+    if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
+        error_msg = (
+            "Shortcut sent no article URL."
+            if not url
+            else f"Invalid URL: {url[:200]!r} — must be http or https."
+        )
+        storage.write_failed_episode(
+            DATA_DIR, secret,
+            source_url=(url or "(empty share)"), error=error_msg,
+        )
+        return templates.TemplateResponse(
+            request, "share.html", {"state": "error", "error": error_msg},
+        )
+
+    # Quick title fetch so the confirmation page + pending row show the real
+    # title (mirrors the old ingest route). On failure fetch_title returns None
+    # and we fall back to the hostname.
+    title = ingest.fetch_title(url)
+    slug = storage.write_pending_episode(
+        DATA_DIR, secret, source_url=url, title=title,
+    )
+    spawn_ingest(url, secret, DATA_DIR, slug)
+    return templates.TemplateResponse(
+        request, "share.html", {"state": "added", "title": title or hostname(url)},
+    )
 
 
 @app.get("/cover.jpg")

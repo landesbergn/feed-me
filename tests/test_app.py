@@ -526,3 +526,71 @@ def test_rotate_updates_session_cookie(client):
     new = client.cookies.get("fm_session")
     assert new is not None
     assert new != old
+
+
+def test_share_with_cookie_spawns_ingest(client, monkeypatch, fake_http, tmp_path):
+    from tests.conftest import FakeResponse
+
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # links this browser (sets fm_session)
+
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text="<html><head><title>A</title></head></html>",
+    )
+    import ingest
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    calls = []
+
+    def fake_spawn(url, secret_, data_dir, slug):
+        calls.append((url, secret_, slug))
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", fake_spawn)
+
+    response = client.get("/share?url=https://example.com/a")
+    assert response.status_code == 200
+    assert "Added" in response.text
+    assert len(calls) == 1
+    assert calls[0][1] == secret
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    assert any(e["status"] == "pending" for e in eps)
+
+
+def test_share_without_cookie_shows_connect(client):
+    # No /u/{secret} visit in this fresh client → no cookie.
+    response = client.get("/share?url=https://example.com/a")
+    assert response.status_code == 200
+    assert "Link this browser" in response.text
+
+
+def test_share_bad_url_writes_failed(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser
+
+    response = client.get("/share?url=")
+    assert response.status_code == 200
+    assert "Couldn't add" in response.text
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    failed = [e for e in eps if e["status"] == "failed"]
+    assert len(failed) == 1
+
+
+def test_share_stale_secret_shows_connect(client):
+    # Cookie holds a secret whose dir no longer exists (post-rotation).
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # cookie = old secret
+    # Rotate WITHOUT following the redirect, so the cookie still holds the OLD
+    # secret while the on-disk dir moves to a new one.
+    client.post(f"/u/{secret}/rotate", follow_redirects=False)
+
+    response = client.get("/share?url=https://example.com/a")
+    assert response.status_code == 200
+    assert "Link this browser" in response.text
