@@ -639,6 +639,15 @@ def test_landing_records_page_view(client, tmp_path):
     assert s["page_views_by_path"]["landing"] >= 1
 
 
+def test_settings_records_page_view(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")
+    import analytics
+    s = analytics.summary(tmp_path / "_analytics" / "analytics.db")
+    assert s["page_views_by_path"]["settings"] >= 1
+
+
 def test_create_records_feed_created(client, tmp_path):
     client.post("/create", follow_redirects=False)
     import analytics
