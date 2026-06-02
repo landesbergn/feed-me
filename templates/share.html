@@ -29,15 +29,25 @@
     .title { font-weight: 700; color: var(--ink); }
     .hint { font-size: 12.5px; color: var(--muted); margin-top: 20px; }
     .err { color: var(--accent); font-weight: 600; }
-    .spinner {
-      width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 50%;
-      border: 4px solid #F0DCC9; border-top-color: var(--accent);
-      animation: spin .8s linear infinite;
+
+    /* progress bar / loader */
+    .bar {
+      width: 240px; max-width: 78%; height: 10px; margin: 6px auto 12px;
+      background: #F1DECB; border-radius: 999px; overflow: hidden; position: relative;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .bar .fill {
+      position: absolute; top: 0; bottom: 0; left: 0; width: 0%;
+      background: var(--accent); border-radius: 999px;
+      transition: width .9s linear;
+    }
+    .bar.indeterminate .fill {
+      width: 38%;
+      animation: indet 1.25s ease-in-out infinite;
+    }
+    @keyframes indet { 0% { left: -38%; } 100% { left: 100%; } }
     .pct {
-      font-family: var(--round); font-weight: 800; font-size: 15px; color: var(--accent);
-      font-variant-numeric: tabular-nums; margin-top: 2px; min-height: 1.2em;
+      font-family: var(--round); font-weight: 800; font-size: 14px; color: var(--accent);
+      font-variant-numeric: tabular-nums; margin: 0 0 4px; min-height: 1.2em;
     }
     [hidden] { display: none !important; }
   </style>
@@ -46,10 +56,10 @@
   <div class="brand">🎧 Feed Me</div>
   {% if state == "added" %}
     <div id="fm-loading">
-      <div class="spinner" aria-hidden="true"></div>
       <h1>Adding to your feed…</h1>
       <p class="title">{{ title }}</p>
-      <p class="pct" id="fm-pct"></p>
+      <div class="bar indeterminate" id="fm-bar" aria-hidden="true"><div class="fill" id="fm-fill"></div></div>
+      <p class="pct" id="fm-pct">Preparing…</p>
       <p class="hint">Generating the audio. You can close this tab — it'll be in your podcast app when it's ready.</p>
     </div>
     <div id="fm-ready" hidden>
@@ -69,10 +79,13 @@
       (function () {
         var slug = {{ slug | tojson }};
         var pctEl = document.getElementById("fm-pct");
+        var barEl = document.getElementById("fm-bar");
+        var fillEl = document.getElementById("fm-fill");
         var loading = document.getElementById("fm-loading");
         var ready = document.getElementById("fm-ready");
         var failed = document.getElementById("fm-failed");
         var errEl = document.getElementById("fm-err");
+        // Same estimate the feed page uses: elapsed time vs chunk count.
         var SECONDS_PER_CHUNK = 5, MIN_EXPECTED_SECONDS = 30, MAX_PCT = 95;
         var ts = null, totalChunks = null, polls = 0, MAX_POLLS = 90, done = false;
 
@@ -81,10 +94,17 @@
           el.hidden = false; done = true;
         }
         function tickPct() {
-          if (done || !ts || !totalChunks) { return; }
+          if (done) return;
+          if (!ts || !totalChunks) {
+            barEl.classList.add("indeterminate");
+            pctEl.textContent = "Preparing…";
+            return;
+          }
+          barEl.classList.remove("indeterminate");
           var elapsed = Math.floor(Date.now() / 1000) - ts;
           var expected = Math.max(MIN_EXPECTED_SECONDS, totalChunks * SECONDS_PER_CHUNK);
-          var pct = Math.min(MAX_PCT, Math.max(0, Math.round((elapsed / expected) * 100)));
+          var pct = Math.min(MAX_PCT, Math.max(3, Math.round((elapsed / expected) * 100)));
+          fillEl.style.width = pct + "%";
           pctEl.textContent = pct + "%";
         }
         function poll() {
