@@ -144,84 +144,12 @@ def test_post_rotate_returns_new_secret_url(client, tmp_path):
     assert storage.user_exists(tmp_path, new)
 
 
-def test_ingest_returns_ok_quickly(client, monkeypatch, fake_http):
-    from tests.conftest import FakeResponse
-
+def test_old_ingest_route_gone(client):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
-
-    # fetch_title needs http_client mocked so it doesn't make real calls
-    fake_http.responses["https://example.com/x"] = FakeResponse(
-        status_code=200,
-        text="<html><head><title>X</title></head></html>",
-    )
-    import ingest
-    monkeypatch.setattr(ingest, "http_client", fake_http)
-
-    calls = []
-
-    def fake_spawn(url, secret_, data_dir, slug):
-        calls.append((url, secret_, str(data_dir), slug))
-
-    import app as app_module
-    monkeypatch.setattr(app_module, "spawn_ingest", fake_spawn)
-
-    response = client.get(
-        f"/u/{secret}/ingest?url=https://example.com/x",
-    )
-    assert response.status_code == 200
-    assert response.json() == {"ok": True}
-    assert len(calls) == 1
-    assert calls[0][0] == "https://example.com/x"
-    assert calls[0][1] == secret
-    # The slug arg should be non-empty
-    assert calls[0][3] is not None
-
-
-def test_ingest_rejects_invalid_url(client, monkeypatch):
-    create = client.post("/create", follow_redirects=False)
-    secret = create.headers["location"].split("/u/")[1]
-
-    response = client.get(f"/u/{secret}/ingest?url=not-a-url")
-    assert response.status_code == 400
-
-
-def test_ingest_404_for_unknown_user(client):
-    response = client.get("/u/nope/ingest?url=https://example.com")
-    assert response.status_code == 404
-
-
-def test_ingest_empty_url_writes_visible_failed_episode(client, tmp_path):
-    """When the Shortcut sends ?url= with no value (misconfigured Shortcut), we
-    write a Failed episode so the user sees what happened on the settings page,
-    instead of fail-silently 400-and-vanish."""
-    create = client.post("/create", follow_redirects=False)
-    secret = create.headers["location"].split("/u/")[1]
-
+    # The per-user ingest route is deleted; the path no longer matches.
     response = client.get(f"/u/{secret}/ingest?url=")
-    assert response.status_code == 400
-
-    import storage
-    eps = storage.list_episodes(tmp_path, secret)
-    failed = [e for e in eps if e["status"] == "failed"]
-    assert len(failed) == 1
-    err = failed[0]["error"].lower()
-    assert "shortcut" in err or "empty" in err
-
-
-def test_ingest_invalid_url_writes_visible_failed_episode(client, tmp_path):
-    """Non-empty but malformed URL also writes a visible Failed episode."""
-    create = client.post("/create", follow_redirects=False)
-    secret = create.headers["location"].split("/u/")[1]
-
-    response = client.get(f"/u/{secret}/ingest?url=not-a-url")
-    assert response.status_code == 400
-
-    import storage
-    eps = storage.list_episodes(tmp_path, secret)
-    failed = [e for e in eps if e["status"] == "failed"]
-    assert len(failed) == 1
-    assert "not-a-url" in failed[0]["error"] or "invalid" in failed[0]["error"].lower()
+    assert response.status_code == 404
 
 
 def test_feed_xml_returns_valid_rss(client, tmp_path):
@@ -365,60 +293,6 @@ def test_hostname_filter_handles_unparseable_input():
     import app
     assert app.hostname("not a url") == "not a url"
     assert app.hostname("") == ""
-
-
-def test_ingest_route_writes_pending_with_fetched_title(
-    client, tmp_path, monkeypatch, fake_http,
-):
-    from tests.conftest import FakeResponse
-
-    create = client.post("/create", follow_redirects=False)
-    secret = create.headers["location"].split("/u/")[1]
-
-    fake_http.responses["https://example.com/t"] = FakeResponse(
-        status_code=200,
-        text="<html><head><title>Inside Notion</title></head></html>",
-    )
-    import ingest
-    monkeypatch.setattr(ingest, "http_client", fake_http)
-
-    # Prevent the worker thread from actually running during this test
-    import app as app_module
-    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
-
-    response = client.get(f"/u/{secret}/ingest?url=https://example.com/t")
-    assert response.status_code == 200
-
-    import storage
-    eps = storage.list_episodes(tmp_path, secret)
-    pending = [e for e in eps if e["status"] == "pending"]
-    assert len(pending) == 1
-    assert pending[0]["title"] == "Inside Notion"
-
-
-def test_ingest_route_writes_pending_with_no_title_on_fetch_failure(
-    client, tmp_path, monkeypatch, fake_http,
-):
-    from tests.conftest import FakeResponse
-
-    create = client.post("/create", follow_redirects=False)
-    secret = create.headers["location"].split("/u/")[1]
-
-    fake_http.responses["https://example.com/dead"] = FakeResponse(status_code=500)
-    import ingest
-    monkeypatch.setattr(ingest, "http_client", fake_http)
-
-    import app as app_module
-    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
-
-    response = client.get(f"/u/{secret}/ingest?url=https://example.com/dead")
-    assert response.status_code == 200
-
-    import storage
-    eps = storage.list_episodes(tmp_path, secret)
-    pending = [e for e in eps if e["status"] == "pending"]
-    assert len(pending) == 1
-    assert pending[0]["title"] is None
 
 
 def test_settings_page_shows_loading_for_pending_with_no_title(client, tmp_path):
@@ -610,3 +484,58 @@ def test_share_stale_secret_shows_connect(client):
     response = client.get("/share?url=https://example.com/a")
     assert response.status_code == 200
     assert "Link this browser" in response.text
+
+
+def test_share_writes_pending_with_fetched_title(
+    client, tmp_path, monkeypatch, fake_http,
+):
+    from tests.conftest import FakeResponse
+
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link this browser (sets fm_session)
+
+    fake_http.responses["https://example.com/t"] = FakeResponse(
+        status_code=200,
+        text="<html><head><title>Inside Notion</title></head></html>",
+    )
+    import ingest
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+
+    response = client.get("/share?url=https://example.com/t")
+    assert response.status_code == 200
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    pending = [e for e in eps if e["status"] == "pending"]
+    assert len(pending) == 1
+    assert pending[0]["title"] == "Inside Notion"
+
+
+def test_share_writes_pending_with_no_title_on_fetch_failure(
+    client, tmp_path, monkeypatch, fake_http,
+):
+    from tests.conftest import FakeResponse
+
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser
+
+    fake_http.responses["https://example.com/dead"] = FakeResponse(status_code=500)
+    import ingest
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+
+    response = client.get("/share?url=https://example.com/dead")
+    assert response.status_code == 200
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    pending = [e for e in eps if e["status"] == "pending"]
+    assert len(pending) == 1
+    assert pending[0]["title"] is None

@@ -215,40 +215,6 @@ def rotate_route(secret: str):
     return RedirectResponse(f"/u/{new}", status_code=303)
 
 
-@app.get("/u/{secret}/ingest")
-def ingest_route(secret: str, url: str = ""):
-    if not storage.user_exists(DATA_DIR, secret):
-        raise HTTPException(404)
-    parsed = urlparse(url)
-    if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
-        # Misconfigured Shortcut or other bad request — record a visible Failed
-        # episode so the user sees what happened on the settings page rather
-        # than fail-silently. The most common case: a broken canonical Shortcut
-        # that sends ?url= with no value attached.
-        if not url:
-            error_msg = (
-                "Shortcut sent no article URL. Your Feed Me Shortcut may be "
-                "misconfigured — try reinstalling it from this page."
-            )
-            display_url = "(empty share)"
-        else:
-            error_msg = f"Invalid URL: {url[:200]!r} — must be http or https."
-            display_url = url
-        storage.write_failed_episode(
-            DATA_DIR, secret, source_url=display_url, error=error_msg,
-        )
-        raise HTTPException(400, error_msg)
-    # Quick title fetch so the Pending row shows the real title from ~1s in.
-    # On any failure, fetch_title returns None and the row falls back to the
-    # hostname via the _episodes_section template.
-    title = ingest.fetch_title(url)
-    slug = storage.write_pending_episode(
-        DATA_DIR, secret, source_url=url, title=title,
-    )
-    spawn_ingest(url, secret, DATA_DIR, slug)
-    return {"ok": True}
-
-
 @app.get("/u/{secret}/feed.xml")
 def feed_route(secret: str):
     if not storage.user_exists(DATA_DIR, secret):
