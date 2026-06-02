@@ -163,7 +163,8 @@ def share_route(request: Request, url: str = ""):
     )
     spawn_ingest(url, secret, DATA_DIR, slug)
     _track("page_view", secret=secret, path="share")    # the share confirmation page rendered
-    _track("article_shared", secret=secret, path="share")
+    _track("article_shared", secret=secret, path="share",
+           props={"url": url, "title": title})
     return templates.TemplateResponse(
         request, "share.html",
         {"state": "added", "title": title or hostname(url),

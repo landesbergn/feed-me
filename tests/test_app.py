@@ -673,6 +673,23 @@ def test_share_records_article_shared_with_feed_hash(client, monkeypatch, tmp_pa
     assert s["top_feeds"][0]["feed_hash"] == analytics.feed_hash(secret)
 
 
+def test_share_event_records_article_url_and_title(client, monkeypatch, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser (cookie)
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+    monkeypatch.setattr(app_module.ingest, "fetch_title", lambda url: "My Title")
+
+    client.get("/share?url=https://example.com/xyz")
+
+    import analytics
+    s = analytics.summary(tmp_path / "_analytics" / "analytics.db")
+    assert s["recent_shares"][0]["url"] == "https://example.com/xyz"
+    assert s["recent_shares"][0]["title"] == "My Title"
+
+
 def test_analytics_failure_never_500s_a_page(client, monkeypatch):
     import app as app_module
     def boom(*a, **k):

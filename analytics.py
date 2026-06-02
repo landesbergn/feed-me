@@ -12,6 +12,7 @@ import json
 import logging
 import sqlite3
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -120,6 +121,27 @@ def summary(db_path) -> dict:
             ).fetchall()
         ]
 
+        # Most recent shares, with the article url/title pulled from props.
+        # Events from before this feature (or with no props) yield None url/title.
+        recent_shares = []
+        for ts, fh, props in cur.execute(
+            "SELECT ts, feed_hash, props FROM events "
+            "WHERE event = 'article_shared' ORDER BY ts DESC LIMIT 25"
+        ).fetchall():
+            data = {}
+            if props:
+                try:
+                    data = json.loads(props)
+                except Exception:
+                    data = {}
+            recent_shares.append({
+                "ts": ts,
+                "when": datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+                "feed_hash": fh,
+                "url": data.get("url"),
+                "title": data.get("title"),
+            })
+
         return {
             "feeds_created": feeds_created,
             "articles_shared": articles_shared,
@@ -128,6 +150,7 @@ def summary(db_path) -> dict:
             "active_feeds": active_feeds,
             "by_day": by_day,
             "top_feeds": top_feeds,
+            "recent_shares": recent_shares,
         }
     finally:
         conn.close()

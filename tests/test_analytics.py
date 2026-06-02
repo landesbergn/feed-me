@@ -96,6 +96,24 @@ def test_summary_by_day_and_top_feeds(tmp_path):
     assert s["top_feeds"][0]["shares"] == 2
 
 
+def test_summary_recent_shares_includes_url_and_title(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    analytics.track(db, "article_shared", feed_hash_val="aaa", path="share",
+                    props={"url": "https://ex.com/a", "title": "Article A"}, ts=100)
+    analytics.track(db, "article_shared", feed_hash_val="bbb", path="share",
+                    props={"url": "https://ex.com/b", "title": "Article B"}, ts=200)
+    # An older share with no props (pre-feature) must not break recent_shares.
+    analytics.track(db, "article_shared", feed_hash_val="ccc", path="share", ts=50)
+
+    rs = analytics.summary(db)["recent_shares"]
+    assert rs[0]["title"] == "Article B"          # newest first
+    assert rs[0]["url"] == "https://ex.com/b"
+    assert rs[0]["feed_hash"] == "bbb"
+    assert "when" in rs[0]
+    assert rs[-1]["url"] is None                   # the no-props one
+    assert rs[-1]["title"] is None
+
+
 def test_summary_empty_db(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
     s = analytics.summary(db)
@@ -105,6 +123,7 @@ def test_summary_empty_db(tmp_path):
     assert s["active_feeds"] == 0
     assert s["by_day"] == []
     assert s["top_feeds"] == []
+    assert s["recent_shares"] == []
 
 
 def test_all_events_returns_rows_ordered_and_empty_on_missing(tmp_path):
