@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2 — 2026-06-02
+
+Analytics: capture what's shared.
+
+- `article_shared` events now record the article URL + title (in the event's `props`), so analytics can answer "what's been shared," not just how many.
+- `/admin/stats` gains a "Recently shared" table (newest first: time, hashed feed, article title linked to its URL); `/admin/export` carries url/title on each event.
+- Privacy note: the analytics DB now stores article URLs/titles keyed by the one-way hashed feed id (still no raw secret). Older shares from before this change show as "(unknown)".
+
 ## v3.1 — 2026-06-02
 
 Basic analytics:
