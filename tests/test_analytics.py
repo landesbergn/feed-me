@@ -11,19 +11,33 @@ def test_feed_hash_is_stable_12_chars_and_not_the_secret():
     assert analytics.feed_hash("other") != h1
 
 
-def test_track_then_summary_counts_events(tmp_path):
+def test_track_writes_rows_readable_via_sql(tmp_path):
+    import sqlite3
     db = tmp_path / "_analytics" / "analytics.db"
     analytics.track(db, "feed_created", feed_hash="aaa")
     analytics.track(db, "article_shared", feed_hash="aaa", path="share")
     analytics.track(db, "article_shared", feed_hash="bbb", path="share")
     analytics.track(db, "page_view", path="landing")
 
-    s = analytics.summary(db)
-    assert s["feeds_created"] == 1
-    assert s["articles_shared"] == 2
-    assert s["page_views"] == 1
-    assert s["page_views_by_path"]["landing"] == 1
-    assert s["active_feeds"] == 2  # distinct non-null feed_hash
+    conn = sqlite3.connect(db)
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        shares = conn.execute(
+            "SELECT COUNT(*) FROM events WHERE event = 'article_shared'"
+        ).fetchone()[0]
+        distinct_feeds = conn.execute(
+            "SELECT COUNT(DISTINCT feed_hash) FROM events WHERE feed_hash IS NOT NULL"
+        ).fetchone()[0]
+        landing_path = conn.execute(
+            "SELECT path FROM events WHERE event = 'page_view'"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert total == 4
+    assert shares == 2
+    assert distinct_feeds == 2
+    assert landing_path == "landing"
 
 
 def test_track_creates_parent_dir(tmp_path):

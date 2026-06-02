@@ -9,9 +9,12 @@ The DB lives in its own subdirectory (DATA_DIR/_analytics/) so the
 """
 import hashlib
 import json
+import logging
 import sqlite3
 import time
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -60,4 +63,4 @@ def track(db_path, event, *, feed_hash=None, path=None, props=None, ts=None) -> 
             )
         conn.close()
     except Exception:
-        pass  # swallow — never propagate analytics failure to the caller
+        log.debug("analytics.track failed", exc_info=True)
