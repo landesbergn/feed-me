@@ -83,7 +83,7 @@ def main():
 
     # Tagline.
     reg = _font(FONT_REG, int(38 * SS))
-    tag = "Your articles, read to you — a private podcast feed."
+    tag = "Your articles read to you in a private podcast feed"
     tb = d.textbbox((0, 0), tag, font=reg)
     tyy = wy + (wb[3] - wb[1]) + int(44 * SS)
     d.text(((w - (tb[2] - tb[0])) // 2 - tb[0], tyy), tag, font=reg, fill=SUBINK)
