@@ -1,3 +1,4 @@
+import hmac
 import os
 import re
 import threading
@@ -74,6 +75,7 @@ SHORTCUT_ICLOUD_URL = os.environ.get(
     "SHORTCUT_ICLOUD_URL",
     "https://www.icloud.com/shortcuts/PLACEHOLDER",
 )
+STATS_TOKEN = os.environ.get("STATS_TOKEN")
 
 COOKIE_NAME = "fm_session"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
@@ -109,6 +111,12 @@ def _track(event, *, secret=None, path=None, props=None):
         analytics.track(_analytics_db(), event, feed_hash=fh, path=path, props=props)
     except Exception:
         pass  # analytics must never affect the request
+
+
+def _check_stats_token(token: str) -> None:
+    # 404 (not 401/403) on any failure — reveal nothing about the route.
+    if not STATS_TOKEN or not token or not hmac.compare_digest(token, STATS_TOKEN):
+        raise HTTPException(404)
 
 
 SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -216,6 +224,35 @@ def apple_touch_icon():
 @app.get("/og.png")
 def og_route():
     return _icon("og.png", "image/png")
+
+
+@app.get("/admin/export")
+def admin_export(token: str = ""):
+    _check_stats_token(token)
+    db = _analytics_db()
+    import sqlite3
+    events = []
+    if db.exists():
+        conn = sqlite3.connect(db)
+        try:
+            rows = conn.execute(
+                "SELECT ts, event, feed_hash, path, props FROM events ORDER BY ts"
+            ).fetchall()
+            events = [
+                {"ts": ts, "event": ev, "feed_hash": fh, "path": p, "props": pr}
+                for (ts, ev, fh, p, pr) in rows
+            ]
+        finally:
+            conn.close()
+    return JSONResponse({"summary": analytics.summary(db), "events": events})
+
+
+@app.get("/admin/stats", response_class=HTMLResponse)
+def admin_stats(request: Request, token: str = ""):
+    _check_stats_token(token)
+    return templates.TemplateResponse(
+        request, "admin_stats.html", {"s": analytics.summary(_analytics_db())},
+    )
 
 
 @app.get("/", response_class=HTMLResponse)

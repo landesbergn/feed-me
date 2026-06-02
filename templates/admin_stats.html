@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feed Me · stats</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 720px;
+           margin: 40px auto; padding: 0 20px; color: #2a1f18; background: #FFF8F2; }
+    h1 { font-size: 22px; } h2 { font-size: 14px; text-transform: uppercase;
+         letter-spacing: .08em; color: #8a6f5e; margin-top: 32px; }
+    .nums { display: flex; gap: 24px; flex-wrap: wrap; margin: 16px 0; }
+    .num { background: #fff; border-radius: 12px; padding: 14px 18px;
+           box-shadow: 0 2px 8px rgba(176,74,0,.06); }
+    .num b { display: block; font-size: 28px; color: #b04a00; }
+    .num span { font-size: 12px; color: #8a6f5e; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #EFE2D6; }
+    th { color: #8a6f5e; font-size: 11px; text-transform: uppercase; }
+    code { font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Feed Me · stats</h1>
+  <div class="nums">
+    <div class="num"><b>{{ s.feeds_created }}</b><span>Feeds created</span></div>
+    <div class="num"><b>{{ s.articles_shared }}</b><span>Articles shared</span></div>
+    <div class="num"><b>{{ s.page_views }}</b><span>Page views</span></div>
+    <div class="num"><b>{{ s.active_feeds }}</b><span>Active feeds</span></div>
+  </div>
+
+  <h2>Page views by section</h2>
+  <table>
+    <tr><th>Landing</th><th>Settings</th><th>Share</th></tr>
+    <tr><td>{{ s.page_views_by_path.landing }}</td>
+        <td>{{ s.page_views_by_path.settings }}</td>
+        <td>{{ s.page_views_by_path.share }}</td></tr>
+  </table>
+
+  <h2>By day</h2>
+  <table>
+    <tr><th>Day</th><th>Page views</th><th>Shares</th><th>Feeds</th></tr>
+    {% for row in s.by_day %}
+    <tr><td>{{ row.day }}</td><td>{{ row.page_views }}</td>
+        <td>{{ row.shares }}</td><td>{{ row.feeds }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>Top feeds (by shares)</h2>
+  <table>
+    <tr><th>Feed (hashed)</th><th>Shares</th></tr>
+    {% for f in s.top_feeds %}
+    <tr><td><code>{{ f.feed_hash }}</code></td><td>{{ f.shares }}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

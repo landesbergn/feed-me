@@ -679,3 +679,35 @@ def test_analytics_failure_never_500s_a_page(client, monkeypatch):
         raise RuntimeError("analytics down")
     monkeypatch.setattr(app_module.analytics, "track", boom)
     assert client.get("/").status_code == 200
+
+
+def test_admin_routes_404_without_token(client):
+    # STATS_TOKEN unset by default in tests → both routes 404.
+    assert client.get("/admin/stats").status_code == 404
+    assert client.get("/admin/export").status_code == 404
+
+
+def test_admin_routes_404_with_wrong_token(client, monkeypatch):
+    import app as app_module
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    assert client.get("/admin/stats?token=wrong").status_code == 404
+    assert client.get("/admin/export?token=wrong").status_code == 404
+
+
+def test_admin_stats_and_export_with_correct_token(client, monkeypatch, tmp_path):
+    import app as app_module
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    # generate some data
+    client.post("/create", follow_redirects=False)
+    client.get("/")
+
+    stats = client.get("/admin/stats?token=right")
+    assert stats.status_code == 200
+    assert "Feeds created" in stats.text  # a label from the stats page
+
+    export = client.get("/admin/export?token=right")
+    assert export.status_code == 200
+    body = export.json()
+    assert "summary" in body and "events" in body
+    assert body["summary"]["feeds_created"] == 1
+    assert len(body["events"]) >= 2  # feed_created + at least one page_view
