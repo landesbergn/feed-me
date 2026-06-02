@@ -167,7 +167,6 @@ def settings(request: Request, secret: str):
     for ep in eps:
         ep["when"] = relative_time(ep["ts"], now=now_ts)
     feed_url = f"{APP_BASE_URL}/u/{secret}/feed.xml"
-    ingest_url = f"{APP_BASE_URL}/u/{secret}/ingest"
     feed_host_and_path = feed_url.split("://", 1)[1]
     response = templates.TemplateResponse(request, "settings.html", {
         "secret": secret,
@@ -175,7 +174,6 @@ def settings(request: Request, secret: str):
         "voices": sorted(storage.ALLOWED_VOICES),
         "episodes": eps,
         "feed_url": feed_url,
-        "ingest_url": ingest_url,
         "feed_host_and_path": feed_host_and_path,
         "shortcut_url": SHORTCUT_ICLOUD_URL,
     })

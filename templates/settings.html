@@ -193,8 +193,8 @@
     <div class="step-num">2</div>
     <div class="step-body">
       <div class="title">Install the iOS Shortcut</div>
-      <div class="desc">We'll copy your ingest URL to your clipboard first, then iOS will ask you to paste it during install.</div>
-      <button class="btn-primary" type="button" onclick="installShortcut()">Install Shortcut</button>
+      <div class="desc">One tap — no copy/paste. The same Shortcut works for everyone; it knows it's you because this browser is linked to your feed.</div>
+      <a class="btn-primary" href="{{ shortcut_url }}">Install Shortcut</a>
     </div>
   </div>
 
@@ -232,7 +232,8 @@
   <div class="step-row">
     <div class="step-num">3</div>
     <div class="step-body">
-      <div class="title">Wait 1-2 minutes for the podcast to show up in your feed</div>
+      <div class="title">Safari shows <strong>🎧 Added!</strong> right away</div>
+      <div class="desc">The episode lands in your podcast app within 1–2 minutes.</div>
     </div>
   </div>
 
@@ -267,11 +268,6 @@
         {% endfor %}
       </div>
 
-      <div class="label">Ingest URL</div>
-      <p>For re-pasting into the Shortcut later, or setting up another device. Step 1 already copied this for you.</p>
-      <div class="url-pill" id="ingest-url">{{ ingest_url }}?url=</div>
-      <button class="btn-secondary" type="button" onclick="copyIngestUrl()">Copy ingest URL</button>
-
       <div class="label danger-label">Rotate URL</div>
       <p>Use only if you suspect someone else has your URL. Old one stops working.</p>
       <form action="/u/{{ secret }}/rotate" method="post">
@@ -283,25 +279,9 @@
   </details>
 
   <script>
-    var INGEST_URL = {{ ingest_url | tojson }};
-    var SHORTCUT_URL = {{ shortcut_url | tojson }};
     var FEED_URL = {{ feed_url | tojson }};
-    // The Shortcut appends Shortcut Input to this string, so we hand it
-    // the URL with ?url= already on the end. Friend pastes the whole thing
-    // during Import Question install.
-    var INGEST_URL_WITH_PARAM = INGEST_URL + "?url=";
-
-    function installShortcut() {
-      var go = function () { window.location.href = SHORTCUT_URL; };
-      try {
-        navigator.clipboard.writeText(INGEST_URL_WITH_PARAM).then(go, go);
-      } catch (e) { go(); }
-    }
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
-    }
-    function copyIngestUrl() {
-      try { navigator.clipboard.writeText(INGEST_URL_WITH_PARAM); } catch (e) {}
     }
   </script>
 

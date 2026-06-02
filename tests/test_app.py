@@ -63,8 +63,10 @@ def test_settings_renders_for_known_user(client):
     assert "Recent episodes" in response.text
     # Settings drawer
     assert "Settings" in response.text
-    # Ingest URL still appears in the page (for the auto-copy JS)
-    assert f"/u/{secret}/ingest" in response.text
+    # v3.0: no more paste flow — the ingest URL must NOT leak into the page
+    assert f"/u/{secret}/ingest" not in response.text
+    # v3.0: one-tap install copy
+    assert "no copy/paste" in response.text
     # v1.5: welcome episode pre-seeded on /create
     assert "Welcome to Feed Me" in response.text
     # v1.9: revised share sheet onboarding
