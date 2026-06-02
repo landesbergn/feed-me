@@ -52,3 +52,47 @@ def test_track_never_raises_on_bad_path(tmp_path):
     bad_parent.write_text("x")
     analytics.track(bad_parent / "sub" / "analytics.db", "page_view")
     # no assertion needed — the test passes if track() did not raise
+
+
+def test_summary_basic_counts(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    analytics.track(db, "feed_created", feed_hash="aaa")
+    analytics.track(db, "article_shared", feed_hash="aaa", path="share")
+    analytics.track(db, "article_shared", feed_hash="bbb", path="share")
+    analytics.track(db, "page_view", path="landing")
+    analytics.track(db, "page_view", feed_hash="aaa", path="settings")
+
+    s = analytics.summary(db)
+    assert s["feeds_created"] == 1
+    assert s["articles_shared"] == 2
+    assert s["page_views"] == 2
+    assert s["page_views_by_path"]["landing"] == 1
+    assert s["page_views_by_path"]["settings"] == 1
+    assert s["page_views_by_path"]["share"] == 0
+    assert s["active_feeds"] == 2  # distinct non-null feed_hash across all events
+
+
+def test_summary_by_day_and_top_feeds(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    day1 = 1_750_000_000          # some fixed unix ts
+    day2 = day1 + 86_400
+    analytics.track(db, "article_shared", feed_hash="aaa", ts=day1)
+    analytics.track(db, "article_shared", feed_hash="aaa", ts=day1)
+    analytics.track(db, "page_view", path="landing", ts=day2)
+
+    s = analytics.summary(db)
+    days = {row["day"]: row for row in s["by_day"]}
+    assert len(days) == 2
+    assert s["top_feeds"][0]["feed_hash"] == "aaa"
+    assert s["top_feeds"][0]["shares"] == 2
+
+
+def test_summary_empty_db(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    s = analytics.summary(db)
+    assert s["feeds_created"] == 0
+    assert s["articles_shared"] == 0
+    assert s["page_views"] == 0
+    assert s["active_feeds"] == 0
+    assert s["by_day"] == []
+    assert s["top_feeds"] == []

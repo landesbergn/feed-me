@@ -64,3 +64,65 @@ def track(db_path, event, *, feed_hash=None, path=None, props=None, ts=None) -> 
         conn.close()
     except Exception:
         log.debug("analytics.track failed", exc_info=True)
+
+
+def summary(db_path) -> dict:
+    """Aggregate counts for the stats page / export. Read-only; never raises
+    on a missing DB (creates an empty one)."""
+    conn = _connect(db_path)
+    try:
+        cur = conn.cursor()
+
+        def count(where: str, args=()) -> int:
+            return cur.execute(
+                f"SELECT COUNT(*) FROM events WHERE {where}", args
+            ).fetchone()[0]
+
+        feeds_created = count("event = 'feed_created'")
+        articles_shared = count("event = 'article_shared'")
+        page_views = count("event = 'page_view'")
+
+        page_views_by_path = {"landing": 0, "settings": 0, "share": 0}
+        for path, n in cur.execute(
+            "SELECT path, COUNT(*) FROM events "
+            "WHERE event = 'page_view' GROUP BY path"
+        ).fetchall():
+            if path in page_views_by_path:
+                page_views_by_path[path] = n
+
+        active_feeds = cur.execute(
+            "SELECT COUNT(DISTINCT feed_hash) FROM events "
+            "WHERE feed_hash IS NOT NULL"
+        ).fetchone()[0]
+
+        by_day = [
+            {"day": day, "page_views": pv, "shares": sh, "feeds": fc}
+            for (day, pv, sh, fc) in cur.execute(
+                "SELECT strftime('%Y-%m-%d', ts, 'unixepoch') AS day, "
+                "  SUM(event = 'page_view'), "
+                "  SUM(event = 'article_shared'), "
+                "  SUM(event = 'feed_created') "
+                "FROM events GROUP BY day ORDER BY day"
+            ).fetchall()
+        ]
+
+        top_feeds = [
+            {"feed_hash": fh, "shares": sh}
+            for (fh, sh) in cur.execute(
+                "SELECT feed_hash, COUNT(*) AS shares FROM events "
+                "WHERE event = 'article_shared' AND feed_hash IS NOT NULL "
+                "GROUP BY feed_hash ORDER BY shares DESC LIMIT 20"
+            ).fetchall()
+        ]
+
+        return {
+            "feeds_created": feeds_created,
+            "articles_shared": articles_shared,
+            "page_views": page_views,
+            "page_views_by_path": page_views_by_path,
+            "active_feeds": active_feeds,
+            "by_day": by_day,
+            "top_feeds": top_feeds,
+        }
+    finally:
+        conn.close()
