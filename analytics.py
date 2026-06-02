@@ -73,6 +73,7 @@ def summary(db_path) -> dict:
     try:
         cur = conn.cursor()
 
+        # `where` must always be a hardcoded literal here — never user input.
         def count(where: str, args=()) -> int:
             return cur.execute(
                 f"SELECT COUNT(*) FROM events WHERE {where}", args

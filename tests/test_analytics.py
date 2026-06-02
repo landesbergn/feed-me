@@ -83,6 +83,15 @@ def test_summary_by_day_and_top_feeds(tmp_path):
     s = analytics.summary(db)
     days = {row["day"]: row for row in s["by_day"]}
     assert len(days) == 2
+
+    from datetime import datetime, timezone
+    day1_str = datetime.fromtimestamp(day1, tz=timezone.utc).strftime("%Y-%m-%d")
+    day2_str = datetime.fromtimestamp(day2, tz=timezone.utc).strftime("%Y-%m-%d")
+    assert days[day1_str]["shares"] == 2
+    assert days[day1_str]["page_views"] == 0
+    assert days[day2_str]["page_views"] == 1
+    assert days[day2_str]["shares"] == 0
+
     assert s["top_feeds"][0]["feed_hash"] == "aaa"
     assert s["top_feeds"][0]["shares"] == 2
 
