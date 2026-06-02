@@ -127,3 +127,18 @@ def summary(db_path) -> dict:
         }
     finally:
         conn.close()
+
+
+def all_events(db_path) -> list[dict]:
+    """Return all raw events ordered by ts. Never raises on a missing DB."""
+    conn = _connect(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT ts, event, feed_hash, path, props FROM events ORDER BY ts"
+        ).fetchall()
+        return [
+            {"ts": ts, "event": ev, "feed_hash": fh, "path": p, "props": pr}
+            for (ts, ev, fh, p, pr) in rows
+        ]
+    finally:
+        conn.close()

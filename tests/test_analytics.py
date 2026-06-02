@@ -105,3 +105,13 @@ def test_summary_empty_db(tmp_path):
     assert s["active_feeds"] == 0
     assert s["by_day"] == []
     assert s["top_feeds"] == []
+
+
+def test_all_events_returns_rows_ordered_and_empty_on_missing(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    assert analytics.all_events(db) == []   # missing DB → empty, no raise
+    analytics.track(db, "feed_created", feed_hash="aaa", ts=100)
+    analytics.track(db, "page_view", path="landing", ts=50)
+    rows = analytics.all_events(db)
+    assert [r["ts"] for r in rows] == [50, 100]   # ordered by ts
+    assert {r["event"] for r in rows} == {"feed_created", "page_view"}

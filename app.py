@@ -230,21 +230,9 @@ def og_route():
 def admin_export(token: str = ""):
     _check_stats_token(token)
     db = _analytics_db()
-    import sqlite3
-    events = []
-    if db.exists():
-        conn = sqlite3.connect(db)
-        try:
-            rows = conn.execute(
-                "SELECT ts, event, feed_hash, path, props FROM events ORDER BY ts"
-            ).fetchall()
-            events = [
-                {"ts": ts, "event": ev, "feed_hash": fh, "path": p, "props": pr}
-                for (ts, ev, fh, p, pr) in rows
-            ]
-        finally:
-            conn.close()
-    return JSONResponse({"summary": analytics.summary(db), "events": events})
+    return JSONResponse(
+        {"summary": analytics.summary(db), "events": analytics.all_events(db)}
+    )
 
 
 @app.get("/admin/stats", response_class=HTMLResponse)

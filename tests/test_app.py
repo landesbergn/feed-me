@@ -711,3 +711,14 @@ def test_admin_stats_and_export_with_correct_token(client, monkeypatch, tmp_path
     assert "summary" in body and "events" in body
     assert body["summary"]["feeds_created"] == 1
     assert len(body["events"]) >= 2  # feed_created + at least one page_view
+
+
+def test_admin_export_empty_db(client, monkeypatch):
+    import app as app_module
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    # No events generated — DB may not exist yet.
+    export = client.get("/admin/export?token=right")
+    assert export.status_code == 200
+    body = export.json()
+    assert body["events"] == []
+    assert body["summary"]["feeds_created"] == 0
