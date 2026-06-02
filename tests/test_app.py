@@ -582,6 +582,22 @@ def test_share_bad_url_writes_failed(client, tmp_path):
     assert len(failed) == 1
 
 
+def test_share_invalid_scheme_shows_error(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser
+
+    response = client.get("/share?url=ftp://badscheme.example.com/x")
+    assert response.status_code == 200
+    assert "Invalid URL" in response.text
+
+    import storage
+    eps = storage.list_episodes(tmp_path, secret)
+    failed = [e for e in eps if e["status"] == "failed"]
+    assert len(failed) == 1
+    assert "Invalid URL" in failed[0]["error"] or "ftp" in failed[0]["error"]
+
+
 def test_share_stale_secret_shows_connect(client):
     # Cookie holds a secret whose dir no longer exists (post-rotation).
     create = client.post("/create", follow_redirects=False)

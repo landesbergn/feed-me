@@ -25,18 +25,18 @@
 <body>
   <div class="brand">Feed Me</div>
   {% if state == "added" %}
-    <div class="emoji">🎧</div>
+    <div class="emoji" aria-hidden="true">🎧</div>
     <h1>Added to your feed</h1>
     <p class="title">{{ title }}</p>
     <p>It'll be ready in your podcast app in 1–2 minutes.</p>
     <p class="hint">You can close this tab.</p>
   {% elif state == "error" %}
-    <div class="emoji">⚠️</div>
+    <div class="emoji" aria-hidden="true">⚠️</div>
     <h1>Couldn't add that</h1>
     <p>{{ error }}</p>
     <p class="hint">Try sharing again.</p>
   {% else %}{# connect #}
-    <div class="emoji">🔗</div>
+    <div class="emoji" aria-hidden="true">🔗</div>
     <h1>Link this browser first</h1>
     <p>This browser isn't connected to a Feed Me feed yet.</p>
     <p>Open your Feed Me page (the link you bookmarked) in this browser once, then share again.</p>
