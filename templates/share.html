@@ -49,6 +49,11 @@
       font-family: var(--round); font-weight: 800; font-size: 14px; color: var(--accent);
       font-variant-numeric: tabular-nums; margin: 0 0 4px; min-height: 1.2em;
     }
+    .back {
+      display: inline-block; margin-top: 28px; font-family: var(--round); font-weight: 700;
+      font-size: 13px; color: var(--accent); text-decoration: none;
+    }
+    .back:hover { text-decoration: underline; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -128,16 +133,19 @@
         poll();
       })();
     </script>
+    <a class="back" href="{{ home_url }}">← Back to your feed</a>
   {% elif state == "error" %}
     <div class="emoji" aria-hidden="true">⚠️</div>
     <h1>Couldn't add that</h1>
     <p>{{ error }}</p>
     <p class="hint">Try sharing again.</p>
+    <a class="back" href="{{ home_url }}">← Back to your feed</a>
   {% else %}{# connect #}
     <div class="emoji" aria-hidden="true">🔗</div>
     <h1>Link this browser first</h1>
     <p>This browser isn't connected to a Feed Me feed yet.</p>
     <p>Open your Feed Me page (the link you bookmarked) in this browser once, then share again.</p>
+    <a class="back" href="/">← Feed Me home</a>
   {% endif %}
 </body>
 </html>

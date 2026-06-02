@@ -107,6 +107,7 @@ def share_route(request: Request, url: str = ""):
     if not secret or not storage.user_exists(DATA_DIR, secret):
         return templates.TemplateResponse(request, "share.html", {"state": "connect"})
 
+    home_url = f"{APP_BASE_URL}/u/{secret}"
     parsed = urlparse(url)
     if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
         error_msg = (
@@ -119,7 +120,8 @@ def share_route(request: Request, url: str = ""):
             source_url=(url or "(empty share)"), error=error_msg,
         )
         return templates.TemplateResponse(
-            request, "share.html", {"state": "error", "error": error_msg},
+            request, "share.html",
+            {"state": "error", "error": error_msg, "home_url": home_url},
         )
 
     # Quick title fetch so the confirmation page + pending row show the real
@@ -132,7 +134,8 @@ def share_route(request: Request, url: str = ""):
     spawn_ingest(url, secret, DATA_DIR, slug)
     return templates.TemplateResponse(
         request, "share.html",
-        {"state": "added", "title": title or hostname(url), "slug": slug},
+        {"state": "added", "title": title or hostname(url),
+         "slug": slug, "home_url": home_url},
     )
 
 
