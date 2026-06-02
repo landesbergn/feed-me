@@ -70,15 +70,16 @@
     .btn-pair { display: flex; gap: 8px; flex-wrap: wrap; }
     .note { font-size: 12.5px; color: var(--muted); margin-top: 11px; }
 
-    .ep-table { margin-top: 10px; width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ep-table { margin-top: 10px; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
     .ep-table thead th {
       font-family: var(--round); font-size: 11px; color: var(--faint); font-weight: 800;
       text-align: left; padding: 6px 0; border-bottom: 1px solid var(--hair);
     }
-    .ep-table th.col-time { width: 64px; }
-    .ep-table th.col-status { width: 64px; text-align: right; }
+    .ep-table th.col-time { width: 58px; }
+    .ep-table th.col-status { width: 74px; text-align: right; }
     .ep-table tbody td { padding: 11px 8px 11px 0; border-bottom: 1px solid #F4E9DD; vertical-align: top; }
-    .ep-table td.col-title { color: var(--ink); font-weight: 600; }
+    .ep-table td.col-title { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+    .ep-table td.col-time, .ep-table td.col-status { padding-right: 0; }
     .ep-table td.col-title .src {
       display: block; font-family: var(--sans); font-size: 11px; color: var(--faint);
       margin-top: 2px; word-break: break-word; font-weight: 400;
@@ -117,6 +118,17 @@
     .pin-tip ol li { margin: 5px 0; }
     .pin-tip strong { color: var(--ink); }
 
+    details.setup-fold { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--hair); }
+    details.setup-fold > summary {
+      cursor: pointer; font-family: var(--round); font-size: 13px; color: #7a5f4e;
+      font-weight: 800; list-style: none; user-select: none; padding: 4px 0;
+    }
+    details.setup-fold > summary::-webkit-details-marker { display: none; }
+    details.setup-fold > summary::before { content: '▸ '; font-size: 10px; display: inline-block; margin-right: 4px; transition: transform .15s; }
+    details.setup-fold[open] > summary::before { transform: rotate(90deg); }
+    details.setup-fold .body { padding-top: 6px; }
+    details.setup-fold .sec:first-child { margin-top: 14px; }
+
     details.settings { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--hair); }
     details.settings > summary {
       cursor: pointer; font-family: var(--round); font-size: 12px; color: var(--muted);
@@ -152,66 +164,24 @@
   <div class="brand">🎧 Feed Me</div>
   <h1>Your feed is ready.</h1>
 
-  <div class="sec">Set up <span class="tag">· once</span></div>
-
-  <div class="step">
-    <div class="n">1</div>
-    <div class="body">
-      <div class="t">Install the iOS Shortcut</div>
-      <a class="btn-primary" href="{{ shortcut_url }}">Install Shortcut</a>
+  {% if setup_done %}
+    <div id="episodes-section">
+      {% include "_episodes_section.html" %}
     </div>
-  </div>
 
-  <div class="step">
-    <div class="n">2</div>
-    <div class="body">
-      <div class="t">Subscribe in your podcast app</div>
-      <div class="btn-pair">
-        <a class="btn-primary" href="podcast://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
-        <button class="btn-secondary" type="button" onclick="copyFeedUrl()">Copy feed URL</button>
+    <details class="setup-fold">
+      <summary>Setup &amp; sharing</summary>
+      <div class="body">
+        {% include "_setup_instructions.html" %}
       </div>
-      <div class="note"><em>Doesn't work with Spotify, sorry :(</em></div>
+    </details>
+  {% else %}
+    {% include "_setup_instructions.html" %}
+
+    <div id="episodes-section">
+      {% include "_episodes_section.html" %}
     </div>
-  </div>
-
-  <div class="sec">Share an article <span class="tag">· anytime</span></div>
-
-  <div class="step">
-    <div class="n">1</div>
-    <div class="body">
-      <div class="t">Tap the <svg class="ios-share"><use href="#ios-share"/></svg> share button</div>
-    </div>
-  </div>
-
-  <div class="step">
-    <div class="n">2</div>
-    <div class="body">
-      <div class="t">Tap <span class="em">More</span>, then tap <span class="em">Feed Me</span></div>
-    </div>
-  </div>
-
-  <div class="step">
-    <div class="n">3</div>
-    <div class="body">
-      <div class="t">Your browser shows <span class="em">🎧 Added to your feed</span> right away</div>
-    </div>
-  </div>
-
-  <details class="pin-tip">
-    <summary>
-      <span class="pin-tip-title">💡 Pin Feed Me <span class="pin-tip-sub">for one-tap sharing (recommended)</span></span>
-    </summary>
-    <ol>
-      <li>Open the share sheet on any article (Share → More)</li>
-      <li>At the bottom tap <strong>Edit Actions</strong> or <strong>Edit Suggestions</strong></li>
-      <li>Find Feed Me in the list, tap the green <strong>+</strong> next to it</li>
-      <li>Tap <strong>Done</strong></li>
-    </ol>
-  </details>
-
-  <div id="episodes-section">
-    {% include "_episodes_section.html" %}
-  </div>
+  {% endif %}
 
   <details class="settings">
     <summary>Settings</summary>

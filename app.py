@@ -48,6 +48,14 @@ def hostname(url: str) -> str:
         return url
 
 
+WELCOME_URL = "https://feed-me.xyz"
+
+
+def _is_welcome(ep: dict) -> bool:
+    """The seeded welcome episode (flagged on new feeds, URL-matched on old)."""
+    return bool(ep.get("welcome")) or ep.get("url") == WELCOME_URL
+
+
 def spawn_ingest(url: str, secret: str, data_dir: Path, slug: str) -> None:
     t = threading.Thread(
         target=ingest.process,
@@ -219,6 +227,10 @@ def settings(request: Request, secret: str):
         ep["when"] = relative_time(ep["ts"], now=now_ts)
     feed_url = f"{APP_BASE_URL}/u/{secret}/feed.xml"
     feed_host_and_path = feed_url.split("://", 1)[1]
+    # "Setup done" once the user has shared at least one real article (any
+    # episode beyond the seeded welcome). Then we lead with their episodes and
+    # fold the instructions away.
+    setup_done = any(not _is_welcome(ep) for ep in eps)
     response = templates.TemplateResponse(request, "settings.html", {
         "secret": secret,
         "current_voice": s["voice"],
@@ -227,6 +239,7 @@ def settings(request: Request, secret: str):
         "feed_url": feed_url,
         "feed_host_and_path": feed_host_and_path,
         "shortcut_url": SHORTCUT_ICLOUD_URL,
+        "setup_done": setup_done,
     })
     set_session_cookie(response, secret)
     return response

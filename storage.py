@@ -122,6 +122,7 @@ def seed_welcome_episode(
         "url": "https://feed-me.xyz",
         "ts": int(time.time()),
         "description": WELCOME_DESCRIPTION,
+        "welcome": True,
     }))
     return slug
 

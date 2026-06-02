@@ -82,6 +82,37 @@ def test_share_status_unknown_without_cookie(client):
     assert r.json()["status"] == "unknown"
 
 
+def test_settings_fresh_feed_shows_instructions_before_episodes(client):
+    # A brand-new feed has only the welcome episode → setup NOT done →
+    # instructions come first, episodes after.
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    body = client.get(f"/u/{secret}").text
+    assert "Set up" in body
+    assert "Setup &amp; sharing" not in body  # not folded yet
+    # Instructions ("Install the iOS Shortcut") appear before the episodes table.
+    assert body.index("Install the iOS Shortcut") < body.index("Recent episodes")
+
+
+def test_settings_prioritizes_episodes_once_real_article_shared(client, tmp_path):
+    # After a real (non-welcome) episode exists, setup is done → episodes lead,
+    # instructions fold into a "Setup & sharing" collapsible.
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import storage
+    storage.write_episode(
+        tmp_path, secret, slug="real1", title="A Real Article",
+        source_url="https://example.com/a", audio=b"MP3", description="x",
+    )
+
+    body = client.get(f"/u/{secret}").text
+    assert "Setup &amp; sharing" in body  # instructions are folded
+    # Episodes table now comes before the setup instructions.
+    assert body.index("Recent episodes") < body.index("Install the iOS Shortcut")
+
+
 def test_icon_routes_serve(client):
     # These all 404'd before v3.x — favicon + apple-touch icons now exist.
     for path in (
