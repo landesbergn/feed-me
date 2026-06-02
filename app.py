@@ -10,6 +10,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
+    JSONResponse,
     PlainTextResponse,
     RedirectResponse,
     Response,
@@ -130,8 +131,26 @@ def share_route(request: Request, url: str = ""):
     )
     spawn_ingest(url, secret, DATA_DIR, slug)
     return templates.TemplateResponse(
-        request, "share.html", {"state": "added", "title": title or hostname(url)},
+        request, "share.html",
+        {"state": "added", "title": title or hostname(url), "slug": slug},
     )
+
+
+@app.get("/share/status")
+def share_status(request: Request, slug: str = ""):
+    """Cookie-authed JSON status for one episode, polled by the /share page."""
+    secret = request.cookies.get(COOKIE_NAME)
+    if not secret or not slug or not storage.user_exists(DATA_DIR, secret):
+        return JSONResponse({"status": "unknown"})
+    for ep in storage.list_episodes(DATA_DIR, secret):
+        if ep["slug"] == slug:
+            return JSONResponse({
+                "status": ep["status"],
+                "total_chunks": ep.get("total_chunks"),
+                "ts": ep["ts"],
+                "error": ep.get("error"),
+            })
+    return JSONResponse({"status": "unknown"})
 
 
 @app.get("/cover.jpg")

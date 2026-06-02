@@ -8,31 +8,106 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
+    :root {
+      --ink: #2a1f18; --accent: #b04a00; --muted: #8a6f5e;
+      --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      --sans: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif;
-      max-width: 480px; margin: 64px auto; padding: 0 24px;
-      line-height: 1.5; color: #0a0a0a; background: #fff; text-align: center;
+      font-family: var(--sans); max-width: 480px; margin: 72px auto; padding: 0 24px;
+      line-height: 1.5; color: var(--ink); background: #FFF8F2; text-align: center;
       -webkit-font-smoothing: antialiased;
     }
     .brand {
-      font-size: 10px; color: #767676; text-transform: uppercase;
-      letter-spacing: 0.14em; font-weight: 700; margin-bottom: 24px;
+      font-family: var(--round); font-size: 11px; color: var(--accent);
+      text-transform: uppercase; letter-spacing: .1em; font-weight: 800; margin-bottom: 26px;
     }
-    .emoji { font-size: 44px; line-height: 1; margin-bottom: 12px; }
-    h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
-    p { font-size: 14px; color: #4a4a4a; margin: 8px 0; }
-    .title { font-weight: 600; color: #0a0a0a; }
-    .hint { font-size: 12px; color: #767676; margin-top: 18px; }
+    .emoji { font-size: 46px; line-height: 1; margin-bottom: 14px; }
+    h1 { font-family: var(--round); font-size: 23px; font-weight: 800; letter-spacing: -.01em; margin: 0 0 8px; }
+    p { font-size: 14px; color: #5c4636; margin: 8px 0; }
+    .title { font-weight: 700; color: var(--ink); }
+    .hint { font-size: 12.5px; color: var(--muted); margin-top: 20px; }
+    .err { color: var(--accent); font-weight: 600; }
+    .spinner {
+      width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 50%;
+      border: 4px solid #F0DCC9; border-top-color: var(--accent);
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pct {
+      font-family: var(--round); font-weight: 800; font-size: 15px; color: var(--accent);
+      font-variant-numeric: tabular-nums; margin-top: 2px; min-height: 1.2em;
+    }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="brand">Feed Me</div>
+  <div class="brand">🎧 Feed Me</div>
   {% if state == "added" %}
-    <div class="emoji" aria-hidden="true">🎧</div>
-    <h1>Added to your feed</h1>
-    <p class="title">{{ title }}</p>
-    <p>It'll be ready in your podcast app in 1–2 minutes.</p>
-    <p class="hint">You can close this tab.</p>
+    <div id="fm-loading">
+      <div class="spinner" aria-hidden="true"></div>
+      <h1>Adding to your feed…</h1>
+      <p class="title">{{ title }}</p>
+      <p class="pct" id="fm-pct"></p>
+      <p class="hint">Generating the audio. You can close this tab — it'll be in your podcast app when it's ready.</p>
+    </div>
+    <div id="fm-ready" hidden>
+      <div class="emoji" aria-hidden="true">🎧</div>
+      <h1>Added to your feed</h1>
+      <p class="title">{{ title }}</p>
+      <p>It's in your podcast app now.</p>
+      <p class="hint">You can close this tab.</p>
+    </div>
+    <div id="fm-failed" hidden>
+      <div class="emoji" aria-hidden="true">⚠️</div>
+      <h1>Couldn't add that</h1>
+      <p class="err" id="fm-err">Something went wrong generating the audio.</p>
+      <p class="hint">Try sharing again.</p>
+    </div>
+    <script>
+      (function () {
+        var slug = {{ slug | tojson }};
+        var pctEl = document.getElementById("fm-pct");
+        var loading = document.getElementById("fm-loading");
+        var ready = document.getElementById("fm-ready");
+        var failed = document.getElementById("fm-failed");
+        var errEl = document.getElementById("fm-err");
+        var SECONDS_PER_CHUNK = 5, MIN_EXPECTED_SECONDS = 30, MAX_PCT = 95;
+        var ts = null, totalChunks = null, polls = 0, MAX_POLLS = 90, done = false;
+
+        function show(el) {
+          loading.hidden = true; ready.hidden = true; failed.hidden = true;
+          el.hidden = false; done = true;
+        }
+        function tickPct() {
+          if (done || !ts || !totalChunks) { return; }
+          var elapsed = Math.floor(Date.now() / 1000) - ts;
+          var expected = Math.max(MIN_EXPECTED_SECONDS, totalChunks * SECONDS_PER_CHUNK);
+          var pct = Math.min(MAX_PCT, Math.max(0, Math.round((elapsed / expected) * 100)));
+          pctEl.textContent = pct + "%";
+        }
+        function poll() {
+          if (done || !slug) return;
+          fetch("/share/status?slug=" + encodeURIComponent(slug), { cache: "no-store" })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+              if (done) return;
+              if (d) {
+                if (d.ts) ts = d.ts;
+                if (d.total_chunks) totalChunks = d.total_chunks;
+                if (d.status === "ready") { show(ready); return; }
+                if (d.status === "failed") { if (d.error) errEl.textContent = d.error; show(failed); return; }
+                tickPct();
+              }
+              if (++polls < MAX_POLLS) setTimeout(poll, 2500);
+            })
+            .catch(function () { if (++polls < MAX_POLLS) setTimeout(poll, 2500); });
+        }
+        setInterval(tickPct, 1000);
+        poll();
+      })();
+    </script>
   {% elif state == "error" %}
     <div class="emoji" aria-hidden="true">⚠️</div>
     <h1>Couldn't add that</h1>

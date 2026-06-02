@@ -46,6 +46,28 @@ def test_settings_404_for_unknown_user(client):
     assert response.status_code == 404
 
 
+def test_share_status_reports_pending(client, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # links this browser (sets fm_session)
+
+    import storage
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://x.com/a", title="X",
+    )
+    r = client.get(f"/share/status?slug={slug}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "pending"
+    assert body["ts"] is not None
+
+
+def test_share_status_unknown_without_cookie(client):
+    r = client.get("/share/status?slug=anything")
+    assert r.status_code == 200
+    assert r.json()["status"] == "unknown"
+
+
 def test_icon_routes_serve(client):
     # These all 404'd before v3.x — favicon + apple-touch icons now exist.
     for path in (
