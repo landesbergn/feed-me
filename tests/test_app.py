@@ -46,6 +46,20 @@ def test_settings_404_for_unknown_user(client):
     assert response.status_code == 404
 
 
+def test_og_image_serves(client):
+    r = client.get("/og.png")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+
+
+def test_landing_has_open_graph_tags(client):
+    r = client.get("/")
+    assert 'property="og:title"' in r.text
+    assert 'property="og:image"' in r.text
+    assert "/og.png" in r.text
+    assert 'name="twitter:card"' in r.text
+
+
 def test_share_status_reports_pending(client, tmp_path):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]

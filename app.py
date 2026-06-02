@@ -186,9 +186,14 @@ def apple_touch_icon():
     return _icon("apple-touch-icon.png", "image/png")
 
 
+@app.get("/og.png")
+def og_route():
+    return _icon("og.png", "image/png")
+
+
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
-    return templates.TemplateResponse(request, "landing.html", {})
+    return templates.TemplateResponse(request, "landing.html", {"base_url": APP_BASE_URL})
 
 
 @app.post("/create")
