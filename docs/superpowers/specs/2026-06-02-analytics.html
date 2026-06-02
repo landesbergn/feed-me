@@ -108,7 +108,14 @@
 </ol>
 
 <h2 id="model">3 · Data model</h2>
-<p>SQLite DB at <code>DATA_DIR/analytics.db</code> (on the Fly persistent volume, survives deploys). Single table:</p>
+<p>
+  SQLite DB at <code>DATA_DIR/_analytics/analytics.db</code> (on the Fly persistent volume,
+  survives deploys). It lives in its own subdirectory <strong>on purpose</strong>: the
+  <code>/data/&lt;secret&gt;/</code> feed level stays pure, so any current or future
+  "list feeds" code can keep assuming every entry there is a feed dir. (The DB also creates
+  <code>-wal</code>/<code>-shm</code> sidecar files; keeping them out of <code>/data/</code>
+  root avoids inflating any feed count.) <code>_connect()</code> creates the
+  <code>_analytics/</code> dir if missing. Single table:</p>
 <pre><code>CREATE TABLE IF NOT EXISTS events (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     ts        INTEGER NOT NULL,         -- unix seconds
@@ -134,7 +141,10 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);</code></pre>
   "Number of feeds" and "number of articles shared" can also be cross-checked against the
   filesystem (count of user dirs; count of episode JSONs). The <code>summary()</code> uses the
   events table as the source of truth for time-series, and the route may add the live
-  filesystem feed count as a sanity total.
+  filesystem feed count as a sanity total — if it does, it MUST filter to directories
+  (<code>[p for p in DATA_DIR.iterdir() if p.is_dir()]</code>), never a raw
+  <code>iterdir()</code> count, so the <code>_analytics/</code> dir and any future non-feed
+  entries don't skew the number.
 </p>
 
 <h2 id="module">4 · The analytics module</h2>
@@ -142,9 +152,12 @@ CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);</code></pre>
 <h3>Connection &amp; init</h3>
 <p>
   Open a short-lived connection per write/read (the app is low-traffic; this avoids
-  cross-thread connection issues, since ingest runs in background threads). The DB path is
-  read from <code>app.DATA_DIR</code> at call time so tests can point it at a temp dir. Enable
-  WAL for safe concurrent reads.
+  cross-thread connection issues, since ingest runs in background threads — do <em>not</em>
+  later "optimize" into a shared module-level connection, which the daemon ingest threads
+  would make unsafe). <code>_connect()</code> creates the parent <code>_analytics/</code> dir
+  (<code>mkdir(parents=True, exist_ok=True)</code>) and the schema on first use. The DB path is
+  passed in (built from <code>app.DATA_DIR</code> at call time) so tests can point it at a temp
+  dir. Enable WAL for safe concurrent reads.
 </p>
 
 <h3>feed_hash</h3>
@@ -189,9 +202,14 @@ def feed_hash(secret: str) -> str:
 <p>
   A thin helper in <code>app.py</code> keeps call sites one line and centralizes the hashing:
 </p>
-<pre><code>def _track(event, *, secret=None, path=None, props=None):
+<pre><code>def _analytics_db():
+    # Built at call time, not module load, so tests that monkeypatch DATA_DIR
+    # (and the per-request DATA_DIR) resolve to the right path.
+    return DATA_DIR / "_analytics" / "analytics.db"
+
+def _track(event, *, secret=None, path=None, props=None):
     analytics.track(
-        DATA_DIR / "analytics.db", event,
+        _analytics_db(), event,
         feed_hash=analytics.feed_hash(secret) if secret else None,
         path=path, props=props,
     )</code></pre>
@@ -211,9 +229,17 @@ def feed_hash(secret: str) -> str:
 <h2 id="admin">6 · Admin access</h2>
 <p>
   A single secret, the <code>STATS_TOKEN</code> environment variable (set as a Fly secret),
-  gates both admin routes. The token is compared with <code>hmac.compare_digest</code>. If
-  <code>STATS_TOKEN</code> is unset, or the supplied <code>?token=</code> does not match, the
-  route returns <strong>404</strong> (not 401/403 — reveals nothing about the route's existence).
+  gates both admin routes. The guard must <strong>short-circuit before</strong>
+  <code>hmac.compare_digest</code> (which raises on a <code>None</code> argument):
+</p>
+<pre><code>STATS_TOKEN = os.environ.get("STATS_TOKEN")
+
+def _check_token(token: str):
+    if not STATS_TOKEN or not token or not hmac.compare_digest(token, STATS_TOKEN):
+        raise HTTPException(404)   # 404, not 401/403 — reveal nothing</code></pre>
+<p>
+  So an unset <code>STATS_TOKEN</code>, a missing <code>?token=</code>, or a wrong token all
+  yield <strong>404</strong> (not 401/403 — reveals nothing about the route's existence).
 </p>
 <ul>
   <li><code>GET /admin/stats?token=…</code> → small HTML page rendering <code>summary()</code>: headline counts, a by-day table, page-views-by-path, and the top active feeds (by hashed id).</li>
@@ -251,6 +277,14 @@ def feed_hash(secret: str) -> str:
   <li><strong>IP / geo / user-agent / referrer capture.</strong> Deliberately not stored (privacy).</li>
   <li><strong>Retention/cohort analysis.</strong> The raw export enables it later with Claude; not built in.</li>
 </ul>
+<p class="small">
+  <strong>Caveat — bot inflation on <code>page_view</code>.</strong> Since v3.0 ships Open
+  Graph tags, link-unfurl bots (iMessage, Slack, etc.) and iOS icon probes fetch <code>/</code>,
+  so the <em>landing</em> page-view count will run noisy/high and should not be read as real
+  humans. Acceptable for "basic" analytics; a future tweak could skip obvious bot user-agents
+  at <code>track()</code> time (checked, not stored). The <code>feed_created</code> and
+  <code>article_shared</code> counts are unaffected (bots don't POST or share).
+</p>
 
 <h2 id="accept">9 · Acceptance criteria</h2>
 <ul>
