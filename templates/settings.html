@@ -4,165 +4,139 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your Feed Me feed</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
+    :root {
+      --bg: #FFF8F2; --ink: #2a1f18; --accent: #b04a00;
+      --muted: #8a6f5e; --faint: #b89a84; --card: #ffffff;
+      --hair: #EFE2D6; --hi: #FCE3C8;
+      --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      --sans: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, "Inter", "Helvetica Neue", system-ui, sans-serif;
-      max-width: 480px; margin: 40px auto; padding: 0 20px;
-      line-height: 1.5; color: #0a0a0a; background: #fff;
+      font-family: var(--sans);
+      max-width: 480px; margin: 44px auto; padding: 0 22px 64px;
+      line-height: 1.5; color: var(--ink); background: var(--bg);
       -webkit-font-smoothing: antialiased;
     }
     .brand {
-      font-size: 10px; color: #767676; text-transform: uppercase;
-      letter-spacing: 0.14em; font-weight: 700; margin-bottom: 16px;
+      font-family: var(--round); font-size: 12px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--accent);
+      margin-bottom: 18px;
     }
-    h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.02em;
-         line-height: 1.15; margin: 0 0 6px; }
-    h2 {
-      font-size: 11px; color: #767676; text-transform: uppercase;
-      letter-spacing: 0.14em; font-weight: 700;
-      margin: 32px 0 4px; padding-top: 18px; border-top: 1px solid #eee;
+    h1 {
+      font-family: var(--round); font-size: 28px; font-weight: 800;
+      letter-spacing: -.01em; line-height: 1.12; margin: 0 0 28px;
     }
-    h2:first-of-type { border-top: none; padding-top: 0; margin-top: 24px; }
-    .phase-note { font-size: 12px; color: #6a6a6a; margin: 0 0 8px; }
-    .step-row {
-      display: grid; grid-template-columns: 26px 1fr; gap: 14px;
-      padding: 10px 0; align-items: start; position: relative;
+    .sec {
+      font-family: var(--round); font-size: 13px; font-weight: 800;
+      color: #7a5f4e; margin: 30px 0 14px;
     }
-    .step-row:not(:last-of-type)::before {
-      content: ''; position: absolute;
-      left: 12px; top: 36px; bottom: -6px;
-      width: 1.5px; background: #eaeaea;
+    .sec .tag { color: var(--faint); font-weight: 700; }
+    .sec-note { font-size: 12.5px; color: var(--muted); margin: -8px 0 14px; }
+
+    .step {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--card); border-radius: 16px; padding: 15px 16px;
+      margin-bottom: 11px;
+      box-shadow: 0 1px 0 #F3E6D9, 0 6px 16px rgba(176, 74, 0, .05);
     }
-    .step-num {
-      width: 24px; height: 24px; border-radius: 50%;
-      border: 1.5px solid #0a0a0a; display: flex; align-items: center;
-      justify-content: center; font-size: 12px; font-weight: 700;
-      background: #fff; position: relative; z-index: 1;
+    .step .n {
+      flex: none; width: 27px; height: 27px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      font-family: var(--round); font-weight: 800; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
     }
-    .step-body { font-size: 14px; }
-    .step-body .title { font-weight: 600; color: #0a0a0a; margin-bottom: 3px; }
-    .step-body .desc { font-size: 12px; color: #6a6a6a; line-height: 1.45; }
-    .step-body kbd {
-      font-family: -apple-system, sans-serif;
-      background: #f3f1ec; padding: 1px 6px; border-radius: 3px;
-      font-size: 12px; font-weight: 600; color: #0a0a0a;
-      border: 1px solid #e5e3dd;
+    .step .body { flex: 1; min-width: 0; }
+    .step .t { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+    .em {
+      font-weight: 700; background: var(--hi); border-radius: 5px; padding: 0 5px;
     }
     .ios-share {
       display: inline-block; width: 1em; height: 1em;
-      vertical-align: -0.15em; margin: 0 1px; color: #007AFF;
+      vertical-align: -.15em; color: #007AFF;
     }
+
     .btn-primary, .btn-secondary {
-      display: inline-block; padding: 10px 18px; font-size: 13px;
-      border-radius: 999px; font-weight: 600; cursor: pointer;
-      text-decoration: none; margin-top: 8px; border: none;
-      font-family: inherit; box-sizing: border-box;
+      display: inline-block; font-family: var(--sans); font-size: 13px; font-weight: 700;
+      padding: 10px 18px; border-radius: 999px; text-decoration: none; cursor: pointer;
+      border: none; margin-top: 12px; line-height: 1;
     }
-    .btn-primary { background: #0a0a0a; color: #fff; }
-    .btn-secondary { background: #fff; color: #0a0a0a; border: 1px solid #d0d0d0; }
-    .btn-pair { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .btn-pair .btn-primary, .btn-pair .btn-secondary { margin-top: 0; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: #fff; color: var(--accent); border: 1.5px solid #E9C9AC; }
+    .btn-pair { display: flex; gap: 8px; flex-wrap: wrap; }
+    .note { font-size: 12.5px; color: var(--muted); margin-top: 11px; }
+
     .ep-table { margin-top: 10px; width: 100%; border-collapse: collapse; font-size: 13px; }
     .ep-table thead th {
-      font-size: 10px; color: #767676; text-transform: uppercase;
-      letter-spacing: 0.08em; font-weight: 600; text-align: left;
-      padding: 6px 0; border-bottom: 1px solid #eee;
+      font-family: var(--round); font-size: 11px; color: var(--faint); font-weight: 800;
+      text-align: left; padding: 6px 0; border-bottom: 1px solid var(--hair);
     }
-    .ep-table th.col-time { width: 70px; }
+    .ep-table th.col-time { width: 64px; }
     .ep-table th.col-status { width: 64px; text-align: right; }
-    .ep-table tbody td {
-      padding: 11px 8px 11px 0; border-bottom: 1px solid #f3f3f3; vertical-align: top;
-    }
-    .ep-table td.col-title { color: #0a0a0a; font-weight: 500; }
+    .ep-table tbody td { padding: 11px 8px 11px 0; border-bottom: 1px solid #F4E9DD; vertical-align: top; }
+    .ep-table td.col-title { color: var(--ink); font-weight: 600; }
     .ep-table td.col-title .src {
-      display: block; font-size: 10px; color: #767676;
-      font-family: "SF Mono", Menlo, monospace; margin-top: 2px;
-      word-break: break-all;
+      display: block; font-family: var(--sans); font-size: 11px; color: var(--faint);
+      margin-top: 2px; word-break: break-word; font-weight: 400;
     }
     .ep-table td.col-title .ep-err {
-      display: block; font-size: 10px; color: #b04a00;
-      margin-top: 3px; line-height: 1.4; word-break: break-word;
+      display: block; font-size: 11px; color: var(--accent);
+      margin-top: 4px; line-height: 1.4; word-break: break-word;
     }
-    .ep-table td.col-time { color: #767676; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .ep-table td.col-time { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
     .ep-table td.col-status { text-align: right; }
     .status-chip {
-      display: inline-block; padding: 2px 8px;
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.06em; border-radius: 999px;
+      display: inline-block; padding: 3px 9px; font-family: var(--round);
+      font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+      border-radius: 999px;
     }
-    .status-chip.ready { background: #e3f1e3; color: #2f7a3d; }
-    .status-chip.failed { background: #f6e0d6; color: #b04a00; }
-    .status-chip.pending { background: #f3f1ec; color: #767676; }
-    .ep-empty { color: #767676; font-size: 12px; font-style: italic; padding: 14px 0; }
-    .voices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .voice-chip {
-      padding: 5px 12px; border: 1px solid #d0d0d0; background: #fff;
-      border-radius: 999px; font-size: 12px; cursor: pointer;
-      font-family: inherit;
-    }
-    .voice-chip.active { background: #0a0a0a; color: #fff; border-color: #0a0a0a; }
-    form { display: inline; }
-    details.settings { margin-top: 36px; padding-top: 14px; border-top: 1px solid #eee; }
-    details.settings > summary {
-      cursor: pointer; font-size: 10px; color: #767676;
-      text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700;
-      padding: 6px 0; list-style: none; user-select: none;
-    }
-    details.settings > summary::-webkit-details-marker { display: none; }
-    details.settings > summary::before {
-      content: '▸ '; font-size: 9px; transition: transform 0.15s;
-      display: inline-block; margin-right: 4px;
-    }
-    details.settings[open] > summary::before { transform: rotate(90deg); }
-    details.settings .body { padding: 8px 0 4px; }
-    details.settings .body .label {
-      font-size: 12px; font-weight: 600; color: #0a0a0a; margin-top: 18px;
-    }
-    details.settings .body .label:first-child { margin-top: 6px; }
-    details.settings .body p { font-size: 11px; color: #6a6a6a; margin: 4px 0 6px; }
-    .danger-label { color: #b04a00 !important; }
-    .danger-btn { border-color: #e5b8a0 !important; color: #b04a00 !important; }
-    /* v1.9: Pin Feed Me tip (collapsible) */
-    details.pin-tip {
-      background: #FFF8DC;
-      border-left: 3px solid #b04a00;
-      padding: 12px 16px;
-      margin: 20px 0 0;
-      border-radius: 3px;
-      font-family: -apple-system, sans-serif;
-    }
-    details.pin-tip > summary {
-      cursor: pointer; list-style: none; user-select: none;
-      display: flex; align-items: center;
-    }
-    details.pin-tip > summary::-webkit-details-marker { display: none; }
-    details.pin-tip > summary::after {
-      content: '▸'; font-size: 10px; color: #6a6a6a;
-      margin-left: auto; transition: transform 0.15s;
-    }
-    details.pin-tip[open] > summary::after { transform: rotate(90deg); }
-    .pin-tip-title {
-      font-size: 13px; font-weight: 600;
-      color: #0a0a0a;
-    }
-    .pin-tip-sub {
-      font-weight: 400; color: #6a6a6a; font-size: 11px;
-    }
-    details.pin-tip ol {
-      font-size: 12px; color: #4a4a4a;
-      padding-left: 18px; margin: 4px 0 0;
-      line-height: 1.5;
-    }
-    .pin-tip ol li { margin: 4px 0; }
-    .pin-tip strong { color: #0a0a0a; }
-    /* v2.0: pending progress percent under the Pending chip */
+    .status-chip.ready { background: #E6F0E5; color: #2f7a3d; }
+    .status-chip.failed { background: #F6E0D6; color: #b04a00; }
+    .status-chip.pending { background: #F3EADF; color: #8a6f5e; }
     .status-chip.pending + .pending-progress {
-      display: block;
-      font-size: 10px;
-      color: #6a6a6a;
-      margin-top: 3px;
+      display: block; font-size: 10px; color: var(--muted); margin-top: 3px;
       font-variant-numeric: tabular-nums;
     }
+    .ep-empty { color: var(--muted); font-size: 12.5px; font-style: italic; padding: 14px 0; }
+
+    details.pin-tip {
+      background: #fff; border-radius: 16px; padding: 14px 16px; margin: 14px 0 0;
+      box-shadow: 0 1px 0 #F3E6D9, 0 6px 16px rgba(176, 74, 0, .05);
+    }
+    details.pin-tip > summary { cursor: pointer; list-style: none; user-select: none; display: flex; align-items: center; }
+    details.pin-tip > summary::-webkit-details-marker { display: none; }
+    details.pin-tip > summary::after { content: '▸'; font-size: 11px; color: var(--faint); margin-left: auto; transition: transform .15s; }
+    details.pin-tip[open] > summary::after { transform: rotate(90deg); }
+    .pin-tip-title { font-family: var(--round); font-size: 14px; font-weight: 800; color: var(--ink); }
+    .pin-tip-sub { font-family: var(--sans); font-weight: 400; color: var(--muted); font-size: 11px; }
+    details.pin-tip ol { font-size: 13px; color: #5c4636; padding-left: 18px; margin: 10px 0 0; line-height: 1.55; }
+    .pin-tip ol li { margin: 5px 0; }
+    .pin-tip strong { color: var(--ink); }
+
+    details.settings { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--hair); }
+    details.settings > summary {
+      cursor: pointer; font-family: var(--round); font-size: 12px; color: var(--muted);
+      font-weight: 800; letter-spacing: .04em; padding: 6px 0; list-style: none; user-select: none;
+    }
+    details.settings > summary::-webkit-details-marker { display: none; }
+    details.settings > summary::before { content: '▸ '; font-size: 10px; display: inline-block; margin-right: 4px; transition: transform .15s; }
+    details.settings[open] > summary::before { transform: rotate(90deg); }
+    details.settings .body .label { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 18px; }
+    details.settings .body .label:first-child { margin-top: 8px; }
+    details.settings .body p { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
+    .voices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+    .voice-chip {
+      padding: 6px 13px; border: 1.5px solid #E9C9AC; background: #fff; color: var(--ink);
+      border-radius: 999px; font-size: 12px; cursor: pointer; font-family: var(--sans); font-weight: 600;
+    }
+    .voice-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    form { display: inline; }
+    .danger-label { color: var(--accent) !important; }
+    .danger-btn { border-color: #E9C9AC !important; color: var(--accent) !important; background: #fff !important; }
   </style>
 </head>
 <body>
@@ -175,70 +149,58 @@
     </symbol>
   </svg>
 
-  <div class="brand">Feed Me</div>
+  <div class="brand">🎧 Feed Me</div>
   <h1>Your feed is ready.</h1>
 
-  <h2>Set up · do this once</h2>
+  <div class="sec">Set up <span class="tag">· once</span></div>
 
-  <div class="step-row">
-    <div class="step-num">1</div>
-    <div class="step-body">
-      <div class="title">Bookmark this page</div>
-      <div class="desc">It's your account — losing the URL means losing the feed.</div>
-    </div>
-  </div>
-
-  <div class="step-row">
-    <div class="step-num">2</div>
-    <div class="step-body">
-      <div class="title">Install the iOS Shortcut</div>
-      <div class="desc">One tap — no copy/paste. The same Shortcut works for everyone; it knows it's you because this browser is linked to your feed.</div>
+  <div class="step">
+    <div class="n">1</div>
+    <div class="body">
+      <div class="t">Install the iOS Shortcut</div>
       <a class="btn-primary" href="{{ shortcut_url }}">Install Shortcut</a>
     </div>
   </div>
 
-  <div class="step-row">
-    <div class="step-num">3</div>
-    <div class="step-body">
-      <div class="title">Subscribe in your podcast app</div>
-      <div class="desc">One tap for Apple Podcasts. For Overcast, Pocket Casts, Castro, etc., copy the URL and paste it in.</div>
+  <div class="step">
+    <div class="n">2</div>
+    <div class="body">
+      <div class="t">Subscribe in your podcast app</div>
       <div class="btn-pair">
         <a class="btn-primary" href="podcast://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
         <button class="btn-secondary" type="button" onclick="copyFeedUrl()">Copy feed URL</button>
       </div>
+      <div class="note">Note: doesn't work with Spotify, sorry :(</div>
     </div>
   </div>
 
-  <h2>Share an article · do this anytime</h2>
-  <p class="phase-note">In Safari (or Mail, Reader, anywhere with a Share button):</p>
+  <div class="sec">Share an article <span class="tag">· anytime</span></div>
+  <div class="sec-note">Works in Safari, Mail, Reader — anywhere with a Share button.</div>
 
-  <div class="step-row">
-    <div class="step-num">1</div>
-    <div class="step-body">
-      <div class="title">
-        Tap the <svg class="ios-share"><use href="#ios-share"/></svg> share button
-      </div>
+  <div class="step">
+    <div class="n">1</div>
+    <div class="body">
+      <div class="t">Tap the <svg class="ios-share"><use href="#ios-share"/></svg> share button</div>
     </div>
   </div>
 
-  <div class="step-row">
-    <div class="step-num">2</div>
-    <div class="step-body">
-      <div class="title">Tap <kbd>More ▼</kbd>, then tap <kbd>Feed Me</kbd></div>
+  <div class="step">
+    <div class="n">2</div>
+    <div class="body">
+      <div class="t">Tap <span class="em">More</span>, then tap <span class="em">Feed Me</span></div>
     </div>
   </div>
 
-  <div class="step-row">
-    <div class="step-num">3</div>
-    <div class="step-body">
-      <div class="title">Safari shows <strong>🎧 Added to your feed</strong> right away</div>
-      <div class="desc">The episode lands in your podcast app within 1–2 minutes.</div>
+  <div class="step">
+    <div class="n">3</div>
+    <div class="body">
+      <div class="t">Safari shows <span class="em">🎧 Added to your feed</span> right away</div>
     </div>
   </div>
 
   <details class="pin-tip">
     <summary>
-      <span class="pin-tip-title">💡 Pin Feed Me for one-tap sharing <span class="pin-tip-sub">(recommended, one-time)</span></span>
+      <span class="pin-tip-title">💡 Pin Feed Me <span class="pin-tip-sub">for one-tap sharing (recommended)</span></span>
     </summary>
     <ol>
       <li>Open the share sheet on any article (Share → More)</li>

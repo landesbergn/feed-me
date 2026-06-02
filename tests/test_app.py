@@ -46,6 +46,18 @@ def test_settings_404_for_unknown_user(client):
     assert response.status_code == 404
 
 
+def test_icon_routes_serve(client):
+    # These all 404'd before v3.x — favicon + apple-touch icons now exist.
+    for path in (
+        "/favicon.ico",
+        "/favicon-32.png",
+        "/apple-touch-icon.png",
+        "/apple-touch-icon-precomposed.png",
+    ):
+        r = client.get(path)
+        assert r.status_code == 200, path
+
+
 def test_settings_renders_for_known_user(client):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
@@ -65,8 +77,6 @@ def test_settings_renders_for_known_user(client):
     assert "Settings" in response.text
     # v3.0: no more paste flow — the ingest URL must NOT leak into the page
     assert f"/u/{secret}/ingest" not in response.text
-    # v3.0: one-tap install copy
-    assert "no copy/paste" in response.text
     # v1.5: welcome episode pre-seeded on /create
     assert "Welcome to Feed Me" in response.text
     # v1.9: revised share sheet onboarding

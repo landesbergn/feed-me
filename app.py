@@ -143,6 +143,30 @@ def cover_route():
     )
 
 
+def _icon(name: str, media_type: str) -> FileResponse:
+    return FileResponse(
+        STATIC_DIR / name,
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=604800"},
+    )
+
+
+@app.get("/favicon.ico")
+def favicon_ico():
+    return _icon("favicon.ico", "image/x-icon")
+
+
+@app.get("/favicon-32.png")
+def favicon_png():
+    return _icon("favicon-32.png", "image/png")
+
+
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+def apple_touch_icon():
+    return _icon("apple-touch-icon.png", "image/png")
+
+
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
     return templates.TemplateResponse(request, "landing.html", {})
