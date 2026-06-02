@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.1 — 2026-06-02
+
+Basic analytics:
+
+- Self-hosted SQLite event store (`analytics.py`, stdlib only — no new dependency, no third party) on the Fly volume at `_analytics/analytics.db` (its own subdir so the `/data/<secret>/` feed level stays pure).
+- Tracks `page_view`, `feed_created`, and `article_shared`, each attributed by a one-way `sha256(secret)[:12]` hash — the raw feed secret is never stored, so analytics can't reveal a private feed URL.
+- Token-gated `/admin/stats` (HTML summary) and `/admin/export` (JSON of summary + raw events, for later analysis); both 404 without the correct `STATS_TOKEN`. Analytics failures can never break a page (fire-and-forget, swallowed).
+- Spec: `docs/superpowers/specs/2026-06-02-analytics.html`
+
 ## v3.0 — 2026-06-01
 
 Frictionless share capture:
