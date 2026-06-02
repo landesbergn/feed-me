@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.0 — 2026-06-01
+
+Frictionless share capture:
+
+- Replaced the per-user copy/paste Shortcut install with **one generic Shortcut** for everyone — installs in one tap, no secret to paste. Sharing an article opens `/share?url=…` in Safari and shows an instant "🎧 Added to your feed" confirmation.
+- New `GET /share` route identifies the user by a long-lived first-party `fm_session` cookie (set whenever you view your feed page), so rotating your secret no longer breaks capture — re-link by reopening your feed page.
+- Removed the per-user `/u/{secret}/ingest` route and the entire clipboard/paste install flow (no backward compat — no existing users).
+- Failed episode rows now show the **real error** (e.g. an OpenAI quota message) instead of the misleading "(couldn't extract article)" label.
+- Episode show notes now link to the **original article** and carry a "Generated with Feed Me" link back to your feed page; the podcast's description includes a "Your feed:" return link.
+- Spec: `docs/superpowers/specs/2026-05-29-frictionless-share-capture.html`
+
 ## v2.0 — 2026-05-29
 
 Pending progress indicator:
