@@ -692,6 +692,9 @@ def test_admin_routes_404_with_wrong_token(client, monkeypatch):
     monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
     assert client.get("/admin/stats?token=wrong").status_code == 404
     assert client.get("/admin/export?token=wrong").status_code == 404
+    # STATS_TOKEN set but no token param → the `not token` branch → 404
+    assert client.get("/admin/stats").status_code == 404
+    assert client.get("/admin/export").status_code == 404
 
 
 def test_admin_stats_and_export_with_correct_token(client, monkeypatch, tmp_path):

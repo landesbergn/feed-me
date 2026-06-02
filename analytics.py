@@ -49,8 +49,12 @@ def _connect(db_path) -> sqlite3.Connection:
     return conn
 
 
-def track(db_path, event, *, feed_hash=None, path=None, props=None, ts=None) -> None:
-    """Insert one event. MUST never raise — analytics can't break a request."""
+def track(db_path, event, *, feed_hash_val=None, path=None, props=None, ts=None) -> None:
+    """Insert one event. MUST never raise — analytics can't break a request.
+
+    `feed_hash_val` is the already-hashed feed id (see feed_hash()); the raw
+    secret must never be passed here.
+    """
     try:
         conn = _connect(db_path)
         with conn:
@@ -58,7 +62,7 @@ def track(db_path, event, *, feed_hash=None, path=None, props=None, ts=None) -> 
                 "INSERT INTO events (ts, event, feed_hash, path, props) "
                 "VALUES (?, ?, ?, ?, ?)",
                 (ts if ts is not None else int(time.time()),
-                 event, feed_hash, path,
+                 event, feed_hash_val, path,
                  json.dumps(props) if props else None),
             )
         conn.close()

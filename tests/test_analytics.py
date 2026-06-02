@@ -14,9 +14,9 @@ def test_feed_hash_is_stable_12_chars_and_not_the_secret():
 def test_track_writes_rows_readable_via_sql(tmp_path):
     import sqlite3
     db = tmp_path / "_analytics" / "analytics.db"
-    analytics.track(db, "feed_created", feed_hash="aaa")
-    analytics.track(db, "article_shared", feed_hash="aaa", path="share")
-    analytics.track(db, "article_shared", feed_hash="bbb", path="share")
+    analytics.track(db, "feed_created", feed_hash_val="aaa")
+    analytics.track(db, "article_shared", feed_hash_val="aaa", path="share")
+    analytics.track(db, "article_shared", feed_hash_val="bbb", path="share")
     analytics.track(db, "page_view", path="landing")
 
     conn = sqlite3.connect(db)
@@ -56,11 +56,11 @@ def test_track_never_raises_on_bad_path(tmp_path):
 
 def test_summary_basic_counts(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
-    analytics.track(db, "feed_created", feed_hash="aaa")
-    analytics.track(db, "article_shared", feed_hash="aaa", path="share")
-    analytics.track(db, "article_shared", feed_hash="bbb", path="share")
+    analytics.track(db, "feed_created", feed_hash_val="aaa")
+    analytics.track(db, "article_shared", feed_hash_val="aaa", path="share")
+    analytics.track(db, "article_shared", feed_hash_val="bbb", path="share")
     analytics.track(db, "page_view", path="landing")
-    analytics.track(db, "page_view", feed_hash="aaa", path="settings")
+    analytics.track(db, "page_view", feed_hash_val="aaa", path="settings")
 
     s = analytics.summary(db)
     assert s["feeds_created"] == 1
@@ -76,8 +76,8 @@ def test_summary_by_day_and_top_feeds(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
     day1 = 1_750_000_000          # some fixed unix ts
     day2 = day1 + 86_400
-    analytics.track(db, "article_shared", feed_hash="aaa", ts=day1)
-    analytics.track(db, "article_shared", feed_hash="aaa", ts=day1)
+    analytics.track(db, "article_shared", feed_hash_val="aaa", ts=day1)
+    analytics.track(db, "article_shared", feed_hash_val="aaa", ts=day1)
     analytics.track(db, "page_view", path="landing", ts=day2)
 
     s = analytics.summary(db)
@@ -110,7 +110,7 @@ def test_summary_empty_db(tmp_path):
 def test_all_events_returns_rows_ordered_and_empty_on_missing(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
     assert analytics.all_events(db) == []   # missing DB → empty, no raise
-    analytics.track(db, "feed_created", feed_hash="aaa", ts=100)
+    analytics.track(db, "feed_created", feed_hash_val="aaa", ts=100)
     analytics.track(db, "page_view", path="landing", ts=50)
     rows = analytics.all_events(db)
     assert [r["ts"] for r in rows] == [50, 100]   # ordered by ts

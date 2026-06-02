@@ -108,7 +108,7 @@ def _analytics_db():
 def _track(event, *, secret=None, path=None, props=None):
     try:
         fh = analytics.feed_hash(secret) if secret else None
-        analytics.track(_analytics_db(), event, feed_hash=fh, path=path, props=props)
+        analytics.track(_analytics_db(), event, feed_hash_val=fh, path=path, props=props)
     except Exception:
         pass  # analytics must never affect the request
 
