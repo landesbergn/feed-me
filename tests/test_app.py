@@ -630,3 +630,43 @@ def test_share_writes_pending_with_no_title_on_fetch_failure(
     pending = [e for e in eps if e["status"] == "pending"]
     assert len(pending) == 1
     assert pending[0]["title"] is None
+
+
+def test_landing_records_page_view(client, tmp_path):
+    client.get("/")
+    import analytics
+    s = analytics.summary(tmp_path / "_analytics" / "analytics.db")
+    assert s["page_views_by_path"]["landing"] >= 1
+
+
+def test_create_records_feed_created(client, tmp_path):
+    client.post("/create", follow_redirects=False)
+    import analytics
+    s = analytics.summary(tmp_path / "_analytics" / "analytics.db")
+    assert s["feeds_created"] == 1
+
+
+def test_share_records_article_shared_with_feed_hash(client, monkeypatch, tmp_path):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser (cookie)
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+    monkeypatch.setattr(app_module.ingest, "fetch_title", lambda url: "T")
+
+    client.get("/share?url=https://example.com/a")
+
+    import analytics
+    db = tmp_path / "_analytics" / "analytics.db"
+    s = analytics.summary(db)
+    assert s["articles_shared"] == 1
+    assert s["top_feeds"][0]["feed_hash"] == analytics.feed_hash(secret)
+
+
+def test_analytics_failure_never_500s_a_page(client, monkeypatch):
+    import app as app_module
+    def boom(*a, **k):
+        raise RuntimeError("analytics down")
+    monkeypatch.setattr(app_module.analytics, "track", boom)
+    assert client.get("/").status_code == 200

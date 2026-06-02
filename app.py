@@ -17,6 +17,7 @@ from fastapi.responses import (
 )
 from fastapi.templating import Jinja2Templates
 
+import analytics
 import ingest
 import rss
 import storage
@@ -97,6 +98,19 @@ def set_session_cookie(response: Response, secret: str) -> None:
     )
 
 
+def _analytics_db():
+    # Built at call time (not import) so monkeypatched DATA_DIR resolves correctly.
+    return DATA_DIR / "_analytics" / "analytics.db"
+
+
+def _track(event, *, secret=None, path=None, props=None):
+    try:
+        fh = analytics.feed_hash(secret) if secret else None
+        analytics.track(_analytics_db(), event, feed_hash=fh, path=path, props=props)
+    except Exception:
+        pass  # analytics must never affect the request
+
+
 SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 app = FastAPI()
@@ -140,6 +154,8 @@ def share_route(request: Request, url: str = ""):
         DATA_DIR, secret, source_url=url, title=title,
     )
     spawn_ingest(url, secret, DATA_DIR, slug)
+    _track("page_view", secret=secret, path="share")
+    _track("article_shared", secret=secret, path="share")
     return templates.TemplateResponse(
         request, "share.html",
         {"state": "added", "title": title or hostname(url),
@@ -204,6 +220,7 @@ def og_route():
 
 @app.get("/", response_class=HTMLResponse)
 def landing(request: Request):
+    _track("page_view", path="landing")
     return templates.TemplateResponse(request, "landing.html", {"base_url": APP_BASE_URL})
 
 
@@ -213,6 +230,7 @@ def create():
     storage.seed_welcome_episode(
         DATA_DIR, secret, welcome_audio=WELCOME_AUDIO_BYTES,
     )
+    _track("feed_created", secret=secret)
     return RedirectResponse(f"/u/{secret}", status_code=303)
 
 
@@ -220,6 +238,7 @@ def create():
 def settings(request: Request, secret: str):
     if not storage.user_exists(DATA_DIR, secret):
         raise HTTPException(404)
+    _track("page_view", secret=secret, path="settings")
     s = storage.get_settings(DATA_DIR, secret)
     eps = storage.list_episodes(DATA_DIR, secret)[:30]
     now_ts = int(_time.time())
