@@ -46,6 +46,14 @@ def test_settings_404_for_unknown_user(client):
     assert response.status_code == 404
 
 
+def test_pages_have_footer_credit(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    for body in (client.get("/").text, client.get(f"/u/{secret}").text):
+        assert "Built by" in body
+        assert "noahlandesberg.com" in body
+
+
 def test_og_image_serves(client):
     r = client.get("/og.png")
     assert r.status_code == 200

@@ -149,6 +149,12 @@
     form { display: inline; }
     .danger-label { color: var(--accent) !important; }
     .danger-btn { border-color: #E9C9AC !important; color: var(--accent) !important; background: #fff !important; }
+    .site-footer {
+      margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--hair);
+      font-size: 12.5px; color: var(--muted);
+    }
+    .site-footer a { color: var(--accent); text-decoration: none; font-weight: 700; }
+    .site-footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -275,6 +281,10 @@
       setInterval(tick, 1000);
     })();
   </script>
+
+  <footer class="site-footer">
+    Built by <a href="https://noahlandesberg.com" target="_blank" rel="noopener">Noah Landesberg</a>
+  </footer>
 
 </body>
 </html>
