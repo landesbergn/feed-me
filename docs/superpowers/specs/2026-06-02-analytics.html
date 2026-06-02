@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — Basic Analytics (v3.1)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.1</div>
+  <h1>Basic Analytics</h1>
+  <div class="meta">Feed Me · 2026-06-02 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Add lightweight, self-hosted analytics so the owner can see site traffic, how many
+  feeds exist, how many articles get shared, and per-feed activity. Events are stored in a
+  SQLite database on the Fly volume (Python standard library, no new dependency, no third
+  party, no free-tier limit) and surfaced through a token-protected stats page and a JSON
+  export designed to be analyzed later with Claude (SQL-friendly, fetchable).
+</p>
+
+<div class="callout">
+  <strong>Privacy guarantee.</strong> The per-feed identifier is a one-way
+  <code>sha256(secret)[:12]</code> hash, never the secret itself. The analytics data can
+  therefore never reveal a private feed URL. No IP addresses, user-agents, or other PII are
+  stored — only the event name, hashed feed id, a coarse path label, and a timestamp.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#model">Data model</a></li>
+    <li><a href="#module">The analytics module</a></li>
+    <li><a href="#instr">Instrumentation</a></li>
+    <li><a href="#admin">Admin access</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  The owner wants to know whether anyone is using Feed Me: visits, feeds created, articles
+  shared, and which feeds are active. PostHog is out (the owner's one free project is already
+  used). The app is privacy-forward and minimalist, so the analytics must add no third-party
+  request, no new dependency, and must not weaken the "private feed" promise. The data should
+  also be easy to analyze later with Claude, which favors a structured, SQL-queryable store.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li><strong>New module <code>analytics.py</code></strong> (stdlib <code>sqlite3</code> only): a SQLite events store with <code>feed_hash()</code>, <code>track()</code>, and <code>summary()</code>.</li>
+  <li><strong>Instrumentation in <code>app.py</code></strong>: four events — <code>page_view</code>, <code>feed_created</code>, <code>article_shared</code> — each tagged with the hashed feed id when known.</li>
+  <li><strong>Two token-protected admin routes</strong>: <code>GET /admin/stats</code> (HTML summary) and <code>GET /admin/export</code> (JSON of summary + raw events).</li>
+</ol>
+
+<h2 id="model">3 · Data model</h2>
+<p>SQLite DB at <code>DATA_DIR/analytics.db</code> (on the Fly persistent volume, survives deploys). Single table:</p>
+<pre><code>CREATE TABLE IF NOT EXISTS events (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts        INTEGER NOT NULL,         -- unix seconds
+    event     TEXT    NOT NULL,         -- 'page_view' | 'feed_created' | 'article_shared'
+    feed_hash TEXT,                     -- sha256(secret)[:12], or NULL when no feed context
+    path      TEXT,                     -- coarse label: 'landing' | 'settings' | 'share'
+    props     TEXT                      -- optional JSON string, NULL by default
+);
+CREATE INDEX IF NOT EXISTS idx_events_event ON events(event);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);</code></pre>
+<p>
+  Event taxonomy (exactly the four requested metrics, nothing more):
+</p>
+<table>
+  <thead><tr><th>Event</th><th>Fired when</th><th>feed_hash</th><th>path</th></tr></thead>
+  <tbody>
+    <tr><td><code>page_view</code></td><td>GET <code>/</code>, <code>/u/{secret}</code>, or <code>/share</code> renders</td><td>set on settings/share when a feed is known, else NULL</td><td>landing / settings / share</td></tr>
+    <tr><td><code>feed_created</code></td><td>POST <code>/create</code> succeeds</td><td>the new feed's hash</td><td>NULL</td></tr>
+    <tr><td><code>article_shared</code></td><td><code>/share</code> accepts a valid URL and spawns ingest</td><td>sharer's feed hash</td><td>share</td></tr>
+  </tbody>
+</table>
+<p class="small">
+  "Number of feeds" and "number of articles shared" can also be cross-checked against the
+  filesystem (count of user dirs; count of episode JSONs). The <code>summary()</code> uses the
+  events table as the source of truth for time-series, and the route may add the live
+  filesystem feed count as a sanity total.
+</p>
+
+<h2 id="module">4 · The analytics module</h2>
+
+<h3>Connection &amp; init</h3>
+<p>
+  Open a short-lived connection per write/read (the app is low-traffic; this avoids
+  cross-thread connection issues, since ingest runs in background threads). The DB path is
+  read from <code>app.DATA_DIR</code> at call time so tests can point it at a temp dir. Enable
+  WAL for safe concurrent reads.
+</p>
+
+<h3>feed_hash</h3>
+<pre><code>import hashlib
+
+def feed_hash(secret: str) -> str:
+    """One-way, truncated. Stable per feed, never reversible to the secret."""
+    return hashlib.sha256(secret.encode()).hexdigest()[:12]</code></pre>
+
+<h3>track</h3>
+<pre><code>def track(db_path, event, *, feed_hash=None, path=None, props=None, ts=None):
+    """Insert one event. MUST never raise — analytics can't break a page render."""
+    try:
+        conn = _connect(db_path)          # ensures schema exists
+        with conn:
+            conn.execute(
+                "INSERT INTO events (ts, event, feed_hash, path, props) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (ts or int(time.time()), event, feed_hash, path,
+                 json.dumps(props) if props else None),
+            )
+        conn.close()
+    except Exception:
+        pass  # swallow — never propagate analytics failure to the request</code></pre>
+
+<h3>summary</h3>
+<pre><code>def summary(db_path) -> dict:
+    """Aggregate counts for the stats page / export."""
+    # Returns a dict like:
+    # {
+    #   "feeds_created": int,            # COUNT events WHERE event='feed_created'
+    #   "articles_shared": int,          # COUNT events WHERE event='article_shared'
+    #   "page_views": int,               # COUNT events WHERE event='page_view'
+    #   "page_views_by_path": {landing, settings, share},
+    #   "active_feeds": int,             # COUNT(DISTINCT feed_hash) WHERE feed_hash NOT NULL
+    #   "by_day": [{"day": "2026-06-02", "page_views": n, "shares": n, "feeds": n}, ...],
+    #   "top_feeds": [{"feed_hash": "...", "shares": n}, ...]  # by article_shared, top 20
+    # }</code></pre>
+<p>All aggregation is plain SQL (<code>GROUP BY</code>, <code>COUNT</code>, <code>strftime('%Y-%m-%d', ts, 'unixepoch')</code>). No external query layer.</p>
+
+<h2 id="instr">5 · Instrumentation</h2>
+<p>
+  A thin helper in <code>app.py</code> keeps call sites one line and centralizes the hashing:
+</p>
+<pre><code>def _track(event, *, secret=None, path=None, props=None):
+    analytics.track(
+        DATA_DIR / "analytics.db", event,
+        feed_hash=analytics.feed_hash(secret) if secret else None,
+        path=path, props=props,
+    )</code></pre>
+<p>Call sites:</p>
+<ul>
+  <li><code>landing()</code> → <code>_track("page_view", path="landing")</code></li>
+  <li><code>settings()</code> → <code>_track("page_view", secret=secret, path="settings")</code></li>
+  <li><code>share_route()</code> (added branch only) → <code>_track("page_view", secret=secret, path="share")</code> and <code>_track("article_shared", secret=secret, path="share")</code></li>
+  <li><code>create()</code> → after the user is made, <code>_track("feed_created", secret=secret)</code></li>
+</ul>
+<p class="small">
+  The DB schema is created lazily on first <code>track()</code>/<code>summary()</code> via
+  <code>_connect()</code>, so there is no startup ordering dependency. Because <code>track()</code>
+  swallows all exceptions, none of these call sites can fail a request.
+</p>
+
+<h2 id="admin">6 · Admin access</h2>
+<p>
+  A single secret, the <code>STATS_TOKEN</code> environment variable (set as a Fly secret),
+  gates both admin routes. The token is compared with <code>hmac.compare_digest</code>. If
+  <code>STATS_TOKEN</code> is unset, or the supplied <code>?token=</code> does not match, the
+  route returns <strong>404</strong> (not 401/403 — reveals nothing about the route's existence).
+</p>
+<ul>
+  <li><code>GET /admin/stats?token=…</code> → small HTML page rendering <code>summary()</code>: headline counts, a by-day table, page-views-by-path, and the top active feeds (by hashed id).</li>
+  <li><code>GET /admin/export?token=…</code> → <code>JSONResponse</code> with <code>{"summary": …, "events": […]}</code> (all rows). Designed so a future Claude session can <code>WebFetch</code> it with the token, or the owner can download and hand it over. Add <code>?since=&lt;unix&gt;</code> later if the table grows; not needed now.</li>
+</ul>
+
+<h2 id="tests">7 · Testing</h2>
+<p>Follow the existing <code>tests/</code> patterns (pytest, the <code>client</code> fixture monkeypatches <code>DATA_DIR</code> to a tmp dir, so <code>analytics.db</code> lands there).</p>
+<h3>analytics module (new <code>tests/test_analytics.py</code>)</h3>
+<ul>
+  <li><code>feed_hash</code> is stable, 12 chars, and <strong>never equals</strong> the input secret.</li>
+  <li><code>track</code> then <code>summary</code> returns the right counts for each event type.</li>
+  <li><code>summary</code> <code>active_feeds</code> counts distinct non-null feed hashes.</li>
+  <li><code>track</code> on an unwritable/invalid path returns without raising (defense-in-depth).</li>
+</ul>
+<h3>app instrumentation (in <code>tests/test_app.py</code>)</h3>
+<ul>
+  <li>POST <code>/create</code> records exactly one <code>feed_created</code>.</li>
+  <li>A successful <code>/share</code> records an <code>article_shared</code> with the sharer's feed hash.</li>
+  <li>GET <code>/</code> records a <code>page_view</code> with <code>path="landing"</code>.</li>
+  <li>Analytics failure can't 500 a page: monkeypatch <code>analytics.track</code> to raise, assert <code>/</code> still returns 200. (Belt-and-suspenders alongside the in-module swallow.)</li>
+</ul>
+<h3>admin routes (in <code>tests/test_app.py</code>)</h3>
+<ul>
+  <li><code>/admin/stats</code> and <code>/admin/export</code> with no token → 404.</li>
+  <li>With a wrong token → 404.</li>
+  <li>With the correct token (set <code>STATS_TOKEN</code> via monkeypatch) → 200; export JSON contains the recorded events and a summary.</li>
+</ul>
+
+<h2 id="scope">8 · Out of scope</h2>
+<ul>
+  <li><strong>Ingest success/failure events.</strong> Only <em>shares</em> are tracked for now; whether the audio later succeeds is a separate future event.</li>
+  <li><strong>Charts / dashboards.</strong> The stats page shows tables and counts, not graphs.</li>
+  <li><strong>Real-time updates.</strong> The stats page is a plain render; refresh to update.</li>
+  <li><strong>IP / geo / user-agent / referrer capture.</strong> Deliberately not stored (privacy).</li>
+  <li><strong>Retention/cohort analysis.</strong> The raw export enables it later with Claude; not built in.</li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+<ul>
+  <li>Visiting the landing, a feed page, and sharing an article each write the expected event rows to <code>analytics.db</code>.</li>
+  <li>Every stored event that has feed context carries <code>sha256(secret)[:12]</code>; the raw secret never appears in the DB or export.</li>
+  <li><code>/admin/stats?token=…</code> shows total feeds, total articles shared, total + per-path page views, by-day activity, and top feeds by share count.</li>
+  <li><code>/admin/export?token=…</code> returns JSON (summary + events) suitable for later analysis.</li>
+  <li>Both admin routes return 404 without the correct token; <code>STATS_TOKEN</code> unset also yields 404.</li>
+  <li>A failure inside analytics never changes a user-facing response (pages still 200).</li>
+  <li>No new runtime dependency is added; all existing tests plus the new analytics/admin tests pass.</li>
+</ul>
+
+<hr>
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-06-02. PostHog rejected (one free project already
+  used). Chose stdlib SQLite on the Fly volume for zero-dependency, SQL-queryable,
+  Claude-analyzable storage. Per-feed identity is a one-way hash so analytics can never leak a
+  private feed URL. Token-gated admin routes return 404 on auth failure to avoid disclosure.
+</p>
+
+</div>
+</body>
+</html>
