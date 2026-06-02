@@ -11,7 +11,7 @@ def test_landing_page_renders(client):
     assert "feed me" in response.text.lower()
     # v1.1 regression guards
     assert "private" in response.text.lower()
-    assert "Create your feed" in response.text
+    assert "Create your private podcast feed" in response.text
 
 
 def test_post_create_redirects_to_user_settings(client):
