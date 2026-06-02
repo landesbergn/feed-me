@@ -137,15 +137,26 @@ def test_render_feed_per_item_description_and_summary():
         cover_url="https://feed-me.xyz/cover.jpg",
         episodes=eps,
     )
-    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
     root = _parse(xml)
+    ns = {"itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd"}
     item = root.find("channel/item")
-    assert item.findtext("description") == "First few sentences of the article…"
-    assert item.find("itunes:summary", ns).text == "First few sentences of the article…"
+    desc = item.findtext("description")
+    # excerpt preserved
+    assert "First few sentences of the article…" in desc
+    # clickable links present (entity-escaped HTML → ET un-escapes to literal tags)
+    assert '<a href="https://a">' in desc
+    assert "Generated with" in desc and "Feed Me" in desc
+    # link back to the user's feed page (feed_url minus /feed.xml)
+    assert "https://feed-me.xyz/u/abc" in desc
+    # itunes:summary is plain text (no HTML tags), with the excerpt + URLs
+    summary = item.find("itunes:summary", ns).text
+    assert "First few sentences of the article…" in summary
+    assert "https://a" in summary
+    assert "<a href" not in summary
 
 
-def test_render_feed_per_item_description_falls_back_to_url():
-    """When an item has no description (pending case), description = source URL."""
+def test_render_feed_item_without_excerpt_still_has_links():
+    """When an item has no description, links are still present."""
     eps = [
         {"slug": "s1", "title": "X", "url": "https://example.com/a", "ts": 1,
          "mtime": 1.0, "has_audio": True, "audio_bytes": 42},
@@ -158,7 +169,34 @@ def test_render_feed_per_item_description_falls_back_to_url():
     )
     root = _parse(xml)
     item = root.find("channel/item")
-    assert item.findtext("description") == "https://example.com/a"
+    desc = item.findtext("description")
+    assert '<a href="https://example.com/a">' in desc
+    assert "Generated with" in desc
+
+
+def test_render_feed_channel_has_return_link_and_handles_amp_urls():
+    eps = [
+        {"slug": "s1", "title": "A", "ts": 1, "mtime": 1.0,
+         "has_audio": True, "audio_bytes": 10,
+         "url": "https://x.com/a?u=1&v=2", "description": "body"},
+    ]
+    xml = rss.render_feed(
+        feed_url="https://feed-me.xyz/u/SEKRET/feed.xml",
+        audio_base="https://feed-me.xyz/u/SEKRET/audio",
+        cover_url="https://feed-me.xyz/cover.jpg",
+        episodes=eps,
+    )
+    # Must be well-formed XML despite the & in the article URL.
+    root = _parse(xml)
+    channel = root.find("channel")
+    chan_desc = channel.findtext("description")
+    assert "Your personal podcast" in chan_desc
+    assert "https://feed-me.xyz/u/SEKRET" in chan_desc
+    assert '<a href="https://feed-me.xyz/u/SEKRET">' in chan_desc
+    # The episode link preserves the full article URL (HTML-level &amp; for the &).
+    item_desc = root.find("channel/item").findtext("description")
+    assert "https://x.com/a?u=1" in item_desc
+    assert "v=2" in item_desc
 
 
 def test_render_feed_enclosure_uses_real_audio_bytes():
