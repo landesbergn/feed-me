@@ -12,8 +12,9 @@
       {% for ep in episodes %}
         <tr>
           <td class="col-title">
-            {% if ep.title %}{{ ep.title }}{% elif ep.status == "pending" %}Loading from {{ ep.url | hostname }}…{% else %}(couldn't extract article){% endif %}
+            {% if ep.title %}{{ ep.title }}{% elif ep.status == "pending" %}Loading from {{ ep.url | hostname }}…{% else %}{{ ep.url | hostname }}{% endif %}
             <span class="src">{{ ep.url }}</span>
+            {% if ep.status == "failed" and ep.error %}<span class="ep-err">{{ ep.error }}</span>{% endif %}
           </td>
           <td class="col-time">{{ ep.when }}</td>
           <td class="col-status">

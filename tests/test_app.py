@@ -328,18 +328,22 @@ def test_settings_page_shows_pending_title_when_set(client, tmp_path):
     assert "Loading from" not in response.text
 
 
-def test_settings_page_shows_couldnt_extract_for_failed_episodes(client, tmp_path):
-    """Failed episodes still get the '(couldn't extract article)' fallback."""
+def test_settings_page_shows_real_error_for_failed_episodes(client, tmp_path):
+    """Failed episodes surface the actual error, not a misleading generic label."""
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
 
     import storage
     storage.write_failed_episode(
-        tmp_path, secret, source_url="https://nyt.com/a", error="paywall"
+        tmp_path, secret, source_url="https://nyt.com/a",
+        error="OpenAI quota exceeded (429)",
     )
 
     response = client.get(f"/u/{secret}")
-    assert "(couldn't extract article)" in response.text
+    # the real error is surfaced
+    assert "OpenAI quota exceeded (429)" in response.text
+    # the misleading generic label is gone
+    assert "(couldn't extract article)" not in response.text
 
 
 def test_settings_apple_podcasts_uses_singular_podcast_scheme(client):
