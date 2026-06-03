@@ -169,7 +169,7 @@ def list_feeds(data_dir: Path) -> list[dict]:
     if not data_dir.is_dir():
         return []
     feeds = []
-    for p in sorted(data_dir.iterdir()):
+    for p in data_dir.iterdir():
         if not p.is_dir() or p.name == "_analytics":
             continue
         settings = p / "settings.json"
@@ -183,6 +183,7 @@ def list_feeds(data_dir: Path) -> list[dict]:
         if created is None:
             created = int(settings.stat().st_mtime)
         feeds.append({"secret": p.name, "created_at": created})
+    feeds.sort(key=lambda f: f["created_at"], reverse=True)
     return feeds
 
 

@@ -378,7 +378,6 @@ def test_list_feeds_skips_dirs_without_settings(tmp_path):
 
 
 def test_list_feeds_falls_back_to_mtime_when_created_at_missing(tmp_path):
-    import json
     feed_dir = tmp_path / "legacy-feed"
     feed_dir.mkdir()
     settings = feed_dir / "settings.json"
