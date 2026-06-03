@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · Stats: Feeds &amp; Shares Tables</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec</div>
+  <h1>Stats: Feeds &amp; Shares Tables</h1>
+  <div class="meta">Feed Me · 2026-06-02 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  The <code>/admin/stats</code> page currently shows aggregate counts plus a
+  <em>Top feeds (by shares)</em> table and a <em>Recently shared</em> table, all drawn purely
+  from the analytics events DB. This change adds a <strong>full Feeds table</strong> listing
+  every feed on disk with its creation date and last-accessed time, folds the now-redundant
+  <em>Top feeds</em> table into it as a shares column, and reorders the <em>Recently shared</em>
+  table columns.
+</p>
+
+<div class="callout">
+  <strong>Privacy guarantee, unchanged.</strong> The Feeds table reads the filesystem (which is
+  keyed by the raw secret) but renders only the one-way <code>sha256(secret)[:12]</code> hash.
+  The raw secret is hashed inside the route loop and dropped before the template renders. It is
+  never placed in template context, logged, or exposed. A test asserts the secret string is
+  absent from the rendered page.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#feeds">The Feeds table</a></li>
+    <li><a href="#shares">The Recently shared table</a></li>
+    <li><a href="#plumbing">Data plumbing</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  The owner wants a per-feed view on the stats page: the full list of feeds with when each was
+  created and when it was last used, plus the recent shares in a clearer column order. The
+  existing aggregate counts answer "how much" but not "which feeds, and how fresh." Today the
+  page only surfaces the top 20 feeds by share count; there is no way to see every feed or its
+  age.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li><strong>New Feeds table</strong> on <code>/admin/stats</code>: one row per feed dir on disk, columns Feed (hashed id) · Created · Last accessed · Shares, sorted by last-accessed descending.</li>
+  <li><strong>Drop the <em>Top feeds (by shares)</em> table</strong>: its data (per-feed share counts) becomes the Shares column of the Feeds table. The aggregate count cards (including <em>Active feeds</em>) stay.</li>
+  <li><strong>Reorder the <em>Recently shared</em> table</strong> columns to Feed · When · Article (still the most recent 25, unchanged limit).</li>
+  <li><strong>New helpers</strong>: <code>storage.list_feeds()</code> and <code>analytics.feed_last_accessed()</code>, combined in the <code>admin_stats</code> route.</li>
+</ol>
+
+<h2 id="feeds">3 · The Feeds table</h2>
+<table>
+  <thead><tr><th>Feed</th><th>Created (UTC)</th><th>Last accessed (UTC)</th><th>Shares</th></tr></thead>
+  <tbody>
+    <tr><td><code>3f8a…</code></td><td>2026-05-22 14:45</td><td>2026-06-02 09:11</td><td>4</td></tr>
+    <tr><td><code>9c1d…</code></td><td>2026-05-28 10:02</td><td>never</td><td>0</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><strong>Feed</strong>: the hashed id <code>sha256(secret)[:12]</code>, rendered in a <code>&lt;code&gt;</code> tag like the other tables. Never the raw secret.</li>
+  <li><strong>Created</strong>: the feed's <code>created_at</code> from <code>settings.json</code>, formatted <code>%Y-%m-%d %H:%M</code> UTC (matches the existing <em>Recently shared</em> format). If an old feed's <code>settings.json</code> lacks <code>created_at</code>, fall back to the file's mtime.</li>
+  <li><strong>Last accessed</strong>: the newest analytics event timestamp for that feed hash, same UTC format. If the feed has no tracked events, show the literal word <code>never</code> (no em-dash, per project copy rule).</li>
+  <li><strong>Shares</strong>: count of <code>article_shared</code> events for that feed hash (0 when none).</li>
+  <li><strong>Sort</strong>: by last-accessed descending; feeds that have never been accessed (<code>never</code>) sort to the bottom.</li>
+</ul>
+<div class="callout">
+  <strong>What "last accessed" means.</strong> It is the newest analytics event for the feed:
+  the owner opening their feed page (<code>page_view</code> / settings) or sharing an article
+  (<code>article_shared</code> / <code>feed_created</code>). Podcast clients polling
+  <code>feed.xml</code> and audio downloads are <em>not</em> tracked, so this reflects owner
+  activity, not subscriber playback. The label stays "Last accessed" at the owner's request;
+  this caveat documents the precise meaning.
+</div>
+
+<h2 id="shares">4 · The Recently shared table</h2>
+<p>
+  Today the columns are <em>When · Feed · Article</em>. Reorder to <strong>Feed · When · Article</strong>.
+  No backend change: <code>summary()["recent_shares"]</code> already returns the most recent 25
+  (<code>ORDER BY ts DESC LIMIT 25</code>), which satisfies "show the past 25." This is purely a
+  template column reorder.
+</p>
+
+<h2 id="plumbing">5 · Data plumbing</h2>
+<p>
+  Follows the existing layering: <code>storage.py</code> handles raw secrets, <code>analytics.py</code>
+  only ever sees hashes, and <code>app.py</code> is the orchestrator that converts between them
+  (exactly as <code>_track()</code> already does). <strong><code>storage.py</code> does not import
+  <code>analytics.py</code></strong>; the hashing happens in the route.
+</p>
+
+<h3>storage.list_feeds</h3>
+<pre><code>def list_feeds(data_dir: Path) -> list[dict]:
+    """One entry per feed dir under data_dir: {"secret", "created_at"}.
+
+    Skips non-directories, the _analytics dir, and any dir without settings.json.
+    created_at falls back to the settings.json mtime when the key is absent.
+    """</code></pre>
+<p class="small">
+  This is the only place that enumerates <code>/data</code>, so it owns the CLAUDE.md gotcha:
+  filter to directories and skip <code>_analytics</code> (and dirs lacking <code>settings.json</code>),
+  never assume every entry is a feed.
+</p>
+
+<h3>analytics.feed_last_accessed</h3>
+<pre><code>def feed_last_accessed(db_path) -> dict[str, int]:
+    """{feed_hash: max(ts)} over all events with a non-null feed_hash.
+    Never raises on a missing DB (creates an empty one), like summary()."""
+    # SELECT feed_hash, MAX(ts) FROM events
+    # WHERE feed_hash IS NOT NULL GROUP BY feed_hash</code></pre>
+<p class="small">
+  Per-feed share counts already exist in <code>summary()["top_feeds"]</code>, but that is capped
+  at 20. The route needs a count for <em>every</em> feed, so it builds a
+  <code>{feed_hash: shares}</code> map. Cleanest option: add a small
+  <code>feed_share_counts(db_path) -> dict[str, int]</code> to <code>analytics.py</code>
+  (mirrors <code>feed_last_accessed</code>), and drop <code>top_feeds</code> from
+  <code>summary()</code> since nothing renders it anymore.
+</p>
+
+<h3>The route</h3>
+<pre><code>@app.get("/admin/stats", response_class=HTMLResponse)
+def admin_stats(request: Request, token: str = ""):
+    _check_stats_token(token)
+    db = _analytics_db()
+    last = analytics.feed_last_accessed(db)
+    shares = analytics.feed_share_counts(db)
+    feeds = []
+    for f in storage.list_feeds(DATA_DIR):
+        h = analytics.feed_hash(f["secret"])          # secret hashed here,
+        ts = last.get(h)                              #   never put in the row
+        feeds.append({
+            "feed_hash": h,
+            "created": _fmt_utc(f["created_at"]),
+            "last_accessed_ts": ts,                   # for sorting; None sorts last
+            "last_accessed": _fmt_utc(ts) if ts else None,  # None -> "never" in template
+            "shares": shares.get(h, 0),
+        })
+    feeds.sort(key=lambda r: r["last_accessed_ts"] or 0, reverse=True)
+    return templates.TemplateResponse(
+        request, "admin_stats.html",
+        {"s": analytics.summary(db), "feeds": feeds},
+    )</code></pre>
+<p class="small">
+  Timestamps are formatted in the route (a small <code>_fmt_utc</code> helper, or reuse the
+  existing UTC-format pattern) so the template just prints strings. Each row carries both
+  <code>last_accessed_ts</code> (raw, for the sort) and <code>last_accessed</code> (formatted
+  string, or <code>None</code>); the template renders <code>never</code> when it is
+  <code>None</code>.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+<p>TDD, following existing patterns (pytest, the <code>client</code> fixture points <code>DATA_DIR</code> at a tmp dir; <code>fake_http</code>/<code>fake_openai</code> for any ingest).</p>
+<h3>storage (tests/test_storage.py or test_app.py)</h3>
+<ul>
+  <li><code>list_feeds</code> returns one entry per feed dir with <code>created_at</code>.</li>
+  <li><code>list_feeds</code> skips the <code>_analytics</code> dir and any dir without <code>settings.json</code>.</li>
+  <li><code>list_feeds</code> falls back to file mtime when <code>created_at</code> is absent.</li>
+</ul>
+<h3>analytics (tests/test_analytics.py)</h3>
+<ul>
+  <li><code>feed_last_accessed</code> returns max ts per hash and ignores null feed_hash.</li>
+  <li><code>feed_share_counts</code> counts only <code>article_shared</code> per hash.</li>
+  <li>Both return <code>{}</code> on an empty/missing DB without raising.</li>
+</ul>
+<h3>admin route (tests/test_app.py)</h3>
+<ul>
+  <li><strong>Privacy boundary (the test that matters):</strong> create a feed with a known secret via the <code>client</code> fixture, GET <code>/admin/stats?token=…</code>, assert the raw secret string is <strong>absent</strong> from the body and its <code>feed_hash</code> is <strong>present</strong>.</li>
+  <li>A feed that was created but never had an event renders <code>never</code> in Last accessed.</li>
+  <li>The Recently shared table renders columns in order Feed, When, Article.</li>
+  <li>Existing <code>/admin/stats</code> 404-without-token tests still pass.</li>
+</ul>
+
+<h2 id="scope">7 · Out of scope</h2>
+<ul>
+  <li><strong>Tracking <code>feed.xml</code> / audio fetches.</strong> Would make "last accessed" reflect subscriber playback, but adds a tracked event on a hot, bot-heavy path. Not now.</li>
+  <li><strong>Pagination / search on the Feeds table.</strong> The feed count is small; render all rows.</li>
+  <li><strong>Per-feed episode counts or storage size.</strong> Only the requested Created / Last accessed (plus the folded-in Shares) columns.</li>
+  <li><strong>Visual redesign of the stats page.</strong> Reuse the existing minimal table styling.</li>
+</ul>
+
+<h2 id="accept">8 · Acceptance criteria</h2>
+<ul>
+  <li><code>/admin/stats?token=…</code> shows a Feeds table with one row per feed dir on disk, columns Feed (hashed) · Created · Last accessed · Shares.</li>
+  <li>A feed with no tracked events shows <code>never</code> for Last accessed; no em-dash appears anywhere in the template.</li>
+  <li>The raw secret never appears in the rendered page, the export, or logs; only the hash is shown.</li>
+  <li>The <em>Top feeds (by shares)</em> table is removed; its information lives in the Feeds table's Shares column.</li>
+  <li>The <em>Recently shared</em> table renders columns Feed · When · Article and still shows the most recent 25.</li>
+  <li>All existing tests plus the new storage/analytics/route tests pass; no new runtime dependency.</li>
+</ul>
+
+<hr>
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-06-02. Feeds-table data source chosen as
+  filesystem + analytics (every feed, real creation date, owner-activity last-accessed).
+  Decisions reviewed with the advisor: fold <em>Top feeds</em> into the Feeds table as a Shares
+  column; keep the label "Last accessed" with its meaning documented here.
+</p>
+
+</div>
+</body>
+</html>
