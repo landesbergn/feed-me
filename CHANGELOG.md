@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.4 — 2026-06-03
+
+Fixes from early-user reports (truncated narration, paywall 403s, empty shares):
+
+- **Full-article extraction.** `fetch_article` now runs trafilatura alongside readability and keeps whichever body is longer. Fixes newyorker.com narration stopping mid-article at ~4:30: readability silently extracted only the first half (4,347 of 7,905 chars); same symptom as the pre-v1.7 truncation but rooted in extraction, not synthesis. Title still comes from the readability path and is stripped from the winning body. New dependency: `trafilatura`.
+- **Browser Accept headers on fetches.** nytimes.com 403s requests missing the `Accept` / `Accept-Language` headers a real browser sends (the spoofed UA alone changes nothing; verified by isolating headers vs UA). Note: NYT still serves only a teaser without subscriber cookies, and Fly's datacenter IPs may be blocked harder than local testing; verify after deploy.
+- **Friendly fetch errors.** HTTP failures surface human copy ("nytimes.com blocked the request (HTTP 403). The article may need a subscription.") instead of httpx's raw exception string, which leaked onto the share page truncated mid-URL ("For more information check: https://developer.mozilla.").
+- **Teaser guard.** Bodies under 600 chars now fail with "may be paywalled" copy instead of becoming a silent 20-second episode that looks complete.
+- **Empty-share copy.** `/share` with no URL (a tester ran the Shortcut directly from the Shortcuts app) now says "No article added. Open an article, tap Share, then tap Feed Me." instead of the diagnostic "Shortcut sent no article URL."
+
 ## v3.3 — 2026-06-02
 
 Stats: full feeds table.
