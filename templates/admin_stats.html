@@ -59,21 +59,13 @@
     {% endfor %}
   </table>
 
-  <h2>Top feeds (by shares)</h2>
-  <table>
-    <tr><th>Feed (hashed)</th><th>Shares</th></tr>
-    {% for f in s.top_feeds %}
-    <tr><td><code>{{ f.feed_hash }}</code></td><td>{{ f.shares }}</td></tr>
-    {% endfor %}
-  </table>
-
   <h2>Recently shared</h2>
   <table>
-    <tr><th>When (UTC)</th><th>Feed</th><th>Article</th></tr>
+    <tr><th>Feed</th><th>When (UTC)</th><th>Article</th></tr>
     {% for r in s.recent_shares %}
     <tr>
-      <td>{{ r.when }}</td>
       <td><code>{{ r.feed_hash }}</code></td>
+      <td>{{ r.when }}</td>
       <td>{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title or r.url }}</a>{% else %}{{ r.title or "(unknown)" }}{% endif %}</td>
     </tr>
     {% endfor %}

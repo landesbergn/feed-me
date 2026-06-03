@@ -768,3 +768,14 @@ def test_admin_stats_shows_never_for_feed_with_no_events(client, monkeypatch, tm
     assert stats.status_code == 200
     assert "All feeds" in stats.text
     assert "never" in stats.text  # last-accessed placeholder, not an em-dash
+
+
+def test_recently_shared_columns_are_feed_when_article(client, monkeypatch, tmp_path):
+    import app as app_module
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    stats = client.get("/admin/stats?token=right")
+    assert stats.status_code == 200
+    # Column order is Feed, then When, then Article (header on one line).
+    assert "<th>Feed</th><th>When (UTC)</th><th>Article</th>" in stats.text
+    # The old "Top feeds (by shares)" section is gone.
+    assert "Top feeds" not in stats.text
