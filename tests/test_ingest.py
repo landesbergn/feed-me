@@ -16,6 +16,15 @@ Readability's minimum-content heuristics for extraction.</p>
 </article></body></html>"""
 
 
+def test_http_client_sends_browser_accept_headers():
+    """Some sites (verified: nytimes.com) 403 any request missing the Accept /
+    Accept-Language headers a real browser always sends, regardless of UA."""
+    headers = ingest.http_client.headers
+    assert "text/html" in headers.get("accept", "")
+    assert headers.get("accept-language", "").startswith("en-US")
+    assert "Safari" in headers.get("user-agent", "")
+
+
 def test_fetch_article_returns_title_and_body(monkeypatch, fake_http):
     fake_http.responses["https://example.com/x"] = FakeResponse(
         status_code=200, text=HTML_SAMPLE,
