@@ -351,3 +351,38 @@ def test_update_pending_episode_noop_when_missing(tmp_path):
     assert eps == []
     # No phantom files created
     assert not (tmp_path / secret / "missing_slug.json").exists()
+
+
+def test_list_feeds_returns_one_entry_per_feed(tmp_path):
+    s1 = storage.create_user(tmp_path)
+    s2 = storage.create_user(tmp_path)
+    feeds = storage.list_feeds(tmp_path)
+    secrets = {f["secret"] for f in feeds}
+    assert secrets == {s1, s2}
+    assert all(isinstance(f["created_at"], int) for f in feeds)
+
+
+def test_list_feeds_skips_analytics_dir(tmp_path):
+    storage.create_user(tmp_path)
+    (tmp_path / "_analytics").mkdir()
+    (tmp_path / "_analytics" / "analytics.db").write_text("x")
+    names = {f["secret"] for f in storage.list_feeds(tmp_path)}
+    assert "_analytics" not in names
+
+
+def test_list_feeds_skips_dirs_without_settings(tmp_path):
+    storage.create_user(tmp_path)
+    (tmp_path / "not-a-feed").mkdir()
+    names = {f["secret"] for f in storage.list_feeds(tmp_path)}
+    assert "not-a-feed" not in names
+
+
+def test_list_feeds_falls_back_to_mtime_when_created_at_missing(tmp_path):
+    import json
+    feed_dir = tmp_path / "legacy-feed"
+    feed_dir.mkdir()
+    settings = feed_dir / "settings.json"
+    settings.write_text(json.dumps({"voice": "shimmer"}))  # no created_at
+    feeds = storage.list_feeds(tmp_path)
+    entry = next(f for f in feeds if f["secret"] == "legacy-feed")
+    assert entry["created_at"] == int(settings.stat().st_mtime)

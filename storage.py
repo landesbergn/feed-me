@@ -159,6 +159,33 @@ def list_episodes(data_dir: Path, secret: str) -> list[dict]:
     return records
 
 
+def list_feeds(data_dir: Path) -> list[dict]:
+    """One entry per feed dir under data_dir: {"secret", "created_at"}.
+
+    Skips non-directories, the analytics dir, and any dir without settings.json
+    (CLAUDE.md gotcha: never assume every entry under /data is a feed).
+    created_at falls back to the settings.json mtime when the key is absent.
+    """
+    if not data_dir.is_dir():
+        return []
+    feeds = []
+    for p in sorted(data_dir.iterdir()):
+        if not p.is_dir() or p.name == "_analytics":
+            continue
+        settings = p / "settings.json"
+        if not settings.is_file():
+            continue
+        try:
+            data = json.loads(settings.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        created = data.get("created_at")
+        if created is None:
+            created = int(settings.stat().st_mtime)
+        feeds.append({"secret": p.name, "created_at": created})
+    return feeds
+
+
 def get_settings(data_dir: Path, secret: str) -> dict:
     return json.loads((data_dir / secret / "settings.json").read_text())
 
