@@ -540,6 +540,10 @@ def test_share_bad_url_writes_failed(client, tmp_path):
     response = client.get("/share?url=")
     assert response.status_code == 200
     assert "Couldn't add" in response.text
+    # Copy must instruct (share an article), not diagnose (v3.4: a user ran the
+    # Shortcut directly from the Shortcuts app and hit a bare "no URL" error).
+    assert "No article added" in response.text
+    assert "tap Share, then tap Feed Me" in response.text
 
     import storage
     eps = storage.list_episodes(tmp_path, secret)

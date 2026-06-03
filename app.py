@@ -146,9 +146,9 @@ def share_route(request: Request, url: str = ""):
     parsed = urlparse(url)
     if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
         error_msg = (
-            "Shortcut sent no article URL."
+            "No article added. Open an article, tap Share, then tap Feed Me."
             if not url
-            else f"Invalid URL: {url[:200]!r} — must be http or https."
+            else f"Invalid URL: {url[:200]!r} (must be http or https)."
         )
         storage.write_failed_episode(
             DATA_DIR, secret,
