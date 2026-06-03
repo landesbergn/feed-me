@@ -742,3 +742,29 @@ def test_admin_export_empty_db(client, monkeypatch):
     body = export.json()
     assert body["events"] == []
     assert body["summary"]["feeds_created"] == 0
+
+
+def test_admin_stats_shows_feed_hash_never_the_raw_secret(client, monkeypatch, tmp_path):
+    import app as app_module
+    import analytics
+    import storage
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    secret = storage.create_user(tmp_path)  # DATA_DIR is monkeypatched to tmp_path
+
+    stats = client.get("/admin/stats?token=right")
+    assert stats.status_code == 200
+    # Privacy boundary: the hash is rendered, the raw secret never is.
+    assert analytics.feed_hash(secret) in stats.text
+    assert secret not in stats.text
+
+
+def test_admin_stats_shows_never_for_feed_with_no_events(client, monkeypatch, tmp_path):
+    import app as app_module
+    import storage
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    storage.create_user(tmp_path)  # created on disk, but no analytics events tracked
+
+    stats = client.get("/admin/stats?token=right")
+    assert stats.status_code == 200
+    assert "All feeds" in stats.text
+    assert "never" in stats.text  # last-accessed placeholder, not an em-dash

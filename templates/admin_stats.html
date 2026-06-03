@@ -29,6 +29,19 @@
     <div class="num"><b>{{ s.active_feeds }}</b><span>Active feeds</span></div>
   </div>
 
+  <h2>All feeds</h2>
+  <table>
+    <tr><th>Feed</th><th>Created (UTC)</th><th>Last accessed (UTC)</th><th>Shares</th></tr>
+    {% for f in feeds %}
+    <tr>
+      <td><code>{{ f.feed_hash }}</code></td>
+      <td>{{ f.created }}</td>
+      <td>{{ f.last_accessed or "never" }}</td>
+      <td>{{ f.shares }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
   <h2>Page views by section</h2>
   <table>
     <tr><th>Landing</th><th>Settings</th><th>Share</th></tr>

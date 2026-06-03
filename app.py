@@ -40,6 +40,11 @@ def relative_time(ts: int, now: int | None = None) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
 
 
+def _fmt_utc(ts: int) -> str:
+    """Format a unix timestamp as 'YYYY-MM-DD HH:MM' UTC (matches recent_shares)."""
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+
 def hostname(url: str) -> str:
     """Return the hostname portion of a URL (no scheme, no path).
     On unparseable input, returns the input unchanged so the template stays sane."""
@@ -239,8 +244,24 @@ def admin_export(token: str = ""):
 @app.get("/admin/stats", response_class=HTMLResponse)
 def admin_stats(request: Request, token: str = ""):
     _check_stats_token(token)
+    db = _analytics_db()
+    last = analytics.feed_last_accessed(db)
+    shares = analytics.feed_share_counts(db)
+    feeds = []
+    for f in storage.list_feeds(DATA_DIR):
+        h = analytics.feed_hash(f["secret"])          # hash here; never render secret
+        ts = last.get(h)
+        feeds.append({
+            "feed_hash": h,
+            "created": _fmt_utc(f["created_at"]),
+            "last_accessed_ts": ts,                     # for sorting (None -> 0)
+            "last_accessed": _fmt_utc(ts) if ts else None,
+            "shares": shares.get(h, 0),
+        })
+    feeds.sort(key=lambda r: r["last_accessed_ts"] or 0, reverse=True)
     return templates.TemplateResponse(
-        request, "admin_stats.html", {"s": analytics.summary(_analytics_db())},
+        request, "admin_stats.html",
+        {"s": analytics.summary(db), "feeds": feeds},
     )
 
 
