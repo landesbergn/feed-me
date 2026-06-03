@@ -1,6 +1,7 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 from readability import Document
@@ -31,9 +32,29 @@ TITLE_FETCH_TIMEOUT_S = 5.0
 MAX_BODY_CHARS = 100_000  # ~50 min of TTS audio, ~$1.50 max cost per article
 
 
+class FetchError(RuntimeError):
+    """An article URL couldn't be fetched. str() is user-facing copy (it lands
+    on the share page and the failed episode row), so keep it friendly."""
+
+
+def _friendly_http_error(status: int, url: str) -> str:
+    host = urlparse(url).netloc or url
+    if status in (401, 402, 403):
+        return (
+            f"{host} blocked the request (HTTP {status}). "
+            "The article may need a subscription."
+        )
+    if status in (404, 410):
+        return f"Article not found at {host} (HTTP {status}). The link may be broken."
+    if status >= 500:
+        return f"{host} had a server error (HTTP {status}). Try sharing again in a few minutes."
+    return f"Couldn't fetch the article from {host} (HTTP {status})."
+
+
 def fetch_article(url: str) -> tuple[str, str]:
     resp = http_client.get(url)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise FetchError(_friendly_http_error(resp.status_code, url))
     doc = Document(resp.text)
     summary_html = doc.summary()
     summary_elem = lxml_html.fromstring(summary_html)

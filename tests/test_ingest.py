@@ -37,6 +37,58 @@ def test_fetch_article_raises_on_http_error(monkeypatch, fake_http):
         ingest.fetch_article("https://example.com/y")
 
 
+def test_fetch_article_403_error_is_friendly(monkeypatch, fake_http):
+    """Blocked fetches surface human copy, not the raw httpx exception string
+    (which leaked 'For more information check: https://developer.mozilla.'
+    onto the share page, truncated mid-URL)."""
+    fake_http.responses["https://www.nytimes.com/article"] = FakeResponse(
+        status_code=403,
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        ingest.fetch_article("https://www.nytimes.com/article")
+
+    msg = str(exc_info.value)
+    assert "www.nytimes.com" in msg
+    assert "subscription" in msg
+    assert "developer.mozilla" not in msg
+    assert "Client error" not in msg
+
+
+def test_fetch_article_404_error_is_friendly(monkeypatch, fake_http):
+    fake_http.responses["https://example.com/gone"] = FakeResponse(status_code=404)
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        ingest.fetch_article("https://example.com/gone")
+
+    msg = str(exc_info.value)
+    assert "example.com" in msg
+    assert "link may be broken" in msg
+
+
+def test_process_writes_friendly_error_on_blocked_fetch(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """The failed-episode error (shown on the share page and feed page) carries
+    the friendly copy."""
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    fake_http.responses["https://www.nytimes.com/article"] = FakeResponse(
+        status_code=403,
+    )
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://www.nytimes.com/article", secret, tmp_path)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "failed"
+    assert "subscription" in eps[0]["error"]
+    assert "developer.mozilla" not in eps[0]["error"]
+
+
 def test_synthesize_returns_audio_bytes(monkeypatch, fake_openai):
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
 
