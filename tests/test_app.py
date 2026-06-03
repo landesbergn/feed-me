@@ -754,7 +754,7 @@ def test_admin_stats_shows_feed_hash_never_the_raw_secret(client, monkeypatch, t
     stats = client.get("/admin/stats?token=right")
     assert stats.status_code == 200
     # Privacy boundary: the hash is rendered, the raw secret never is.
-    assert analytics.feed_hash(secret) in stats.text
+    assert f"<code>{analytics.feed_hash(secret)}</code>" in stats.text
     assert secret not in stats.text
 
 
