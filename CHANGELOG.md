@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.3 — 2026-06-02
+
+Stats: full feeds table.
+
+- `/admin/stats` gains an "All feeds" table listing every feed on disk: hashed id, date created (from `settings.json`), last accessed (the newest tracked event for that feed), and total shares. Sorted by last accessed, newest first; feeds with no tracked activity show "never".
+- Removed the now-redundant "Top feeds (by shares)" table; its per-feed share counts live in the All feeds table's Shares column. (`/admin/export` still carries `top_feeds` in its summary.)
+- "Recently shared" columns reordered to feed, then when, then article (still the most recent 25).
+- Privacy unchanged: the table reads the filesystem but renders only the one-way `sha256(secret)[:12]` hash; the raw secret is hashed in the route and never reaches the page, export, or logs.
+- New helpers: `storage.list_feeds`, `analytics.feed_last_accessed`, `analytics.feed_share_counts`.
+- Spec: `docs/superpowers/specs/2026-06-02-stats-feeds-shares-tables.html`
+
 ## v3.2 — 2026-06-02
 
 Analytics: capture what's shared.
