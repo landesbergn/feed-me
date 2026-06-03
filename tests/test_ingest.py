@@ -13,6 +13,15 @@ HTML_SAMPLE = """<!doctype html><html><head><title>Sample</title></head>
 <p>The first paragraph of a long piece about time.</p>
 <p>Another paragraph here, with more substantive content to satisfy
 Readability's minimum-content heuristics for extraction.</p>
+<p>A third paragraph pads the body past the minimum-extraction guard
+(MIN_BODY_CHARS) so fixture-driven tests exercise the happy path rather
+than the too-short failure.</p>
+<p>Clocks divide the day into hours, the hours into minutes, and the
+minutes into seconds, each division more arbitrary than the last.</p>
+<p>Calendars do the same to years, charting months and weeks against the
+slow drift of seasons that ignore them entirely.</p>
+<p>And yet the piece keeps returning to the same question: who decided
+that time should be counted at all, and what was lost when we agreed?</p>
 </article></body></html>"""
 
 
@@ -46,7 +55,7 @@ def test_fetch_article_takes_longer_extraction(monkeypatch, fake_http):
         status_code=200, text=HTML_SAMPLE,
     )
     monkeypatch.setattr(ingest, "http_client", fake_http)
-    longer = "A recovered paragraph readability missed. " * 20
+    longer = "A recovered paragraph readability missed. " * 40
     monkeypatch.setattr(ingest, "_trafilatura_extract", lambda html: longer)
 
     title, body = ingest.fetch_article("https://example.com/x")
@@ -92,7 +101,7 @@ def test_fetch_article_strips_title_from_winning_body(monkeypatch, fake_http):
         status_code=200, text=HTML_SAMPLE,
     )
     monkeypatch.setattr(ingest, "http_client", fake_http)
-    longer = "On Time\n" + ("A recovered paragraph readability missed. " * 20)
+    longer = "On Time\n" + ("A recovered paragraph readability missed. " * 40)
     monkeypatch.setattr(ingest, "_trafilatura_extract", lambda html: longer)
 
     title, body = ingest.fetch_article("https://example.com/x")
@@ -372,6 +381,36 @@ def test_chunk_text_drops_empty_chunks():
     chunks = ingest.chunk_text(body, max_chars=4000)
     assert all(c.strip() for c in chunks)
     assert len(chunks) == 1
+
+
+def test_process_fails_when_extraction_is_a_teaser(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """A paywall shell (e.g. nytimes.com without subscriber cookies) yields a
+    page where only a teaser is extractable. Fail loudly instead of narrating
+    20 seconds of intro as if it were the whole article."""
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    teaser_html = (
+        "<!doctype html><html><head><title>Teaser</title></head>"
+        "<body><article><h1>Teaser</h1>"
+        "<p>The opening sentence of a gated article.</p>"
+        "<p>Subscribe to keep reading.</p>"
+        "</article></body></html>"
+    )
+    fake_http.responses["https://example.com/gated"] = FakeResponse(
+        status_code=200, text=teaser_html,
+    )
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/gated", secret, tmp_path)
+
+    # No TTS calls were made (we bailed before synthesize)
+    assert len(fake_openai.calls) == 0
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "failed"
+    assert "paywalled" in eps[0]["error"]
 
 
 def test_process_writes_failure_when_body_exceeds_cap(

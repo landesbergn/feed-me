@@ -36,6 +36,7 @@ TTS_MODEL = "tts-1"
 DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
 MAX_BODY_CHARS = 100_000  # ~50 min of TTS audio, ~$1.50 max cost per article
+MIN_BODY_CHARS = 600  # below this it's a teaser/paywall shell, not an article
 
 
 class FetchError(RuntimeError):
@@ -210,6 +211,11 @@ def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> N
         slug = storage.write_pending_episode(data_dir, secret, source_url=url)
     try:
         title, body = fetch_article(url)
+        if len(body) < MIN_BODY_CHARS:
+            raise FetchError(
+                f"Could only extract a snippet ({len(body)} characters) from "
+                f"{urlparse(url).netloc}. The article may be paywalled."
+            )
         if len(body) > MAX_BODY_CHARS:
             raise ValueError(
                 f"Article too long: {len(body):,} chars (limit: {MAX_BODY_CHARS:,}). "
