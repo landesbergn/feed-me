@@ -115,3 +115,7 @@ fly deploy --app feed-me-noah-willow-grove-8052
 
 Per-feature specs and implementation plans live in
 `docs/superpowers/specs/` and `docs/superpowers/plans/`.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

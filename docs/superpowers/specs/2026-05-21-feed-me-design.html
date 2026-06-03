@@ -27,7 +27,7 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap {
-    max-width: 740px;
+    max-width: 720px;
     margin: 0 auto;
     padding: 56px 28px 96px;
   }
@@ -63,16 +63,16 @@
     padding-bottom: 6px;
   }
   h3 {
-    font-size: 17px;
-    margin: 28px 0 8px;
+    font-size: 16px;
+    margin: 26px 0 8px;
     font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
     font-weight: 700;
     letter-spacing: 0.01em;
   }
   p { margin: 12px 0; }
   ul, ol { margin: 12px 0; padding-left: 22px; }
-  li { margin: 4px 0; }
-  code, pre, .mono, .diagram {
+  li { margin: 5px 0; }
+  code, pre {
     font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
     font-size: 13.5px;
   }
@@ -87,19 +87,9 @@
     border-radius: 4px;
     padding: 14px 16px;
     overflow-x: auto;
-    line-height: 1.45;
+    line-height: 1.5;
   }
   pre code { background: transparent; padding: 0; }
-  .diagram {
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 16px;
-    white-space: pre;
-    overflow-x: auto;
-    line-height: 1.3;
-    color: var(--ink-soft);
-  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -109,7 +99,7 @@
   }
   th, td {
     border-bottom: 1px solid var(--rule);
-    padding: 8px 10px;
+    padding: 9px 10px;
     text-align: left;
     vertical-align: top;
   }
@@ -120,7 +110,6 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  td.k { font-family: "JetBrains Mono", Menlo, monospace; font-size: 12.5px; }
   .toc {
     background: var(--paper);
     border: 1px solid var(--rule);
@@ -157,6 +146,7 @@
   .pill.good { background: #e3f1e3; color: var(--good); }
   .pill.warn { background: #f6efd6; color: var(--warn); }
   .pill.future { background: #ede6f4; color: #5b3990; }
+  .pill.never  { background: #f6e0d6; color: var(--accent); }
   .callout {
     border-left: 3px solid var(--accent);
     background: var(--paper);
@@ -165,41 +155,8 @@
     font-size: 15px;
     color: var(--ink-soft);
   }
-  .step {
-    border: 1px solid var(--rule);
-    border-radius: 4px;
-    background: var(--paper);
-    padding: 12px 16px;
-    margin: 10px 0;
-  }
-  .step .head {
-    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ink);
-  }
-  .step .head .num {
-    display: inline-block;
-    width: 22px;
-    height: 22px;
-    line-height: 22px;
-    text-align: center;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 11px;
-    margin-right: 8px;
-    vertical-align: middle;
-  }
-  .step .head .timing {
-    float: right;
-    color: var(--ink-mute);
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .step p { margin: 8px 0 0; font-size: 15px; }
   .small { font-size: 13.5px; color: var(--ink-soft); }
-  hr { border: none; border-top: 1px solid var(--rule); margin: 48px 0; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
   .sig {
     color: var(--ink-mute);
     font-size: 13px;
@@ -207,9 +164,7 @@
   }
 
   /* ---- Visuals ---- */
-  .visual {
-    margin: 28px 0 32px;
-  }
+  .visual { margin: 28px 0 32px; }
   .visual-caption {
     font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
     font-size: 12px;
@@ -248,12 +203,8 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--paper);
-    border: 2px solid var(--ink);
-  }
-  .tl-step.done::before {
     background: var(--good);
-    border-color: var(--good);
+    border: 2px solid var(--good);
   }
   .tl-actor {
     display: inline-block;
@@ -268,10 +219,11 @@
     font-weight: 600;
     vertical-align: middle;
   }
+  .tl-actor.you      { background: #f0e9f6; color: #6a4290; }
   .tl-actor.server   { background: #e8eef6; color: #2c5b8f; }
-  .tl-actor.icloud   { background: #f0e9f6; color: #6a4290; }
   .tl-actor.podcasts { background: #f6ebde; color: #8a4a17; }
-  .tl-actor.worker   { background: #ecf3e8; color: #4a6a2c; }
+  .tl-actor.openai   { background: #ecf3e8; color: #4a6a2c; }
+  .tl-actor.tap      { background: var(--ink); color: #fff; }
   .tl-text { color: var(--ink); }
   .tl-sub {
     display: block;
@@ -311,6 +263,8 @@
     padding: 20px 18px 24px;
     font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
     min-height: 460px;
+    display: flex;
+    flex-direction: column;
   }
   .mockup-status {
     display: flex;
@@ -318,40 +272,30 @@
     font-size: 11px;
     color: var(--ink-soft);
     font-weight: 600;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     padding: 0 4px;
   }
+  .mockup-h {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+    font-weight: 700;
+    margin: 4px 0 10px;
+  }
   .mockup-title {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: -0.01em;
-    margin: 6px 0 4px;
+    margin: 8px 0 6px;
     color: var(--ink);
+    line-height: 1.15;
   }
   .mockup-subtitle {
     font-size: 13px;
     color: var(--ink-mute);
-    margin-bottom: 22px;
-  }
-  .mockup-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--ink-mute);
-    font-weight: 600;
-    margin: 16px 0 4px;
-  }
-  .mockup-input {
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 13px;
-    color: var(--ink-soft);
-    font-family: "JetBrains Mono", Menlo, monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin-bottom: 18px;
+    line-height: 1.4;
   }
   .mockup-btn {
     display: block;
@@ -359,60 +303,168 @@
     background: var(--ink);
     color: #fff;
     border-radius: 999px;
-    padding: 11px 14px;
+    padding: 12px 14px;
     font-size: 14px;
     font-weight: 600;
-    margin-top: 12px;
+    margin-top: 10px;
   }
   .mockup-btn.secondary {
     background: var(--paper);
     color: var(--ink);
     border: 1px solid var(--rule);
   }
-  .mockup-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--rule);
+  .mockup-step {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 10px;
+    padding: 8px 0;
     font-size: 13px;
+    border-bottom: 1px solid var(--rule);
   }
-  .mockup-row:last-child { border-bottom: none; }
-  .mockup-row .name { color: var(--ink); font-weight: 500; }
-  .mockup-row .meta { color: var(--ink-mute); font-size: 11px; font-family: "JetBrains Mono", Menlo, monospace; }
-  .mockup-pill-ready  { color: var(--good); }
-  .mockup-pill-pending { color: var(--warn); }
-  .mockup-pill-failed { color: var(--accent); }
-  .mockup-voices {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-  }
-  .mockup-voice {
-    font-size: 12px;
-    padding: 5px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--rule);
-    background: var(--paper);
-    color: var(--ink-soft);
-  }
-  .mockup-voice.active {
+  .mockup-step:last-child { border-bottom: none; }
+  .mockup-step .n {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
     background: var(--ink);
     color: #fff;
-    border-color: var(--ink);
+    text-align: center;
+    line-height: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .mockup-step .l { color: var(--ink); }
+  .mockup-step .l small { display: block; color: var(--ink-mute); font-size: 11px; margin-top: 2px; }
+  .mockup-share-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .mockup-share-tile {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    background: var(--code-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--ink-mute);
+    text-align: center;
+    padding: 4px;
+  }
+  .mockup-share-tile.highlight {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 700;
+  }
+  .mockup-toast {
+    margin-top: auto;
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    text-align: center;
+    font-weight: 500;
+  }
+  .mockup-episode {
+    border-bottom: 1px solid var(--rule);
+    padding: 11px 0;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .mockup-episode:last-child { border-bottom: none; }
+  .mockup-episode .art {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background: var(--ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .mockup-episode .title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+  .mockup-episode .meta {
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 2px;
+  }
+  .mockup-episode .new {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 4px;
   }
 
-  /* State diagram */
-  svg.state-diagram {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    background: var(--paper);
+  /* Setup steps */
+  .step {
     border: 1px solid var(--rule);
     border-radius: 4px;
-    padding: 8px;
+    background: var(--paper);
+    padding: 14px 16px;
+    margin: 10px 0;
   }
+  .step .head {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .step .head .num {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 11px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .step .head .timing {
+    float: right;
+    color: var(--ink-mute);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .step p { margin: 8px 0 0; font-size: 15px; }
+
+  /* Backlog */
+  .backlog-item {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rule);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    font-size: 14px;
+  }
+  .backlog-item:last-child { border-bottom: none; }
+  .backlog-item .when {
+    color: var(--ink-mute);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-top: 1px;
+  }
+  .backlog-item .what { color: var(--ink-soft); }
+  .backlog-item .what strong { color: var(--ink); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -421,146 +473,129 @@
 <header class="title">
   <div class="eyebrow">Design Spec — v1.0</div>
   <h1>Feed Me</h1>
-  <div class="meta">A personal podcast feed of AI-narrated articles · 2026-05-21</div>
+  <div class="meta">A self-serve personal podcast feed of AI-narrated articles · 2026-05-21</div>
 </header>
 
-<p><strong>Feed Me</strong> is a service that turns saved articles into a personal podcast feed. You share a URL via the iOS Share Sheet; within ~60 seconds an AI-narrated episode appears in the podcast app of your choice. Architected for personal use first, with a clear path to multi-user public product later.</p>
+<p><strong>Feed Me</strong> turns articles you share from iOS into episodes in a private podcast feed. Anyone with the website URL can create their own feed in ~90 seconds — no account, no email, no password. The minimum-viable shape that still lets a friend sign up unassisted: URL-is-account, one canonical iCloud Shortcut, filesystem-as-database. When something fails, you re-share.</p>
 
 <nav class="toc" aria-label="Table of contents">
   <strong>Contents</strong>
   <ol>
-    <li><a href="#goals">Goals &amp; non-goals</a></li>
-    <li><a href="#flows">User flows</a></li>
-    <li><a href="#arch">Architecture</a></li>
-    <li><a href="#pipeline">Processing pipeline</a></li>
-    <li><a href="#paywall">Paywall handling</a></li>
-    <li><a href="#data">Data model</a></li>
-    <li><a href="#api">API contracts</a></li>
-    <li><a href="#auth">Auth &amp; security</a></li>
-    <li><a href="#errors">Error handling</a></li>
-    <li><a href="#deploy">Deployment</a></li>
-    <li><a href="#cost">Cost estimate</a></li>
-    <li><a href="#testing">Testing</a></li>
-    <li><a href="#scope">Out of scope &amp; backlog</a></li>
+    <li><a href="#goals">What we're building (and what we're not)</a></li>
+    <li><a href="#daily">The daily experience</a></li>
+    <li><a href="#onboarding">Self-serve onboarding</a></li>
+    <li><a href="#breaks">When things break</a></li>
+    <li><a href="#scope">Out of scope &amp; next steps</a></li>
+    <li><a href="#impl">Implementation notes</a></li>
   </ol>
 </nav>
 
-<h2 id="goals">1. Goals &amp; non-goals</h2>
+<h2 id="goals">1. What we're building (and what we're not)</h2>
 
-<h3>Goals</h3>
+<h3>The job</h3>
+<p>You read a lot on your phone. You'd listen instead if you could — on the commute, on a dog walk, while cooking. Existing read-it-later-to-audio tools want you to live in <em>their</em> player. Feed Me does the conversion and stops: you listen in Apple Podcasts, Overcast, Pocket Casts, whatever you already use, with the speed controls and queue you've built habits around.</p>
+
+<h3>What "done" looks like for v1</h3>
 <ul>
-  <li>Share any URL from any iOS app and have an audio episode in your podcast app within ~60 seconds.</li>
-  <li>Listen in the podcast app of your choice (Apple Podcasts, Overcast, Pocket Casts, etc.) via a standard RSS feed.</li>
-  <li>Each user gets a personal, unguessable feed URL; new submissions append episodes.</li>
-  <li>Audio is a faithful, lightly-formatted read of the article — no editorializing, no host persona.</li>
-  <li>Cheap, simple to operate, and reliable for personal use; architected so going public later is incremental work, not a rewrite.</li>
+  <li>From any iOS app: Share → <em>Feed Me</em> → an episode appears in your podcast app within ~60 seconds.</li>
+  <li>A friend who opens the website on their phone can be receiving episodes in their podcast app in under two minutes, without ever messaging you for help.</li>
+  <li>The whole system costs under $5/month at hobby scale and you can rebuild it in a weekend.</li>
+  <li>It's a real RSS feed. If anyone ever wants to leave, they take the audio files and the URLs that produced them and go.</li>
 </ul>
 
-<h3>Non-goals (v1)</h3>
-<ul>
-  <li>No PDF, file, or arbitrary text input — URLs only.</li>
-  <li>No in-app player. We produce an RSS feed and audio files; listening UX is delegated to existing podcast apps.</li>
-  <li>No web/Android/Mac client. iOS Share Sheet only.</li>
-  <li>No summarization, discussion, multi-host, or AI commentary.</li>
-  <li>No multi-voice per feed, no per-episode voice override.</li>
-  <li>No search, transcripts, social sharing, or analytics.</li>
-</ul>
+<h3>What v1 is explicitly <em>not</em></h3>
+<p>v1 has no email signup, no magic-link, no passwords, no sessions, no login page, no settings UI beyond a single page rendered at the user's secret URL. There is no in-product visibility into failures, no retries, no paywall fallback, no long-article chunking, no async failure notifications, no episode artwork, no abuse handling, no rate limiting, no admin dashboard.</p>
 
-<h2 id="flows">2. User flows</h2>
+<p>The single trade-off paying for all of those absences: <strong>your URL is your account</strong>. Anyone with your <code>/u/&lt;secret&gt;</code> URL can ingest articles into your feed, read it, and change your voice. For "a tool you and your friends use," that's a reasonable security posture (same as the floor's feed-URL model). For "a public service with abuse risk," it isn't — and that's the line between v1 and v2.0 (§5).</p>
 
-<h3>2.1 First-time setup (web, ~2 minutes)</h3>
-<ol>
-  <li>Open the Feed Me site on your iPhone, tap <strong>Sign in</strong>, enter your password (set during deploy via env var). A signed session cookie keeps you logged in.</li>
-  <li>On the settings page, tap <strong>Add to Apple Podcasts</strong> (or copy the feed URL into another podcast app). This opens Apple Podcasts to your feed with a one-tap <em>Follow</em> button.</li>
-  <li>Tap <strong>Install Shortcut</strong>. This opens the canonical, iCloud-signed Feed Me shortcut in the Shortcuts app — tap <em>Get Shortcut</em> to add it. The first time the shortcut runs (or when you tap "Run on first install"), it prompts for your <strong>API token</strong>; copy it from the settings page and paste it once. iOS stores the token inside the shortcut for all future runs.</li>
-  <li>Pick a voice (default: <code>shimmer</code>) and you're done.</li>
-</ol>
-<p class="small">The settings page is the single source of truth for your feed URL, API token, voice, and saved-episode history. Tokens can be rotated from this page if the phone is lost or compromised — after rotating, open the shortcut, run the embedded <em>Reset Token</em> action, and paste the new value.</p>
+<h2 id="daily">2. The daily experience</h2>
 
-<div class="callout">
-  <strong>Why not a one-tap install with the token pre-embedded?</strong> iOS blocks unsigned <code>.shortcut</code> files by default (the "Allow Untrusted Shortcuts" toggle is even hidden until a user has installed at least one shortcut). The smooth install path requires an iCloud-signed shortcut, and Apple signs those through the Shortcuts app — they can't be generated server-side with a per-user token baked in. Every comparable tool (Readwise, Matter, Snipd) ships the same "install signed shortcut, paste token once" UX.
-</div>
+<p>Once onboarded, this is the entire user-facing loop:</p>
 
 <div class="visual">
-  <div class="visual-caption">Setup walkthrough</div>
+  <div class="visual-caption">Sharing an article — what you do, what you see</div>
   <div class="timeline">
-    <div class="tl-step done">
-      <span class="tl-actor">You</span>
-      <span class="tl-text">Open the Feed Me site on your iPhone in Safari.</span>
+    <div class="tl-step">
+      <span class="tl-actor you">You</span>
+      <span class="tl-text">Reading in Safari (or Reeder, Twitter, Slack, Mail — anywhere with a Share button). Tap <strong>Share → Feed Me</strong>.</span>
+      <span class="tl-timing">2s</span>
     </div>
-    <div class="tl-step done">
+    <div class="tl-step">
       <span class="tl-actor server">Server</span>
-      <span class="tl-text">Tap <em>Sign in</em>, enter your password.</span>
-      <span class="tl-sub">The server creates a 30-day session cookie and lands you on the settings page.</span>
+      <span class="tl-text">Acknowledges in under a second. The Shortcut shows a brief toast (<em>"Queued"</em>) and dismisses.</span>
+      <span class="tl-sub">You're back to whatever you were doing. No tab switch, no "wait for it to finish" screen.</span>
+      <span class="tl-timing">&lt;1s</span>
     </div>
-    <div class="tl-step done">
+    <div class="tl-step">
+      <span class="tl-actor openai">Server</span>
+      <span class="tl-text">In the background: fetches the article, cleans it up, runs OpenAI TTS, stores the resulting MP3.</span>
+      <span class="tl-timing">~30–60s</span>
+    </div>
+    <div class="tl-step">
       <span class="tl-actor podcasts">Podcasts</span>
-      <span class="tl-text">Tap <em>Add to Apple Podcasts</em>. Your phone opens Apple Podcasts to your feed with a one-tap <em>Follow</em> button — confirm.</span>
+      <span class="tl-text">Your podcast app picks up the new episode on its next RSS refresh.</span>
+      <span class="tl-sub">Apple Podcasts polls every ~30 min unless you pull-to-refresh; Overcast is faster. Pull-to-refresh if you want it now.</span>
     </div>
-    <div class="tl-step done">
-      <span class="tl-actor icloud">iCloud</span>
-      <span class="tl-text">Back on settings, tap <em>Install Shortcut</em>. iCloud opens the signed Feed Me shortcut in the Shortcuts app; tap <em>Get Shortcut</em>.</span>
-    </div>
-    <div class="tl-step done">
-      <span class="tl-actor">You</span>
-      <span class="tl-text">First time you run the shortcut from the Share Sheet, it prompts for an API token. Copy the token from the settings page and paste it once.</span>
-      <span class="tl-sub">The token is stored inside the shortcut for all future runs — no further setup.</span>
-    </div>
-    <div class="tl-step done">
-      <span class="tl-actor">Done</span>
-      <span class="tl-text">From now on: any URL → Share → <em>Send to Feed Me</em> → episode appears in your podcast app within a minute or two.</span>
+    <div class="tl-step">
+      <span class="tl-actor you">You</span>
+      <span class="tl-text">Listen later. Standard podcast app — playback speed, queue, downloads, sleep timer all work.</span>
     </div>
   </div>
 </div>
 
 <div class="visual">
-  <div class="visual-caption">The two screens you'll see</div>
+  <div class="visual-caption">What you actually see on the phone</div>
   <div class="mockups">
 
     <div class="mockup">
       <div class="mockup-screen">
-        <div class="mockup-status"><span>9:41</span><span>feed-me-noah.fly.dev</span></div>
-        <div class="mockup-title">Sign in to Feed Me</div>
-        <div class="mockup-subtitle">A personal podcast feed of articles you save.</div>
-        <div class="mockup-label">Email</div>
-        <div class="mockup-input">you@example.com</div>
-        <div class="mockup-label">Password</div>
-        <div class="mockup-input">••••••••••••</div>
-        <div class="mockup-btn">Sign in</div>
+        <div class="mockup-status"><span>9:41</span><span>Safari</span></div>
+        <div class="mockup-h">Share</div>
+        <div class="mockup-share-grid">
+          <div class="mockup-share-tile">AirDrop</div>
+          <div class="mockup-share-tile">Messages</div>
+          <div class="mockup-share-tile">Mail</div>
+          <div class="mockup-share-tile">Notes</div>
+          <div class="mockup-share-tile highlight">Feed Me</div>
+          <div class="mockup-share-tile">Reader</div>
+          <div class="mockup-share-tile">Copy</div>
+          <div class="mockup-share-tile">More</div>
+        </div>
+        <div class="mockup-toast">Queued — episode in ~60s</div>
       </div>
     </div>
 
     <div class="mockup">
       <div class="mockup-screen">
-        <div class="mockup-status"><span>9:41</span><span>feed-me-noah.fly.dev</span></div>
-        <div class="mockup-title">Your feed</div>
-        <div class="mockup-subtitle">noah · 14 episodes · 2 h 47 m total</div>
-
-        <div class="mockup-label">RSS feed URL</div>
-        <div class="mockup-input">…/feed/9Hx3w…2pQ.xml</div>
-        <div class="mockup-btn secondary">Add to Apple Podcasts</div>
-        <div class="mockup-btn secondary">Install iOS Shortcut</div>
-
-        <div class="mockup-label">Voice</div>
-        <div class="mockup-voices">
-          <span class="mockup-voice active">shimmer</span>
-          <span class="mockup-voice">alloy</span>
-          <span class="mockup-voice">nova</span>
-          <span class="mockup-voice">echo</span>
+        <div class="mockup-status"><span>9:42</span><span>Overcast</span></div>
+        <div class="mockup-h">Feed Me · 14 episodes</div>
+        <div class="mockup-episode">
+          <div class="art">FM</div>
+          <div>
+            <div class="title"><span class="new">New</span>The Atlantic — On Time</div>
+            <div class="meta">12 min · just now</div>
+          </div>
         </div>
-
-        <div class="mockup-label">Recent</div>
-        <div class="mockup-row">
-          <span class="name">The Atlantic — On Time</span>
-          <span class="meta mockup-pill-ready">ready</span>
+        <div class="mockup-episode">
+          <div class="art">FM</div>
+          <div>
+            <div class="title">NYT — How the City Eats</div>
+            <div class="meta">22 min · yesterday</div>
+          </div>
         </div>
-        <div class="mockup-row">
-          <span class="name">NYT — Long Read</span>
-          <span class="meta mockup-pill-pending">processing</span>
+        <div class="mockup-episode">
+          <div class="art">FM</div>
+          <div>
+            <div class="title">Stratechery — Aggregation Revisited</div>
+            <div class="meta">18 min · 2 days ago</div>
+          </div>
         </div>
-        <div class="mockup-row">
-          <span class="name">Substack — Paywalled</span>
-          <span class="meta mockup-pill-failed">failed</span>
+        <div class="mockup-episode">
+          <div class="art">FM</div>
+          <div>
+            <div class="title">Construction Physics — Cement</div>
+            <div class="meta">9 min · 3 days ago</div>
+          </div>
         </div>
       </div>
     </div>
@@ -568,371 +603,350 @@
   </div>
 </div>
 
-<h3>2.2 Saving an article</h3>
-<ol>
-  <li>In Safari (or any iOS app), tap Share → <strong>Send to Feed Me</strong>.</li>
-  <li>The Shortcut POSTs the URL to the API; you see a brief success toast.</li>
-  <li>~30–90 seconds later, the new episode appears in your podcast app on next refresh.</li>
-</ol>
+<p class="small">There is no Feed Me app and no Feed Me website you visit day-to-day. The product is two surfaces you already have: the iOS Share Sheet, and your podcast app. The website only matters on day one.</p>
+
+<h2 id="onboarding">3. Self-serve onboarding</h2>
+
+<p>~90 seconds, no help required, no account to create. The friction is concentrated in one place: pasting your personal ingest URL into the Shortcut the first time it runs (which iOS makes you do for any user-supplied data — it's the price of admission for share-sheet integrations on iOS).</p>
 
 <div class="visual">
-  <div class="visual-caption">What happens when you share a URL</div>
+  <div class="visual-caption">From landing page to first episode — what a new user actually does</div>
   <div class="timeline">
-    <div class="tl-step done">
-      <span class="tl-actor">You</span>
-      <span class="tl-text">Tap Share in Safari → <em>Send to Feed Me</em>.</span>
+    <div class="tl-step">
+      <span class="tl-actor you">User</span>
+      <span class="tl-text">Types <code>feed-me.app</code> into their iPhone's browser. Lands on a one-screen landing page: <em>"A podcast of the articles you share. Tap below to create your feed — no signup."</em></span>
     </div>
-    <div class="tl-step done">
-      <span class="tl-actor server">Server</span>
-      <span class="tl-text">Validates the bearer token, inserts a <code>pending</code> episode row, returns <code>200 OK</code>. Shortcut shows a toast.</span>
-      <span class="tl-timing">&lt; 200 ms</span>
+    <div class="tl-step">
+      <span class="tl-actor tap">Tap</span>
+      <span class="tl-text">Taps <strong>Get my feed</strong>. Server generates a random secret, creates <code>/data/&lt;secret&gt;/</code>, redirects them to <code>/u/&lt;secret&gt;</code>.</span>
+      <span class="tl-sub">That URL is now their account. They're told to bookmark it; the page warns that losing the URL means losing the feed.</span>
     </div>
-    <div class="tl-step done">
-      <span class="tl-actor worker">Worker</span>
-      <span class="tl-text">Fetches the page, runs Readability. If the body looks paywalled, retries via the Wayback Machine.</span>
-      <span class="tl-timing">3–8 s</span>
+    <div class="tl-step">
+      <span class="tl-actor tap">Tap</span>
+      <span class="tl-text">From the settings page, tap <strong>Install Shortcut</strong>. iCloud opens the canonical Feed Me Shortcut; tap <em>Get Shortcut</em>.</span>
+      <span class="tl-sub">The Shortcut is the same one every user installs — there's no per-user customization at install time.</span>
     </div>
-    <div class="tl-step done">
-      <span class="tl-actor worker">Worker</span>
-      <span class="tl-text">Splits the script on paragraph boundaries, calls OpenAI TTS per chunk, strips ID3 tags from chunks 2..N, concatenates the MP3.</span>
-      <span class="tl-timing">20–90 s</span>
+    <div class="tl-step">
+      <span class="tl-actor tap">Tap</span>
+      <span class="tl-text">Back on the settings page, tap <strong>Add to Apple Podcasts</strong> (or copy the feed URL into another podcast app). Apple Podcasts opens with their feed and a one-tap <em>Follow</em> button.</span>
     </div>
-    <div class="tl-step done">
-      <span class="tl-actor worker">Worker</span>
-      <span class="tl-text">Uploads the combined MP3 to R2 and marks the episode <code>ready</code>.</span>
-      <span class="tl-timing">1–3 s</span>
+    <div class="tl-step">
+      <span class="tl-actor you">User</span>
+      <span class="tl-text">Smoke test: open any article in Safari → Share → <em>Feed Me</em>. The Shortcut runs for the first time and prompts: <em>"Paste your ingest URL."</em></span>
+      <span class="tl-sub">They flip back to the settings page in Safari, tap the <strong>Copy ingest URL</strong> button, switch back to the Shortcut prompt, paste, hit Done.</span>
     </div>
-    <div class="tl-step done">
-      <span class="tl-actor podcasts">Podcasts</span>
-      <span class="tl-text">Your podcast app picks up the new episode on its next RSS refresh (every few minutes).</span>
+    <div class="tl-step">
+      <span class="tl-actor podcasts">Done</span>
+      <span class="tl-text">~60s later, the article is the newest episode in their podcast app. All subsequent shares are zero-tap-after-the-share-sheet.</span>
     </div>
   </div>
 </div>
 
-<h3>2.3 Listening</h3>
-<p>Standard podcast app behavior. Newest episode at the top of the feed. Your podcast app handles downloads, playback position, speed, and local cleanup.</p>
-
-<p class="small"><strong>Supported apps</strong> (subscribe by URL): Apple Podcasts, Overcast, Pocket Casts, Castro, AntennaPod, Podverse, Podcast Addict, and most other RSS-aware players.</p>
-
-<p class="small"><strong>Not supported: Spotify.</strong> Spotify's consumer app does not let listeners subscribe to arbitrary RSS feed URLs, and its "private podcast" tooling is enterprise-only. Workarounds (submitting your feed to Spotify for Podcasters with an obscure name) make the feed publicly indexed, which defeats the point. Documented as a non-goal in §13.</p>
-
-<h2 id="arch">3. Architecture</h2>
-
-<p>One Fly.io machine runs a single Node.js process. Three HTTP surfaces (settings UI, ingest API, RSS feed), one in-process worker loop. SQLite (on a Fly volume) holds all state including sessions. Cloudflare R2 serves MP3 audio over its default <code>*.r2.dev</code> hostname. Two vendors, one log stream.</p>
-
-<div class="diagram">┌────────────┐  ┌────────────────────────────┐  ┌────────────────────────┐
-│ iOS        │─▶│ Node app on Fly.io         │─▶│ Worker loop (in-proc)  │
-│ Shortcut   │  │                            │  │                        │
-└────────────┘  │ POST /api/ingest           │  │  extract (+ Wayback    │
-                │   inserts episode row      │  │             fallback)  │
-┌────────────┐  │   returns < 200 ms         │  │  build TTS script      │
-│ Browser    │─▶│                            │  │  OpenAI TTS (chunked)  │
-│ (settings) │  │ GET  /login   POST /login  │  │  concat + upload to R2 │
-└────────────┘  │ GET  /settings (auth'd)    │  │  mark episode ready    │
-                │ (Shortcut hosted on iCloud)│  │                        │
-                │ GET  /feed/:token.xml      │  │                        │
-                │                            │  │                        │
-                │ SQLite (Fly volume):       │◀─┴────────────────────────┘
-                │   users, episodes, sessions│           │
-                └────────────────────────────┘           ▼
-                              ▲              ┌────────────────────┐
-                   ┌──────────┴──────────┐   │ Cloudflare R2      │
-Podcast app ──────▶│ Reads RSS XML       │   │ (public, r2.dev)   │
-                   └─────────────────────┘   └─────────┬──────────┘
-                              ◀──────── serves audio ──┘
-</div>
-
-<h3>Components</h3>
-
-<table>
-  <thead><tr><th>Component</th><th>Role</th><th>Tech</th></tr></thead>
-  <tbody>
-    <tr><td>HTTP server</td><td>Settings UI, login, ingest API, RSS feed, Shortcut generator</td><td>Node + Fastify + server-side HTML (no SPA)</td></tr>
-    <tr><td>Worker loop</td><td>Polls <code>episodes</code> for <code>status='pending'</code>, processes one at a time</td><td>In-process loop (5s tick)</td></tr>
-    <tr><td>Database</td><td>Users, episodes, sessions</td><td>SQLite + <code>better-sqlite3</code></td></tr>
-    <tr><td>Audio storage</td><td>MP3 files served publicly via unguessable keys</td><td>Cloudflare R2 (S3 API, <code>*.r2.dev</code>)</td></tr>
-    <tr><td>Extraction</td><td>HTML → article text + metadata; falls back to Internet Archive when paywalled</td><td><code>@mozilla/readability</code> + <code>jsdom</code> + Wayback Availability API</td></tr>
-    <tr><td>TTS</td><td>Text → MP3 (chunked on paragraph boundaries to fit per-request char limit)</td><td>OpenAI <code>tts-1</code> (gpt-4o-mini-tts class)</td></tr>
-    <tr><td>iCloud shortcut</td><td>One canonical, iCloud-signed shortcut shared via a stable <code>icloud.com/shortcuts/&lt;uuid&gt;</code> URL. Hardcodes the API base URL; prompts for the API token on first run and stores it as a shortcut variable.</td><td>Apple Shortcuts (authored once, hosted on iCloud)</td></tr>
-  </tbody>
-</table>
-
-<h2 id="pipeline">4. Processing pipeline</h2>
-
-<p>Each ingested URL becomes one <code>episodes</code> row with <code>status='pending'</code>. The worker loop wakes every 5 seconds, claims one pending episode (compare-and-swap to <code>processing</code>), and runs the four steps below in sequence. On any failure the episode is marked <code>failed</code> with an <code>error_message</code>. Whole-pipeline retry happens up to 3 times via the row's <code>attempts</code> counter — step-level retry would be a nice-to-have but isn't worth a separate jobs table at this scale.</p>
-
-<div class="step">
-  <div class="head"><span class="num">1</span>extract (with Wayback fallback)<span class="timing">~3–8s</span></div>
-  <p>HTTP GET the URL with a real-browser User-Agent. Run Mozilla Readability on the HTML to capture <code>title</code>, <code>byline</code>, <code>siteName</code>, and clean article text. If the result trips the paywall heuristic (§5), call the Wayback Availability API and re-run Readability on the latest snapshot. If word count exceeds 20,000 either before or after the Wayback retry, fail with <em>"Article too long (over 20k words)."</em> If extraction still fails after Wayback, fail with <em>"Couldn't extract article."</em></p>
-</div>
-
-<div class="step">
-  <div class="head"><span class="num">2</span>build script<span class="timing">&lt;50ms</span></div>
-  <p>Template-only, no LLM:
-  <code>"From {siteName}{byline ? ', by ' + byline : ''}. {title}.\n\n{body}"</code>.
-  Body is the Readability plain text. Normalize whitespace; preserve paragraph breaks so TTS pacing sounds natural.</p>
-</div>
-
-<div class="step">
-  <div class="head"><span class="num">3</span>TTS (chunked)<span class="timing">~20–90s</span></div>
-  <p>OpenAI TTS has historically had a ~4,096-character per-request limit on <code>tts-1</code>; the newer <code>gpt-4o-mini-tts</code> may differ — verify in the current API docs before implementation. If the limit holds, split the script on paragraph boundaries into chunks of ≤ 3,800 characters (safety margin) and call the TTS endpoint with the user's voice; chunks run with a small concurrency limit (e.g. 3) to respect rate limits.</p>
-  <p>MP3 frames are independent, but each response includes an <strong>ID3 header</strong>. Naive <code>cat</code>-style concatenation stacks N ID3 tags into the output, which a handful of players (notably some Apple Podcasts versions) reject. Strip ID3 from chunks 2..N before concatenating — ~10 lines with <code>node-id3</code>, no <code>ffmpeg</code> needed.</p>
-</div>
-
-<div class="step">
-  <div class="head"><span class="num">4</span>upload<span class="timing">~1–3s</span></div>
-  <p>PUT the combined MP3 to R2 at key <code>audio/{user_id}/{audio_token}.mp3</code>, where <code>audio_token</code> is a per-episode random base64url string (16 bytes). Read <code>Content-Length</code> for <code>audio_size_bytes</code>; estimate <code>duration_seconds</code> from byte length and bitrate. Mark episode: <code>status='ready'</code>, <code>ready_at=now()</code>, store <code>audio_token</code>. The RSS feed picks up the new episode on next request.</p>
-</div>
-
 <div class="visual">
-  <div class="visual-caption">Episode lifecycle</div>
-  <svg class="state-diagram" viewBox="0 0 680 220" role="img" aria-label="Episode states: insert leads to pending; worker claims, moving to processing; success leads to ready, error leads to failed. A dashed arrow from processing returns to pending if the row gets stuck for more than five minutes.">
-    <defs>
-      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-        <path d="M0,0 L10,5 L0,10 z" fill="#4a4a4a"/>
-      </marker>
-      <marker id="arrow-dashed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-        <path d="M0,0 L10,5 L0,10 z" fill="#6a6a6a"/>
-      </marker>
-    </defs>
+  <div class="visual-caption">The two screens the user actually visits on the website</div>
+  <div class="mockups">
 
-    <g font-family="-apple-system,BlinkMacSystemFont,Inter,sans-serif" font-size="13" font-weight="600">
-      <rect x="80"  y="80" width="110" height="44" rx="8" fill="#f6efd6" stroke="#8a6500" stroke-width="1.5"/>
-      <text x="135" y="107" text-anchor="middle" fill="#8a6500">pending</text>
+    <div class="mockup">
+      <div class="mockup-screen">
+        <div class="mockup-status"><span>9:41</span><span>feed-me.app</span></div>
+        <div class="mockup-title">Articles, as a podcast.</div>
+        <div class="mockup-subtitle">Share any URL from iOS. A minute later, listen to it in Apple Podcasts, Overcast, or any RSS-aware app.</div>
+        <div class="mockup-h">No account needed</div>
+        <div class="mockup-step">
+          <div class="n">1</div>
+          <div class="l">Tap below to create your feed<small>You'll get a private URL — bookmark it.</small></div>
+        </div>
+        <div class="mockup-step">
+          <div class="n">2</div>
+          <div class="l">Install the iOS Shortcut<small>One tap, signed by iCloud.</small></div>
+        </div>
+        <div class="mockup-step">
+          <div class="n">3</div>
+          <div class="l">Subscribe in your podcast app<small>Standard RSS.</small></div>
+        </div>
+        <div class="mockup-btn">Get my feed →</div>
+      </div>
+    </div>
 
-      <rect x="280" y="80" width="130" height="44" rx="8" fill="#e8eef6" stroke="#2c5b8f" stroke-width="1.5"/>
-      <text x="345" y="107" text-anchor="middle" fill="#2c5b8f">processing</text>
+    <div class="mockup">
+      <div class="mockup-screen">
+        <div class="mockup-status"><span>9:42</span><span>feed-me.app</span></div>
+        <div class="mockup-title">Your feed is ready.</div>
+        <div class="mockup-subtitle">Bookmark this page — it's your account. Losing the URL means losing the feed.</div>
 
-      <rect x="500" y="20" width="130" height="44" rx="8" fill="#e3f1e3" stroke="#2f7a3d" stroke-width="1.5"/>
-      <text x="565" y="47" text-anchor="middle" fill="#2f7a3d">ready ✓</text>
+        <div class="mockup-h">Step 1 · Shortcut</div>
+        <div class="mockup-btn">Install Shortcut</div>
 
-      <rect x="500" y="140" width="130" height="44" rx="8" fill="#f6e0d6" stroke="#b04a00" stroke-width="1.5"/>
-      <text x="565" y="167" text-anchor="middle" fill="#b04a00">failed</text>
-    </g>
+        <div class="mockup-h">Step 2 · Podcast app</div>
+        <div class="mockup-btn secondary">Add to Apple Podcasts</div>
+        <div class="mockup-btn secondary">Copy feed URL (other apps)</div>
 
-    <g fill="none" stroke="#4a4a4a" stroke-width="1.5" marker-end="url(#arrow)">
-      <line x1="20" y1="102" x2="78" y2="102"/>
-      <line x1="190" y1="102" x2="278" y2="102"/>
-      <line x1="410" y1="92" x2="498" y2="48"/>
-      <line x1="410" y1="112" x2="498" y2="156"/>
-    </g>
+        <div class="mockup-h">Step 3 · First share</div>
+        <div class="mockup-btn secondary">Copy ingest URL</div>
+        <div class="mockup-subtitle" style="margin-top:8px;font-size:12px;">First time you share, the Shortcut will ask for this URL. Paste it once — it's saved forever.</div>
+      </div>
+    </div>
 
-    <path d="M 345 124 Q 345 200 235 200 Q 135 200 135 124"
-          fill="none" stroke="#6a6a6a" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-dashed)"/>
-
-    <g font-family="-apple-system,BlinkMacSystemFont,Inter,sans-serif" font-size="11" fill="#6a6a6a">
-      <text x="20"  y="92">insert (POST /api/ingest)</text>
-      <text x="200" y="92">worker claims</text>
-      <text x="424" y="74">success</text>
-      <text x="424" y="138">error → error_message</text>
-      <text x="220" y="218" font-style="italic">stuck &gt; 5 min → reset on restart</text>
-    </g>
-  </svg>
+  </div>
 </div>
 
-<h2 id="paywall">5. Paywall handling</h2>
+<h3>Why the "paste URL once" step exists</h3>
 
-<p>The Wayback fallback is a control-flow detail of step 1, triggered when either heuristic fires on the direct fetch:</p>
-<ul>
-  <li><strong>Length signal:</strong> extracted body has fewer than 200 words.</li>
-  <li><strong>Phrase signal:</strong> body contains one of <code>"subscribe to continue"</code>, <code>"sign in to read"</code>, <code>"this article is for subscribers"</code>, <code>"create a free account"</code>, or <code>"premium content"</code>, plus a small denylist of known paywall banners.</li>
-</ul>
+<p>iOS won't let a website install a Shortcut with custom data baked in. The only way to ship a one-tap Shortcut install is via an iCloud-signed Shortcut, and those are signed once at author time — they can't be generated server-side per user. Every tool that integrates with the iOS Share Sheet (Readwise, Matter, Snipd, AudioPen) hits this same wall, and they all solve it the same way: install a canonical Shortcut, prompt for a token on first run, store it as a Shortcut variable. We do the same, except instead of "an API token" we ask for "your ingest URL" — which is one concept rather than two, and the user already has it on a button they just used.</p>
 
-<p>Either signal sends the URL through the Wayback Availability API. The fallback is ethical (it uses the Internet Archive's official API, not scraped clones), but coverage is imperfect — articles published in the last 24 hours often aren't archived yet.</p>
+<h3>The settings page (and the only website surface that matters)</h3>
 
-<div class="callout">
-  <strong>Known limitation:</strong> when both the direct fetch and Wayback fail, the episode is marked failed. A future <em>"Paste text"</em> Shortcut variant (in backlog) covers paywalled content not in Wayback.
-</div>
-
-<h2 id="data">6. Data model</h2>
-
-<p>SQLite, three tables. Times are unix epoch milliseconds. No public IDs or UUIDs — the random <code>feed_token</code> (per user), <code>audio_token</code> (per episode), and <code>session_token</code> (per login) double as both credential and URL slug.</p>
-
-<pre><code>CREATE TABLE users (
-  id                INTEGER PRIMARY KEY,
-  email             TEXT NOT NULL,
-  password_hash     TEXT NOT NULL,         -- bcrypt(SETTINGS_PASSWORD) seeded on first run
-  voice             TEXT NOT NULL DEFAULT 'shimmer',
-  feed_token        TEXT NOT NULL UNIQUE,  -- 32 random bytes, base64url, used in feed URL
-  api_token_hash    TEXT NOT NULL,         -- sha256 of bearer token; plaintext never stored
-  created_at        INTEGER NOT NULL
-);
-
-CREATE TABLE episodes (
-  id                INTEGER PRIMARY KEY,
-  user_id           INTEGER NOT NULL REFERENCES users(id),
-  url               TEXT NOT NULL,
-  url_hash          TEXT NOT NULL,         -- sha256(user_id || normalized_url), for dedup
-  status            TEXT NOT NULL,         -- pending | processing | ready | failed
-  attempts          INTEGER NOT NULL DEFAULT 0,
-  title             TEXT,
-  byline            TEXT,
-  site_name         TEXT,
-  word_count        INTEGER,
-  audio_token       TEXT,                  -- 16 random bytes, base64url; slugs the R2 key + RSS guid
-  audio_size_bytes  INTEGER,
-  duration_seconds  INTEGER,
-  error_message     TEXT,
-  created_at        INTEGER NOT NULL,
-  updated_at        INTEGER NOT NULL,
-  ready_at          INTEGER,
-  UNIQUE(user_id, url_hash)
-);
-
-CREATE TABLE sessions (
-  token             TEXT PRIMARY KEY,      -- 32 random bytes, base64url; stored in cookie
-  user_id           INTEGER NOT NULL REFERENCES users(id),
-  created_at        INTEGER NOT NULL,
-  expires_at        INTEGER NOT NULL,      -- created_at + 30 days
-  last_seen_at      INTEGER NOT NULL
-);
-
-CREATE INDEX idx_episodes_pending      ON episodes(status, updated_at) WHERE status IN ('pending','processing');
-CREATE INDEX idx_episodes_user_ready   ON episodes(user_id, ready_at DESC) WHERE status = 'ready';
-CREATE INDEX idx_sessions_user_expires ON sessions(user_id, expires_at);
-</code></pre>
-
-<p class="small">Crash recovery: on startup the app runs <code>UPDATE episodes SET status='pending' WHERE status='processing' AND updated_at &lt; now() - 5min</code> — sweeps stuck rows back into the queue without a separate jobs table.</p>
-
-<h2 id="api">7. API contracts</h2>
-
-<h3>GET <code>/</code>, <code>/login</code>, <code>POST /login</code> <span class="pill">public</span></h3>
-<p>Server-rendered HTML. Root redirects to <code>/settings</code> if a valid session cookie is present, otherwise <code>/login</code>. The login page is a single email + password form. On submit, the server checks bcrypt, creates a <code>sessions</code> row, and sets an <code>HttpOnly; Secure; SameSite=Lax</code> cookie with the session token (30-day expiry, sliding on activity).</p>
-
-<h3>GET <code>/settings</code>, <code>POST /settings/voice</code>, <code>POST /settings/rotate-token</code> <span class="pill">session</span></h3>
-<p>Single page showing:</p>
-<ul>
-  <li><strong>Feed URL</strong> with one-tap copy + an <em>"Add to Apple Podcasts"</em> button that opens <code>podcast://&lt;feed_url&gt;</code>.</li>
-  <li><strong>Install Shortcut</strong> button linking to <code>/shortcut.shortcut</code>.</li>
-  <li><strong>Voice picker</strong> (radio buttons; submits to <code>POST /settings/voice</code>).</li>
-  <li><strong>Rotate API token</strong> button (invalidates the old token, redirects to settings with new value visible once).</li>
-  <li><strong>Recent episodes</strong> — last 30 rows, including failed ones with <code>error_message</code> visible.</li>
-</ul>
-
-<h3>Shortcut install (link out)</h3>
-<p>No server endpoint. The settings page renders a static link to the canonical iCloud shortcut URL (set at deploy time via the <code>SHORTCUT_ICLOUD_URL</code> env var, e.g. <code>https://www.icloud.com/shortcuts/abc123...</code>). The shortcut is authored once in the Apple Shortcuts app, with the API base URL hardcoded and an <em>Ask for Input</em> action that prompts for the token on first run, storing it in a persistent shortcut variable named <code>FeedMeToken</code>. A second tile inside the shortcut, "Reset Token," clears that variable so the user can paste a rotated token without rebuilding the shortcut.</p>
-
-<h3>POST <code>/api/ingest</code> <span class="pill">bearer</span></h3>
-<p>Called by the iOS Shortcut. Auth: <code>Authorization: Bearer &lt;api_token&gt;</code>.</p>
-<pre><code>// Request
-{ "url": "https://example.com/article" }
-
-// 200 OK — new episode queued
-{ "status": "pending", "deduped": false }
-
-// 200 OK — already in this user's feed
-{ "status": "ready",   "deduped": true }
-
-// 400 — malformed URL
-{ "error": "invalid_url" }
-
-// 401 — missing or bad token
-{ "error": "unauthorized" }
-</code></pre>
-<p>Response time target: &lt; 200ms. Heavy work runs in the worker loop.</p>
-
-<h3>GET <code>/feed/:token.xml</code> <span class="pill">public</span></h3>
-<p>No auth header; the token in the URL <em>is</em> the auth. Returns valid podcast RSS 2.0 with the iTunes namespace. Includes only episodes with <code>status='ready'</code>, ordered newest first. Each <code>&lt;guid&gt;</code> is the episode's <code>audio_token</code>. <code>Cache-Control: max-age=60</code>.</p>
-
-<h3>R2 audio URLs <span class="pill">public</span></h3>
-<p>Audio is served directly from a public R2 bucket via R2's default hostname, e.g. <code>https://pub-XXXXX.r2.dev/audio/{user_id}/{audio_token}.mp3</code>. Anyone with the URL can stream the file — the standard podcast security model. Unguessable <code>audio_token</code> keys keep the bucket effectively private to feed subscribers. A custom domain is backlog.</p>
-
-<h2 id="auth">8. Auth &amp; security</h2>
+<p>One page at <code>/u/&lt;secret&gt;</code>, no JS framework, server-rendered. Renders:</p>
 
 <ul>
-  <li><strong>Owner account:</strong> on first boot the app reads <code>OWNER_EMAIL</code> and <code>OWNER_PASSWORD</code> env vars and seeds the single <code>users</code> row, bcrypt-hashing the password. Subsequent restarts skip the seed step. To rotate the password, change the env var and restart.</li>
-  <li><strong>Browser session:</strong> after a successful login the server inserts a <code>sessions</code> row and sets an <code>HttpOnly; Secure; SameSite=Lax</code> cookie. 30-day expiry, sliding on each authenticated request. Logout deletes the row.</li>
-  <li><strong>API token (for the Shortcut):</strong> 32 random bytes, base64url. Stored as sha256 hash; plaintext appears in the rendered <code>.shortcut</code> file only. Rotating it from the settings page generates a new value and invalidates the previously-installed shortcut.</li>
-  <li><strong>Feed token:</strong> 32 random bytes, base64url. Stored plaintext (it's the credential itself, so hashing would block feed lookups). Capability URL — anyone with it reads your feed. Rotation supported from settings.</li>
-  <li><strong>Audio tokens:</strong> 16 random bytes per episode, base64url. R2 bucket has public read on <code>audio/</code> with listing disabled, so enumeration is infeasible.</li>
-  <li><strong>CSRF:</strong> the <code>SameSite=Lax</code> cookie covers the common forgery vectors. A proper CSRF token on <code>POST /settings/*</code> forms is ~5 extra lines and lands alongside the v2.0 multi-user work; for the single-user MVP, the residual risk is negligible (no untrusted users to exploit).</li>
-  <li><strong>Open signup is disabled:</strong> v1 supports exactly one user, seeded from env vars. New signups are deferred until v2 (multi-user with magic-link onboarding).</li>
-  <li><strong>No SSRF guardrail or rate limiter in v1.</strong> Single user with a static API token; if it leaks, rotate it. Both return for the public release.</li>
+  <li>The three onboarding buttons (Install Shortcut, Add to Apple Podcasts, Copy ingest URL).</li>
+  <li>A voice picker (radio buttons over <code>shimmer</code> / <code>alloy</code> / <code>nova</code> / <code>echo</code>; submits to <code>POST /u/&lt;secret&gt;/voice</code>).</li>
+  <li>Recent episodes (last 30 rows from the user's directory, including any that failed — shows a one-line error per failure).</li>
+  <li>A "Rotate URL" button — generates a new secret, copies the user's data dir to it, redirects them to the new URL. They re-install the Shortcut (or just edit the saved variable) and re-add the feed in their podcast app. Slow but possible; documented for use only if they suspect their URL leaked.</li>
 </ul>
 
-<h2 id="errors">9. Error handling</h2>
+<h3>What we deliberately don't ask the user for</h3>
+
+<ul>
+  <li><strong>Their email.</strong> We never need to reach them — there's no password reset, no notifications. Asking for an email creates a privacy obligation we don't want and a signup form they have to fill.</li>
+  <li><strong>A password.</strong> The URL is the credential. Passwords would mean a sessions table, bcrypt, login form, password reset flow, 2FA discussion, all of it.</li>
+  <li><strong>A username.</strong> The directory on disk is named by the secret. There's no public identity.</li>
+  <li><strong>Confirmation of "yes I bookmarked it."</strong> If they didn't, the cost is "create a new feed and re-onboard." Roughly 90 seconds — cheaper than a forced "are you sure you saved this?" interstitial.</li>
+</ul>
+
+<h2 id="breaks">4. When things break</h2>
 
 <table>
-  <thead><tr><th>Failure</th><th>Behavior</th></tr></thead>
+  <thead><tr><th>What happens</th><th>How the user notices</th><th>What they do</th></tr></thead>
   <tbody>
-    <tr><td>Network/HTTP error fetching URL</td><td>Retry the whole pipeline up to 3 times (via <code>episodes.attempts</code>); then fail with the HTTP status.</td></tr>
-    <tr><td>Readability returns empty / paywalled body</td><td>Inline Wayback fallback within step 1 (§5).</td></tr>
-    <tr><td>Wayback has no snapshot</td><td>Fail episode: <em>"Couldn't extract article (paywalled and not in Wayback)."</em></td></tr>
-    <tr><td>Article over 20k words</td><td>Fail episode: <em>"Article too long (over 20k words)."</em></td></tr>
-    <tr><td>OpenAI TTS error (rate limit, transient)</td><td>Retry the whole pipeline up to 3 times with backoff; then fail episode.</td></tr>
-    <tr><td>R2 upload error</td><td>Retry the whole pipeline up to 3 times with backoff; then fail episode.</td></tr>
-    <tr><td>Worker process crash mid-step</td><td>On startup, any <code>episodes</code> stuck in <code>processing</code> older than 5 min is reset to <code>pending</code> and re-attempted (counted as one attempt).</td></tr>
+    <tr>
+      <td>Article extraction fails (paywall, weird layout, JS-rendered)</td>
+      <td>Episode never appears in their podcast app; settings page shows it as failed</td>
+      <td>Re-share from archive.ph, or skip</td>
+    </tr>
+    <tr>
+      <td>Article longer than ~4,000 characters</td>
+      <td>Episode appears but cuts off mid-thought</td>
+      <td>Read the rest in Safari, or wait for v1.x chunking</td>
+    </tr>
+    <tr>
+      <td>OpenAI rate-limits or has an outage</td>
+      <td>Episode never appears; settings page shows the error</td>
+      <td>Re-share in a few minutes</td>
+    </tr>
+    <tr>
+      <td>Server reboots while processing</td>
+      <td>The in-flight article is lost</td>
+      <td>Re-share it</td>
+    </tr>
+    <tr>
+      <td>User lost their <code>/u/&lt;secret&gt;</code> bookmark</td>
+      <td>They have no way back to their settings page</td>
+      <td>Create a new feed; the old one orphans and eventually times out (§5). Their old podcast subscription keeps playing old episodes but won't get new ones.</td>
+    </tr>
+    <tr>
+      <td>User suspects their URL leaked</td>
+      <td>Strange episodes appear, or paranoia</td>
+      <td>Tap <em>Rotate URL</em> on the settings page; re-install Shortcut + re-subscribe in podcast app (~2 min)</td>
+    </tr>
+    <tr>
+      <td>Server runs out of disk on the volume</td>
+      <td>New episodes fail for everyone; admin sees it in Fly metrics</td>
+      <td>Run cleanup (delete oldest MP3s across all users), or resize the volume</td>
+    </tr>
   </tbody>
 </table>
 
-<p>Failed episodes can be inspected via <code>npm run list-failed</code> (CLI) which prints recent failures with their <code>error_message</code>. The Shortcut response from <code>/api/ingest</code> only reflects acceptance, not eventual outcome — surfacing async failures back to the Shortcut as iOS notifications is a v1.1 enhancement.</p>
+<p class="small">The settings page surfaces per-user failures inline, but there are no notifications and no email — if a user shares an article and never opens the settings page, they only learn from absence. That's a deliberate tradeoff (no notification infrastructure in v1); v1.1 (§5) adds optional Pushover/ntfy webhook URLs per user.</p>
 
-<h2 id="deploy">10. Deployment</h2>
+<h2 id="scope">5. Out of scope &amp; next steps</h2>
 
-<ul>
-  <li><strong>Fly.io:</strong> one machine, <code>shared-cpu-1x</code>, <strong>512 MB RAM</strong> (256 MB is too tight — <code>jsdom</code> + Readability plus buffering N MP3 chunks can spike past it), with a 1 GB volume mounted at <code>/data</code> for SQLite. <code>fly deploy</code> from a standard Node Dockerfile.</li>
-  <li><strong>Domain:</strong> Fly's default <code>*.fly.dev</code> hostname is fine for v1 (it's HTTPS by default; the iOS Shortcut and podcast apps don't care about the hostname). A custom domain is backlog.</li>
-  <li><strong>Cloudflare R2:</strong> one bucket, public read on <code>audio/</code> prefix, listing disabled, served from R2's default <code>pub-XXX.r2.dev</code> hostname.</li>
-  <li><strong>Env vars:</strong> <code>OPENAI_API_KEY</code>, <code>R2_ACCESS_KEY_ID</code>, <code>R2_SECRET_ACCESS_KEY</code>, <code>R2_BUCKET</code>, <code>R2_PUBLIC_BASE_URL</code>, <code>OWNER_EMAIL</code>, <code>OWNER_PASSWORD</code>, <code>SESSION_SECRET</code> (used to sign session cookies), <code>APP_BASE_URL</code> (the public origin, e.g. <code>https://feed-me-noah.fly.dev</code>), <code>SHORTCUT_ICLOUD_URL</code> (the canonical iCloud share URL for the Feed Me shortcut).</li>
-  <li><strong>Schema:</strong> a single <code>schema.sql</code> applied with <code>CREATE TABLE IF NOT EXISTS</code> on startup. A real migration system arrives the first time we actually need to alter a table.</li>
-  <li><strong>Backups:</strong> <code>flyctl ssh sftp get</code> the SQLite file occasionally if you care. Fly volumes are reliable enough for a personal tool; no Litestream in v1.</li>
-  <li><strong>Logs:</strong> stdout to Fly's log stream; structured JSON via <code>pino</code>.</li>
-</ul>
+<p>Things v1 deliberately doesn't do, sorted by when (and whether) they'd come back. Each item carries the user-experience reason it's deferred, so future-you can re-evaluate honestly instead of cargo-culting.</p>
 
-<h2 id="cost">11. Cost estimate</h2>
+<h3>Will probably come back (v1.x)</h3>
 
-<p>Personal use (~30 articles/month, ~5,000 words avg):</p>
-<table>
-  <thead><tr><th>Item</th><th>Monthly cost</th></tr></thead>
-  <tbody>
-    <tr><td>Fly.io machine (512 MB) + 1 GB volume</td><td>~$5–6</td></tr>
-    <tr><td>Cloudflare R2 storage &amp; egress</td><td>$0 (under 10GB free tier; egress always free)</td></tr>
-    <tr><td>OpenAI TTS (~900k chars/mo @ $0.60/1M)</td><td>~$0.55</td></tr>
-    <tr><td>Domain (optional)</td><td>~$1</td></tr>
-    <tr><td><strong>Total</strong></td><td><strong>~$6–8/month</strong></td></tr>
-  </tbody>
-</table>
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v1.1</span></div>
+  <div class="what"><strong>Optional async failure notifications.</strong> Settings page gains a "Notification URL" field; if set, the server POSTs there on any worker exception. Compatible with Pushover, ntfy, Slack webhook, Discord webhook — no email infrastructure required. The user opts in by pasting a URL; we don't host anything.</div>
+</div>
 
-<h2 id="testing">12. Testing</h2>
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v1.1</span></div>
+  <div class="what"><strong>Long-article chunking.</strong> The 4,000-char truncation is the most user-visible compromise — every longread hits it. Splitting on paragraph boundaries and concatenating MP3s (with ID3 stripped from chunks 2..N) is ~30 lines and meaningfully changes what's listenable.</div>
+</div>
 
-<ul>
-  <li><strong>Unit tests:</strong> URL normalization, paywall heuristic, Readability output shape, RSS XML rendering, paragraph chunking.</li>
-  <li><strong>Integration tests:</strong> end-to-end <code>POST /ingest</code> → DB row → mocked TTS → in-memory R2 stub → feed XML contains episode. Runs against an ephemeral SQLite file.</li>
-  <li><strong>Fixture corpus:</strong> a small set of saved HTML pages (paywalled, ad-heavy, simple blog, long-form, non-English) to regression-test extraction.</li>
-  <li><strong>Manual smoke test:</strong> after deploy, send 3 real URLs via the Shortcut and confirm episodes appear in a podcast app within 90 seconds.</li>
-</ul>
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v1.2</span></div>
+  <div class="what"><strong>Wayback paywall fallback.</strong> When the direct fetch returns &lt;200 words or hits known paywall phrasing, re-fetch via the Internet Archive Availability API. Recovers maybe 40% of paywalled URLs, ethically. Helpful once users share more NYT / Atlantic / Substack.</div>
+</div>
 
-<h2 id="scope">13. Out of scope &amp; backlog</h2>
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v1.2</span></div>
+  <div class="what"><strong>"Paste text" Shortcut variant.</strong> Second Shortcut that POSTs selected text instead of a URL. Catches the long tail of paywalled content not in Wayback.</div>
+</div>
 
-<h3>Explicitly out of scope for v1</h3>
-<ul>
-  <li><strong>Spotify support.</strong> Spotify's consumer app cannot subscribe to custom RSS URLs and its "private podcast" tooling is enterprise-only. Listeners use Apple Podcasts, Overcast, Pocket Casts, etc.</li>
-  <li>Multi-user signup. v1 supports exactly one owner account, seeded from env vars. Magic-link multi-user lands in v2.0.</li>
-  <li>Custom domain (Fly's default <code>*.fly.dev</code> hostname is used).</li>
-  <li>PDF / file uploads.</li>
-  <li>Raw-text input ("paste this text") Shortcut variant.</li>
-  <li>Per-episode voice override.</li>
-  <li>LLM cleanup or summarization.</li>
-  <li>Multi-part episode splitting (long articles render as one long MP3 via chunked TTS, but stay a single feed entry).</li>
-  <li>iOS notifications on async failure.</li>
-  <li>Episode artwork from <code>og:image</code>.</li>
-  <li>Streaming TTS / progressive playback.</li>
-  <li>Search, transcripts, export.</li>
-  <li>SSRF allowlist, rate limiter, migrations system, Litestream backup — all valid; all deferred until the public release.</li>
-</ul>
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v1.3</span></div>
+  <div class="what"><strong>Episode artwork from <code>og:image</code>.</strong> Cosmetic, but the generic "FM" tile is ugly in the podcast app once users have a real backlog.</div>
+</div>
 
-<h3>Backlog (rough order)</h3>
-<ol>
-  <li><span class="pill future">v1.1</span> Async failure notifications back to the Shortcut (iOS push or email).</li>
-  <li><span class="pill future">v1.2</span> "Paste text" Shortcut variant for paywalled content not in Wayback.</li>
-  <li><span class="pill future">v1.3</span> Episode artwork from <code>og:image</code>; custom domain.</li>
-  <li><span class="pill future">v2.0</span> Multi-user signup with magic-link auth (Resend), public landing page, SSRF allowlist, per-user rate limiter, real migrations system.</li>
-  <li><span class="pill future">v2.x</span> PDF input. Per-episode voice. ElevenLabs as a premium voice tier. Litestream backups. Spotify-compatible feed for users who claim their show via Spotify for Podcasters.</li>
-</ol>
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v1.3</span></div>
+  <div class="what"><strong>Orphan cleanup.</strong> Background job: delete <code>/data/&lt;secret&gt;/</code> directories that haven't had an ingest in 60 days. Reclaims disk from users who tried it once and forgot. Communicated upfront on the landing page: "feeds inactive for 60 days are deleted."</div>
+</div>
+
+<h3>Might come back if the product earns it (v2.0)</h3>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v2</span></div>
+  <div class="what"><strong>Real accounts.</strong> Magic-link email signup (Resend), proper sessions, password-less login from any device. Triggered when "I lost my bookmark and want my old feed back" becomes a recurring support request, or when users want to access their feed from multiple devices.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v2</span></div>
+  <div class="what"><strong>Abuse handling.</strong> Per-IP rate limiting on the create-feed endpoint, SSRF allowlist on ingest URLs, captcha or proof-of-work to block automated feed-creation. Required if the URL ever ends up somewhere indexable — until then, security through obscurity holds.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v2</span></div>
+  <div class="what"><strong>Real persistence.</strong> SQLite + a queue table, retries, durable state across restarts, Litestream backup. Necessary when daily traffic is 50+ articles or when "I lost an article" is unacceptable.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v2</span></div>
+  <div class="what"><strong>Paid tier.</strong> Stripe + a usage meter. The Fly + OpenAI bill is small but real; once it's not a personal hobby cost, charging $3/mo (vs OpenAI's actual ~$0.50/user marginal cost) supports the infrastructure.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill future">v2</span></div>
+  <div class="what"><strong>Branded podcast metadata.</strong> Proper podcast cover art per user, owner name, iTunes category, episode-level artwork. The custom domain itself ships in v1 (it's a $12/yr purchase, not a complexity item); the polish around how each user's feed presents inside Apple Podcasts is v2.</div>
+</div>
+
+<h3>Probably never</h3>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill never">No</span></div>
+  <div class="what"><strong>Spotify support.</strong> Spotify's consumer app doesn't let listeners subscribe to arbitrary RSS feed URLs, and the workarounds (Spotify for Podcasters with an obscure show name) publicly index the feed. Use Apple Podcasts, Overcast, Pocket Casts, Castro, or AntennaPod.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill never">No</span></div>
+  <div class="what"><strong>In-app player / Feed Me iOS app.</strong> The whole point is to delegate playback to apps that already do it well. Building a player is a different product.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill never">No</span></div>
+  <div class="what"><strong>Summarization, multi-host, AI commentary.</strong> Different product (Snipd, Wondercraft). Feed Me's value is the faithful read — no editorializing.</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill never">No</span></div>
+  <div class="what"><strong>PDF / file uploads.</strong> Different ingestion path, larger TTS bills, different audience (academics).</div>
+</div>
+
+<div class="backlog-item">
+  <div class="when"><span class="pill never">No</span></div>
+  <div class="what"><strong>Search, transcripts, social sharing, analytics, "for you" recommendations.</strong> Each is its own product. Feed Me is a one-way pipe.</div>
+</div>
 
 <hr>
 
-<p class="sig">Spec — Feed Me v1.0 design. Once approved, the next step is the implementation plan.</p>
+<h2 id="impl">6. Implementation notes</h2>
+
+<p>Reference material for the build, kept brief and at the end. The product decisions are above; everything here is a means to those ends.</p>
+
+<h3>6.1 Architecture</h3>
+
+<p>One Fly.io machine (shared-cpu-1x, 256 MB RAM) running a single Python process (FastAPI + Jinja templates). One Fly volume at <code>/data</code> (3 GB) holds all state, namespaced per user:</p>
+
+<pre><code>/data/&lt;secret&gt;/
+  settings.json           {voice, created_at, last_ingest_at}
+  &lt;slug&gt;.mp3              audio
+  &lt;slug&gt;.json             {title, url, ts, error?}
+</code></pre>
+
+<p>No SQLite, no R2, no worker process, no state machine, no sessions, no cookies. The presence of <code>/data/&lt;secret&gt;/</code> is what makes a user "exist." Async work runs in daemon threads spawned per ingest request. Failed ingests write a <code>&lt;slug&gt;.json</code> with an <code>error</code> field but no <code>.mp3</code>, so they show up on the settings page as failures.</p>
+
+<h3>6.2 HTTP surface</h3>
+
+<table>
+  <thead><tr><th>Route</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>GET /</code></td><td>Landing page. Static HTML with a single <code>POST /create</code> form.</td></tr>
+    <tr><td><code>POST /create</code></td><td>Generate <code>secret = token_urlsafe(32)</code>, <code>mkdir /data/&lt;secret&gt;/</code>, write default <code>settings.json</code>, redirect to <code>/u/&lt;secret&gt;</code>.</td></tr>
+    <tr><td><code>GET /u/&lt;secret&gt;</code></td><td>Settings page. 404 if <code>/data/&lt;secret&gt;/</code> doesn't exist. Renders the onboarding buttons, voice picker, recent episodes.</td></tr>
+    <tr><td><code>POST /u/&lt;secret&gt;/voice</code></td><td>Update <code>settings.json</code>. Redirect back to settings.</td></tr>
+    <tr><td><code>POST /u/&lt;secret&gt;/rotate</code></td><td>Generate new secret, move the data dir, redirect to new URL.</td></tr>
+    <tr><td><code>GET /u/&lt;secret&gt;/ingest?url=…</code></td><td>404 if user doesn't exist. Spawn daemon thread; return <code>{"ok": true}</code> in &lt;50 ms.</td></tr>
+    <tr><td><code>GET /u/&lt;secret&gt;/feed.xml</code></td><td>List <code>/data/&lt;secret&gt;/*.json</code> (only those with a sibling <code>.mp3</code>), sorted by mtime desc; render RSS 2.0.</td></tr>
+    <tr><td><code>GET /u/&lt;secret&gt;/audio/&lt;slug&gt;.mp3</code></td><td>Stream the file from <code>/data/&lt;secret&gt;/</code>.</td></tr>
+    <tr><td>anything else</td><td><code>404</code>.</td></tr>
+  </tbody>
+</table>
+
+<p class="small">Secrets live in the URL <em>path</em>, not a query string — they stay out of <code>Referer</code> headers and default access-log fields that strip query strings.</p>
+
+<h3>6.3 The canonical Shortcut</h3>
+
+<p>Authored once by you in the Shortcuts app, shared as an iCloud link, hosted as the <em>Install Shortcut</em> button on every settings page. Five actions:</p>
+
+<ol>
+  <li><strong>If</strong> dictionary value <code>IngestURL</code> in <em>Shortcut Input</em> is empty</li>
+  <li>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Ask for Input</strong> "Paste your ingest URL from feed-me.app" (URL type)</li>
+  <li>&nbsp;&nbsp;&nbsp;&nbsp;<strong>Set Variable</strong> <code>IngestURL</code> to the provided value (persists across runs via the Shortcut's storage)</li>
+  <li><strong>End If</strong></li>
+  <li><strong>URL</strong> = <code>{IngestURL}?url={Shortcut Input URL}</code></li>
+  <li><strong>Get Contents of URL</strong> (GET)</li>
+  <li><em>(optional)</em> <strong>Show Notification</strong> with the response body</li>
+</ol>
+
+<p>In the Shortcut's settings: enable "Show in Share Sheet," restrict accepted types to URLs / Safari Web Pages. The actual persistence mechanism for <code>IngestURL</code> is a Shortcut-level persistent variable (Shortcuts supports these via the "Dictionary" and "Set Variable" actions when scoped correctly — the practical recipe may need a one-line tweak when authored; the design intent is "ask once, remember forever").</p>
+
+<h3>6.4 Processing pipeline</h3>
+
+<ol>
+  <li><code>httpx.get(url, headers={"User-Agent": "Mozilla/5.0 …"})</code> — fail on non-2xx.</li>
+  <li><code>readability-lxml</code> for title + clean body text.</li>
+  <li>Truncate body to 4,000 characters.</li>
+  <li>Read voice from <code>/data/&lt;secret&gt;/settings.json</code>.</li>
+  <li><code>openai.audio.speech.create(model="tts-1", voice=voice, input=body)</code> → MP3 bytes.</li>
+  <li><code>slug = secrets.token_urlsafe(12)</code>; write <code>/data/&lt;secret&gt;/&lt;slug&gt;.mp3</code> and <code>/data/&lt;secret&gt;/&lt;slug&gt;.json</code>.</li>
+</ol>
+
+<p>Any exception is caught, logged (with the secret elided to the first 6 chars), and written as a failure record: <code>{url, ts, error: "..."}</code> with no sibling <code>.mp3</code>. Settings page reads these and shows them in the "Recent" list. No retries.</p>
+
+<h3>6.5 Cost</h3>
+
+<table>
+  <thead><tr><th>Item</th><th>Monthly</th></tr></thead>
+  <tbody>
+    <tr><td>Fly machine (256 MB) + 3 GB volume</td><td>~$3–4 (fixed)</td></tr>
+    <tr><td>OpenAI TTS — per active user (~30 articles × ~4 k chars @ $0.60/1 M)</td><td>~$0.07</td></tr>
+    <tr><td><strong>Total at 10 active users</strong></td><td><strong>~$4–5</strong></td></tr>
+    <tr><td><strong>Total at 50 active users</strong></td><td><strong>~$7–8</strong></td></tr>
+  </tbody>
+</table>
+
+<p class="small">OpenAI is the elastic cost; everything else is roughly fixed at this scale. The economics get uncomfortable around the point where you'd also want abuse handling, rate limits, and a paid tier — which is exactly when v2 makes sense.</p>
+
+<h3>6.6 Deploy</h3>
+
+<pre><code>fly launch --no-deploy
+# edit fly.toml: add [mounts] for /data, 3 GB
+fly secrets set OPENAI_API_KEY=sk-...
+fly deploy
+
+# Custom domain (one-time):
+fly certs add feed-me.app           # prints DNS records to add at registrar
+# At your registrar: add the A/AAAA (or CNAME) records Fly prints
+fly certs check feed-me.app         # waits for cert issuance, ~minutes
+</code></pre>
+
+<p>No <code>SECRETS</code> env var; users are created at runtime by <code>POST /create</code>. The only deploy-time secret is the OpenAI key. The custom domain is a one-time setup (~10 min including DNS propagation) and costs ~$12/yr at any registrar.</p>
+
+<hr>
+
+<p class="sig">Spec — Feed Me v1.0. Next step: write the ~250 LOC, author the canonical Shortcut, ship. v1.x items in §5 land as small additive PRs.</p>
 
 </div>
 </body>

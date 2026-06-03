@@ -6,3 +6,6 @@ __pycache__/
 /data/
 .DS_Store
 .superpowers/
+.claude/
+.playwright-mcp/
+app.py.new
