@@ -169,11 +169,11 @@
     # WHERE feed_hash IS NOT NULL GROUP BY feed_hash</code></pre>
 <p class="small">
   Per-feed share counts already exist in <code>summary()["top_feeds"]</code>, but that is capped
-  at 20. The route needs a count for <em>every</em> feed, so it builds a
-  <code>{feed_hash: shares}</code> map. Cleanest option: add a small
+  at 20. The route needs a count for <em>every</em> feed, so add a small
   <code>feed_share_counts(db_path) -> dict[str, int]</code> to <code>analytics.py</code>
-  (mirrors <code>feed_last_accessed</code>), and drop <code>top_feeds</code> from
-  <code>summary()</code> since nothing renders it anymore.
+  (mirrors <code>feed_last_accessed</code>). <code>summary()</code> is left unchanged:
+  <code>top_feeds</code> stays in the JSON export (a real consumer), it is just no longer
+  rendered on the page.
 </p>
 
 <h3>The route</h3>
