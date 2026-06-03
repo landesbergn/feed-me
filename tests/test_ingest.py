@@ -38,6 +38,69 @@ def test_fetch_article_returns_title_and_body(monkeypatch, fake_http):
     assert "more substantive" in body
 
 
+def test_fetch_article_takes_longer_extraction(monkeypatch, fake_http):
+    """When trafilatura recovers more text than readability, its body wins.
+    (Verified on newyorker.com: readability kept only the first half of the
+    article; trafilatura extracted it to the end.)"""
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    longer = "A recovered paragraph readability missed. " * 20
+    monkeypatch.setattr(ingest, "_trafilatura_extract", lambda html: longer)
+
+    title, body = ingest.fetch_article("https://example.com/x")
+
+    assert "On Time" in title  # title still comes from the readability path
+    assert "recovered paragraph" in body
+    assert "first paragraph" not in body  # the shorter readability body lost
+
+
+def test_fetch_article_keeps_readability_when_trafilatura_shorter(
+    monkeypatch, fake_http,
+):
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "_trafilatura_extract", lambda html: "tiny")
+
+    title, body = ingest.fetch_article("https://example.com/x")
+
+    assert "first paragraph" in body
+    assert body != "tiny"
+
+
+def test_fetch_article_survives_trafilatura_none(monkeypatch, fake_http):
+    """trafilatura returns None when it finds nothing; readability still wins."""
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "_trafilatura_extract", lambda html: None)
+
+    title, body = ingest.fetch_article("https://example.com/x")
+
+    assert "On Time" in title
+    assert "first paragraph" in body
+
+
+def test_fetch_article_strips_title_from_winning_body(monkeypatch, fake_http):
+    """trafilatura output often leads with the headline; it must not be
+    narrated twice (title is already known)."""
+    fake_http.responses["https://example.com/x"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    longer = "On Time\n" + ("A recovered paragraph readability missed. " * 20)
+    monkeypatch.setattr(ingest, "_trafilatura_extract", lambda html: longer)
+
+    title, body = ingest.fetch_article("https://example.com/x")
+
+    assert "On Time" in title
+    assert not body.startswith("On Time")
+
+
 def test_fetch_article_raises_on_http_error(monkeypatch, fake_http):
     fake_http.responses["https://example.com/y"] = FakeResponse(status_code=500)
     monkeypatch.setattr(ingest, "http_client", fake_http)

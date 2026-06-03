@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
+import trafilatura
 from readability import Document
 from lxml import html as lxml_html
 from openai import OpenAI
@@ -56,13 +57,10 @@ def _friendly_http_error(status: int, url: str) -> str:
     return f"Couldn't fetch the article from {host} (HTTP {status})."
 
 
-def fetch_article(url: str) -> tuple[str, str]:
-    resp = http_client.get(url)
-    if resp.status_code >= 400:
-        raise FetchError(_friendly_http_error(resp.status_code, url))
-    doc = Document(resp.text)
-    summary_html = doc.summary()
-    summary_elem = lxml_html.fromstring(summary_html)
+def _readability_extract(html_text: str) -> tuple[str, str]:
+    """Title + raw body via readability (the original extraction path)."""
+    doc = Document(html_text)
+    summary_elem = lxml_html.fromstring(doc.summary())
 
     # Try to extract h1 as title, fall back to page title
     h1s = summary_elem.xpath('.//h1')
@@ -70,13 +68,41 @@ def fetch_article(url: str) -> tuple[str, str]:
         title = h1s[0].text_content().strip()
     else:
         title = doc.short_title() or doc.title()
+    return title, summary_elem.text_content().strip()
 
-    # Extract body, excluding the h1 we already extracted as title
-    body = summary_elem.text_content().strip()
-    # Remove the h1 text from body if it's at the start
+
+def _trafilatura_extract(html_text: str) -> str | None:
+    """Raw body via trafilatura, or None when it finds nothing (or blows up).
+
+    Second opinion alongside readability: on some sites readability silently
+    keeps only part of the article (verified on newyorker.com, where it
+    returned the first half and the narration stopped mid-piece)."""
+    try:
+        return trafilatura.extract(html_text, include_comments=False)
+    except Exception:
+        return None
+
+
+def _clean_body(body: str, title: str) -> str:
+    """Strip a leading title (so it isn't narrated twice) and blank lines."""
     if title and body.startswith(title):
         body = body[len(title):].strip()
-    body = "\n\n".join(line.strip() for line in body.splitlines() if line.strip())
+    return "\n\n".join(line.strip() for line in body.splitlines() if line.strip())
+
+
+def fetch_article(url: str) -> tuple[str, str]:
+    resp = http_client.get(url)
+    if resp.status_code >= 400:
+        raise FetchError(_friendly_http_error(resp.status_code, url))
+
+    title, readability_body = _readability_extract(resp.text)
+    candidates = [_clean_body(readability_body, title)]
+    trafilatura_body = _trafilatura_extract(resp.text)
+    if trafilatura_body:
+        candidates.append(_clean_body(trafilatura_body.strip(), title))
+    # Longest extraction wins: an extractor that missed part of the article
+    # can't beat one that got all of it.
+    body = max(candidates, key=len)
     return title, body
 
 
