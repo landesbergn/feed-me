@@ -136,8 +136,14 @@ def test_feed_last_accessed_returns_max_ts_per_hash(tmp_path):
     assert result == {"aaa": 300, "bbb": 200}
 
 
-def test_feed_last_accessed_empty_db_returns_empty(tmp_path):
+def test_feed_last_accessed_missing_db_returns_empty(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
+    assert analytics.feed_last_accessed(db) == {}
+
+
+def test_feed_last_accessed_all_null_feed_hash_returns_empty(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    analytics.track(db, "page_view", path="landing", ts=999)  # no feed_hash
     assert analytics.feed_last_accessed(db) == {}
 
 
