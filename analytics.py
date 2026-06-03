@@ -174,6 +174,22 @@ def feed_last_accessed(db_path) -> dict:
         conn.close()
 
 
+def feed_share_counts(db_path) -> dict:
+    """{feed_hash: count of article_shared events} per feed. Never raises."""
+    conn = _connect(db_path)
+    try:
+        return {
+            fh: n
+            for (fh, n) in conn.execute(
+                "SELECT feed_hash, COUNT(*) FROM events "
+                "WHERE event = 'article_shared' AND feed_hash IS NOT NULL "
+                "GROUP BY feed_hash"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+
+
 def all_events(db_path) -> list[dict]:
     """Return all raw events ordered by ts. Never raises on a missing DB."""
     conn = _connect(db_path)

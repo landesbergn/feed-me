@@ -147,6 +147,22 @@ def test_feed_last_accessed_all_null_feed_hash_returns_empty(tmp_path):
     assert analytics.feed_last_accessed(db) == {}
 
 
+def test_feed_share_counts_counts_only_shares_per_hash(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    analytics.track(db, "article_shared", feed_hash_val="aaa", path="share")
+    analytics.track(db, "article_shared", feed_hash_val="aaa", path="share")
+    analytics.track(db, "article_shared", feed_hash_val="bbb", path="share")
+    analytics.track(db, "page_view", feed_hash_val="aaa", path="settings")  # not a share
+    analytics.track(db, "feed_created", feed_hash_val="ccc")               # not a share
+    result = analytics.feed_share_counts(db)
+    assert result == {"aaa": 2, "bbb": 1}
+
+
+def test_feed_share_counts_empty_db_returns_empty(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    assert analytics.feed_share_counts(db) == {}
+
+
 def test_all_events_returns_rows_ordered_and_empty_on_missing(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
     assert analytics.all_events(db) == []   # missing DB → empty, no raise
