@@ -156,6 +156,24 @@ def summary(db_path) -> dict:
         conn.close()
 
 
+def feed_last_accessed(db_path) -> dict:
+    """{feed_hash: max(ts)} over events with a non-null feed_hash.
+
+    Read-only; never raises on a missing DB (creates an empty one).
+    """
+    conn = _connect(db_path)
+    try:
+        return {
+            fh: ts
+            for (fh, ts) in conn.execute(
+                "SELECT feed_hash, MAX(ts) FROM events "
+                "WHERE feed_hash IS NOT NULL GROUP BY feed_hash"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+
+
 def all_events(db_path) -> list[dict]:
     """Return all raw events ordered by ts. Never raises on a missing DB."""
     conn = _connect(db_path)

@@ -126,6 +126,21 @@ def test_summary_empty_db(tmp_path):
     assert s["recent_shares"] == []
 
 
+def test_feed_last_accessed_returns_max_ts_per_hash(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    analytics.track(db, "feed_created", feed_hash_val="aaa", ts=100)
+    analytics.track(db, "page_view", feed_hash_val="aaa", path="settings", ts=300)
+    analytics.track(db, "article_shared", feed_hash_val="bbb", path="share", ts=200)
+    analytics.track(db, "page_view", path="landing", ts=999)  # no feed_hash
+    result = analytics.feed_last_accessed(db)
+    assert result == {"aaa": 300, "bbb": 200}
+
+
+def test_feed_last_accessed_empty_db_returns_empty(tmp_path):
+    db = tmp_path / "_analytics" / "analytics.db"
+    assert analytics.feed_last_accessed(db) == {}
+
+
 def test_all_events_returns_rows_ordered_and_empty_on_missing(tmp_path):
     db = tmp_path / "_analytics" / "analytics.db"
     assert analytics.all_events(db) == []   # missing DB → empty, no raise
