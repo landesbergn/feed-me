@@ -17,6 +17,7 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
     th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #EFE2D6; }
     th { color: #8a6f5e; font-size: 11px; text-transform: uppercase; }
+    tr.total td { font-weight: 600; border-top: 2px solid #E0CDBB; border-bottom: none; }
     code { font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
   </style>
 </head>
@@ -31,7 +32,7 @@
 
   <h2>All feeds</h2>
   <table>
-    <tr><th>Feed</th><th>Created (UTC)</th><th>Last accessed (UTC)</th><th>Shares</th></tr>
+    <tr><th>Feed</th><th>Created (PT)</th><th>Last accessed (PT)</th><th>Shares</th></tr>
     {% for f in feeds %}
     <tr>
       <td><code>{{ f.feed_hash }}</code></td>
@@ -40,6 +41,7 @@
       <td>{{ f.shares }}</td>
     </tr>
     {% endfor %}
+    <tr class="total"><td>Total ({{ feeds|length }})</td><td></td><td></td><td>{{ feeds|sum(attribute='shares') }}</td></tr>
   </table>
 
   <h2>Page views by section</h2>
@@ -57,11 +59,12 @@
     <tr><td>{{ row.day }}</td><td>{{ row.page_views }}</td>
         <td>{{ row.shares }}</td><td>{{ row.feeds }}</td></tr>
     {% endfor %}
+    <tr class="total"><td>Total</td><td>{{ s.by_day|sum(attribute='page_views') }}</td><td>{{ s.by_day|sum(attribute='shares') }}</td><td>{{ s.by_day|sum(attribute='feeds') }}</td></tr>
   </table>
 
   <h2>Recently shared</h2>
   <table>
-    <tr><th>Feed</th><th>When (UTC)</th><th>Article</th></tr>
+    <tr><th>Feed</th><th>When (PT)</th><th>Article</th></tr>
     {% for r in s.recent_shares %}
     <tr>
       <td><code>{{ r.feed_hash }}</code></td>

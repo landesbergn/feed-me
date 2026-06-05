@@ -84,9 +84,11 @@ def test_summary_by_day_and_top_feeds(tmp_path):
     days = {row["day"]: row for row in s["by_day"]}
     assert len(days) == 2
 
-    from datetime import datetime, timezone
-    day1_str = datetime.fromtimestamp(day1, tz=timezone.utc).strftime("%Y-%m-%d")
-    day2_str = datetime.fromtimestamp(day2, tz=timezone.utc).strftime("%Y-%m-%d")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    pt = ZoneInfo("America/Los_Angeles")
+    day1_str = datetime.fromtimestamp(day1, tz=pt).strftime("%Y-%m-%d")
+    day2_str = datetime.fromtimestamp(day2, tz=pt).strftime("%Y-%m-%d")
     assert days[day1_str]["shares"] == 2
     assert days[day1_str]["page_views"] == 0
     assert days[day2_str]["page_views"] == 1
@@ -94,6 +96,46 @@ def test_summary_by_day_and_top_feeds(tmp_path):
 
     assert s["top_feeds"][0]["feed_hash"] == "aaa"
     assert s["top_feeds"][0]["shares"] == 2
+
+
+def test_summary_by_day_buckets_by_pacific_not_utc(tmp_path):
+    # 2026-06-02 05:00 UTC is 2026-06-01 22:00 in Pacific (PDT, UTC-7), so the
+    # event must land on the Pacific day 2026-06-01, not the UTC day 2026-06-02.
+    db = tmp_path / "_analytics" / "analytics.db"
+    ts = 1780376400
+    analytics.track(db, "article_shared", feed_hash_val="aaa", ts=ts)
+
+    days = {row["day"]: row for row in analytics.summary(db)["by_day"]}
+    assert "2026-06-01" in days
+    assert "2026-06-02" not in days
+    assert days["2026-06-01"]["shares"] == 1
+
+
+def test_summary_recent_shares_when_is_pacific_time(tmp_path):
+    # Same boundary instant: the rendered "when" must read in Pacific time.
+    db = tmp_path / "_analytics" / "analytics.db"
+    analytics.track(db, "article_shared", feed_hash_val="aaa",
+                    props={"url": "https://ex.com/a", "title": "A"}, ts=1780376400)
+
+    rs = analytics.summary(db)["recent_shares"]
+    assert rs[0]["when"] == "2026-06-01 22:00"
+
+
+def test_pacific_zone_resolves_without_system_tzdata():
+    # The slim prod container has no /usr/share/zoneinfo; the bundled tzdata
+    # package must supply the zone, else `PT = ZoneInfo(...)` crashes app import.
+    # Run in a subprocess with the system tz path emptied: this simulates the
+    # slim container faithfully AND keeps the global zoneinfo state mutation out
+    # of the test process (otherwise it leaks across the suite).
+    import subprocess
+    import sys
+    code = (
+        "import zoneinfo; zoneinfo.reset_tzpath([]); "
+        "zoneinfo.ZoneInfo('America/Los_Angeles')"
+    )
+    result = subprocess.run([sys.executable, "-c", code],
+                            capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 def test_summary_recent_shares_includes_url_and_title(tmp_path):

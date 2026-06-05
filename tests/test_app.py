@@ -780,6 +780,6 @@ def test_recently_shared_columns_are_feed_when_article(client, monkeypatch, tmp_
     stats = client.get("/admin/stats?token=right")
     assert stats.status_code == 200
     # Column order is Feed, then When, then Article (header on one line).
-    assert "<th>Feed</th><th>When (UTC)</th><th>Article</th>" in stats.text
+    assert "<th>Feed</th><th>When (PT)</th><th>Article</th>" in stats.text
     # The old "Top feeds (by shares)" section is gone.
     assert "Top feeds" not in stats.text

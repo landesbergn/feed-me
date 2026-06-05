@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.5 — 2026-06-05
+
+Stats: Pacific time + totals rows.
+
+- All `/admin/stats` timestamps now render in Pacific time (DST-aware via `zoneinfo`) instead of UTC: "Recently shared" times and the by-day activity buckets. The by-day grouping happens in Python (SQLite can't group by a named timezone), so a 10 PM PT share no longer lands on the next day's row.
+- "All feeds" and "Activity by day" tables gain a bold totals row (feed count + summed shares / page views / feeds created).
+- `tzdata` added as an explicit dependency: the slim prod container has no system zoneinfo, and the package previously arrived only transitively via trafilatura's chain. A regression test resolves the zone with the system tz path emptied, simulating the container.
+
 ## v3.4 — 2026-06-03
 
 Fixes from early-user reports (truncated narration, paywall 403s, empty shares):

@@ -12,10 +12,16 @@ import json
 import logging
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 log = logging.getLogger(__name__)
+
+# All stats-page timestamps render in Pacific time. zoneinfo is DST-aware, so a
+# given epoch maps to PDT or PST correctly. The slim prod container has no system
+# zoneinfo, so the `tzdata` package (a dependency) supplies the zone data.
+PT = ZoneInfo("America/Los_Angeles")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -101,16 +107,21 @@ def summary(db_path) -> dict:
             "WHERE feed_hash IS NOT NULL"
         ).fetchone()[0]
 
-        by_day = [
-            {"day": day, "page_views": pv, "shares": sh, "feeds": fc}
-            for (day, pv, sh, fc) in cur.execute(
-                "SELECT strftime('%Y-%m-%d', ts, 'unixepoch') AS day, "
-                "  SUM(event = 'page_view'), "
-                "  SUM(event = 'article_shared'), "
-                "  SUM(event = 'feed_created') "
-                "FROM events GROUP BY day ORDER BY day"
-            ).fetchall()
-        ]
+        # Bucket by Pacific calendar day. SQLite can't group by a named
+        # timezone (its 'localtime' uses the server zone, UTC on Fly), so the
+        # DST-correct grouping happens here via zoneinfo.
+        buckets: dict[str, dict] = {}
+        for ts, event in cur.execute("SELECT ts, event FROM events").fetchall():
+            day = datetime.fromtimestamp(ts, tz=PT).strftime("%Y-%m-%d")
+            row = buckets.setdefault(
+                day, {"day": day, "page_views": 0, "shares": 0, "feeds": 0})
+            if event == "page_view":
+                row["page_views"] += 1
+            elif event == "article_shared":
+                row["shares"] += 1
+            elif event == "feed_created":
+                row["feeds"] += 1
+        by_day = [buckets[d] for d in sorted(buckets)]
 
         top_feeds = [
             {"feed_hash": fh, "shares": sh}
@@ -136,7 +147,7 @@ def summary(db_path) -> dict:
                     data = {}
             recent_shares.append({
                 "ts": ts,
-                "when": datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+                "when": datetime.fromtimestamp(ts, tz=PT).strftime("%Y-%m-%d %H:%M"),
                 "feed_hash": fh,
                 "url": data.get("url"),
                 "title": data.get("title"),
