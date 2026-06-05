@@ -783,3 +783,22 @@ def test_recently_shared_columns_are_feed_when_article(client, monkeypatch, tmp_
     assert "<th>Feed</th><th>When (PT)</th><th>Article</th>" in stats.text
     # The old "Top feeds (by shares)" section is gone.
     assert "Top feeds" not in stats.text
+
+
+def test_share_event_props_tag_via_shortcut(client, monkeypatch, tmp_path):
+    import json as _json
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser (cookie)
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+    monkeypatch.setattr(app_module.ingest, "fetch_title", lambda url: "T")
+
+    client.get("/share?url=https://example.com/a")
+
+    import analytics
+    db = tmp_path / "_analytics" / "analytics.db"
+    shared = [e for e in analytics.all_events(db) if e["event"] == "article_shared"]
+    assert len(shared) == 1
+    assert _json.loads(shared[0]["props"])["via"] == "shortcut"
