@@ -119,6 +119,8 @@ user instead.
     status = episode
     while status["status"] == "pending":
         time.sleep(5)
-        status = httpx.get(episode["status_url"]).json()
+        polled = httpx.get(episode["status_url"])
+        polled.raise_for_status()
+        status = polled.json()
 
     print(status["status"], status.get("audio_url") or status.get("error"))
