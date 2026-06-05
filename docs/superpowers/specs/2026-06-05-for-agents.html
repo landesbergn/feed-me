@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — For Agents (v3.6)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.6</div>
+  <h1>For Agents</h1>
+  <div class="meta">Feed Me · 2026-06-05 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Let a user's AI agent (Claude Code, a cron script, any HTTP-speaking tool) add
+  articles to their private feed. Two small JSON endpoints under the existing
+  <code>/u/&lt;secret&gt;</code> path, an agent-facing API doc at
+  <code>/AGENTS.md</code> (plus an <code>/llms.txt</code> pointer), and a
+  "For agents" section on the feed page with a personalized copy-paste prompt.
+  Inspired by usetranscribe.io's AGENTS.md and the "agents are the new mobile"
+  thesis: a headless JSON surface for the product's core action.
+</p>
+
+<div class="callout">
+  <strong>No new credential.</strong> The feed secret already is the account; the
+  agent endpoints authenticate solely by the secret in the URL path. Nothing new
+  to mint, store, or rotate. The existing rotate flow invalidates a leaked URL.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#api">API contract</a></li>
+    <li><a href="#cap">Rate limiting</a></li>
+    <li><a href="#doc">The agent doc</a></li>
+    <li><a href="#settings">Feed page section</a></li>
+    <li><a href="#storage">Storage &amp; analytics changes</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  Today the only way into a feed is the iOS share sheet, which requires a human
+  holding a phone. Agents increasingly do the reading: they find articles during
+  research, monitor topics overnight, and work where there is no share sheet.
+  Giving them one documented JSON endpoint turns "send that to my feed" into a
+  thing any agent can do with the feed URL the user already has. Transcribe's
+  experience (53% of traffic from agents within days of removing auth friction)
+  suggests the audience is real, and the integration cost here is small because
+  the whole ingest pipeline already exists behind <code>/share</code>.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li><strong><code>POST /u/{secret}/episodes</code></strong>: JSON-in, JSON-out
+    episode creation. Same internals as <code>/share</code> (quick title fetch,
+    pending record, background ingest), minus the cookie and the HTML.</li>
+  <li><strong><code>GET /u/{secret}/episodes/{slug}</code></strong>: JSON status
+    for polling, authed by the path secret (the existing
+    <code>/share/status</code> is cookie-authed, so agents can't use it).</li>
+  <li><strong><code>GET /AGENTS.md</code></strong> (rendered Jinja template,
+    served as <code>text/markdown</code>) and <strong><code>GET /llms.txt</code></strong>
+    (a few plain-text lines pointing at <code>/AGENTS.md</code>).</li>
+  <li><strong>"For agents" section</strong> on the feed page
+    (<code>settings.html</code>): a personalized prompt the user copies into
+    their agent's instructions or memory.</li>
+</ol>
+
+<h2 id="api">3 · API contract</h2>
+
+<h3>POST /u/{secret}/episodes</h3>
+<p>
+  Body: <code>{"url": "https://example.com/article"}</code> with
+  <code>Content-Type: application/json</code>. Unknown body fields are ignored
+  (room for <code>text</code>, PDFs, or options later without breaking
+  existing agents). URL validation matches <code>/share</code>: scheme must be
+  http/https with a host.
+</p>
+<p>On success, <strong>202 Accepted</strong>:</p>
+<pre><code>{
+  "slug": "k3kQ9rTzVx0",
+  "status": "pending",
+  "title": "The Article Title",        // null if the quick title fetch failed
+  "status_url": "{base}/u/{secret}/episodes/k3kQ9rTzVx0",
+  "feed_page": "{base}/u/{secret}",
+  "remaining": 3                       // agent shares left in the rolling window
+}</code></pre>
+<p>
+  Internally: <code>ingest.fetch_title(url)</code>,
+  <code>storage.write_pending_episode(..., via="agent")</code>,
+  <code>spawn_ingest(...)</code>, analytics. Identical flow to
+  <code>share_route</code>; the episode then lives, updates, and renders exactly
+  like a Shortcut-shared one.
+</p>
+<p>Errors are JSON with stable codes agents can branch on:</p>
+<table>
+  <thead><tr><th>Status</th><th>Body</th><th>When</th><th>Retry?</th></tr></thead>
+  <tbody>
+    <tr><td><code>400</code></td><td><code>{"error": "invalid_request", "message": …}</code></td><td>Body isn't JSON or has no <code>url</code> field</td><td>No: fix the request</td></tr>
+    <tr><td><code>400</code></td><td><code>{"error": "invalid_url", "message": …}</code></td><td>URL isn't http/https with a host</td><td>No: fix the URL</td></tr>
+    <tr><td><code>404</code></td><td><code>{"error": "not_found", "message": …}</code></td><td>No feed at that secret</td><td>No: check the feed URL with the user</td></tr>
+    <tr><td><code>429</code></td><td><code>{"error": "rate_limited", "message": …}</code> + <code>Retry-After</code> header</td><td>Agent cap reached (§4)</td><td>Not before <code>Retry-After</code>; tell the user</td></tr>
+  </tbody>
+</table>
+<p class="small">
+  Unlike the human <code>/share</code> path, an invalid URL writes <em>no</em>
+  failed-episode record: the agent gets the error in the response, so there is
+  nothing to surface on the feed page, and a buggy agent can't litter the feed.
+  Ingest-level failures (paywalls, fetch errors) still produce a failed episode,
+  reported through the status endpoint just as they appear on the feed page.
+</p>
+
+<h3>GET /u/{secret}/episodes/{slug}</h3>
+<p>
+  <strong>200</strong> with the episode's state, derived from
+  <code>storage.list_episodes</code> (which already computes
+  <code>status</code> from the record + mp3 presence):
+</p>
+<pre><code>{
+  "slug": "k3kQ9rTzVx0",
+  "status": "pending" | "ready" | "failed",
+  "title": "The Article Title",
+  "ts": 1781234567,
+  "total_chunks": 12,                  // present once ingest has chunked
+  "error": null,                       // human-readable string when failed
+  "audio_url": "{base}/u/{secret}/audio/k3kQ9rTzVx0.mp3"   // when ready
+}</code></pre>
+<p>
+  <strong>404</strong> (<code>not_found</code>) for an unknown feed, an unknown
+  slug, or a slug failing <code>SLUG_RE</code>. The welcome episode is reachable
+  here like any other; no special casing.
+</p>
+<p class="small">
+  Both routes return JSON only, never HTML, and never set or read cookies.
+</p>
+
+<h2 id="cap">4 · Rate limiting</h2>
+<p>
+  <code>AGENT_DAILY_CAP = 5</code> episodes per feed per rolling 24 hours,
+  counted at request time from the episode records themselves: entries from
+  <code>list_episodes</code> where <code>via == "agent"</code> and
+  <code>ts &gt; now - 86400</code>. No new storage, no timezone math. The
+  Shortcut path and the welcome episode never carry <code>via</code>, so human
+  sharing is never throttled.
+</p>
+<ul>
+  <li>Failed agent episodes count toward the cap (they consumed a fetch and
+    possibly TTS work; also prevents error-loop spam).</li>
+  <li>Rejected-before-write requests (400s) don't count; nothing was created.</li>
+  <li><code>429</code> carries <code>Retry-After: &lt;seconds&gt;</code> computed as
+    (oldest counted episode's <code>ts</code> + 86400) − now.</li>
+  <li><code>remaining</code> in the 202 response is <code>cap − count</code>
+    after the current share, so an agent can pace itself without a second call.</li>
+</ul>
+<p class="small">
+  The check-then-write is racy (two simultaneous POSTs can both pass the count).
+  Accepted: the worst case is one episode over cap, the product is
+  single-user-per-feed scale, and the cap is a cost guard, not a security
+  boundary.
+</p>
+
+<h2 id="doc">5 · The agent doc</h2>
+<p>
+  <code>GET /AGENTS.md</code> renders <code>templates/agents.md</code> with
+  <code>APP_BASE_URL</code> so every example URL is absolute and correct per
+  environment. Served as <code>text/markdown; charset=utf-8</code>. Modeled on
+  Transcribe's AGENTS.md. Contents:
+</p>
+<ol>
+  <li><strong>What Feed Me is</strong>, one paragraph: articles in, narrated
+    podcast episodes out, private per-user feeds.</li>
+  <li><strong>Auth</strong>: the user gives you their feed URL
+    (<code>{base}/u/&lt;secret&gt;</code>). The secret in it is their entire
+    account. Treat it like a password: never log it, never echo it into shared
+    context, never post it anywhere public.</li>
+  <li><strong>Endpoints</strong>: the two routes from §3 with request/response
+    examples, plus <code>GET /u/{secret}/feed.xml</code> as the read side.</li>
+  <li><strong>Errors</strong>: the table from §3, including which are permanent
+    (don't retry) vs transient.</li>
+  <li><strong>Etiquette</strong>: share only what the user asked for; don't
+    retry permanent errors; on 429 stop and tell the user; poll the status URL
+    no faster than every few seconds; send a descriptive
+    <code>User-Agent</code>.</li>
+  <li><strong>Rate limit</strong>: 5 episodes per feed per rolling 24h via this
+    API; the user's phone sharing doesn't count against it.</li>
+  <li><strong>Examples</strong>: one curl, one short Python
+    (<code>httpx</code>) snippet that shares and polls to completion.</li>
+</ol>
+<p>
+  <code>GET /llms.txt</code> returns a few plain-text lines: one sentence on
+  what the service is, then "API documentation for agents:
+  <code>{base}/AGENTS.md</code>".
+</p>
+<p class="small">
+  House copy rules apply to both files: no em-dashes; the middot <code>·</code>
+  is fine.
+</p>
+
+<h2 id="settings">6 · Feed page section</h2>
+<p>
+  A new "For agents" section on <code>/u/{secret}</code>, after the existing
+  setup/voice sections, following the page's current section styling. Copy
+  (final wording may be tuned during implementation, no em-dashes):
+</p>
+<pre><code>For agents
+
+Your AI agent can add articles to this feed. Copy this into your
+agent's instructions or memory:
+
+    I have a Feed Me podcast feed. To send an article to it, read
+    https://feed-me.xyz/AGENTS.md and follow it. My feed page:
+    https://feed-me.xyz/u/&lt;secret&gt;. Agents can add up to 5
+    episodes per day.
+
+Keep this private: that link is your whole account.</code></pre>
+<p>
+  The block is personalized with the real feed URL (and
+  <code>APP_BASE_URL</code>), shown in a copyable <code>&lt;pre&gt;</code>/text
+  block consistent with how the page presents other copyable things.
+</p>
+
+<h2 id="storage">7 · Storage &amp; analytics changes</h2>
+<ul>
+  <li><code>storage.write_pending_episode</code> gains an optional
+    <code>via: str | None = None</code> parameter; when set, the record stores
+    <code>"via": "agent"</code>. Absent means human (Shortcut or welcome).
+    <code>list_episodes</code> already passes unknown keys through, and all
+    episode consumers (rss, templates, status) read records as plain dicts, so
+    the extra key is inert everywhere else.</li>
+  <li>Analytics <code>article_shared</code> props gain a <code>via</code> key on
+    <em>both</em> paths: <code>"agent"</code> from the new endpoint,
+    <code>"shortcut"</code> from <code>share_route</code>, so the split is
+    unambiguous in <code>/admin/export</code> with zero admin-UI changes.</li>
+  <li><strong>No User-Agent capture.</strong> The analytics spec (v3.1)
+    promises user-agents are never stored; <code>via</code> already answers
+    "agent or human". Storing agent UA strings is a separate owner decision,
+    out of scope here (§10).</li>
+</ul>
+
+<h2 id="security">8 · Security</h2>
+<p>
+  <strong>The load-bearing invariant: no ambient authority.</strong> The agent
+  endpoints authenticate solely via the secret in the path and MUST NOT read
+  the <code>fm_session</code> cookie. A cross-site request therefore gains
+  nothing: to target a feed you need its secret, and anyone holding the secret
+  already has the whole account. CSRF doesn't apply because no cookie-borne
+  credential is honored. (CORS is a footnote: we add no CORS headers, so
+  browser pages can't read responses either.)
+</p>
+<ul>
+  <li>Agent endpoints never call <code>set_session_cookie</code>; responses are
+    cookie-free.</li>
+  <li>Unknown feed → 404 with a generic body, revealing nothing (matches the
+    admin-route posture).</li>
+  <li>The raw secret keeps its existing rule: never logged, never in analytics
+    (only <code>feed_hash</code>). It appears only in response URLs returned to
+    the caller who already supplied it.</li>
+  <li>Worst-case TTS spend from a runaway agent is bounded by the cap: 5
+    episodes per feed per day.</li>
+  <li><code>AGENTS.md</code> instructs agents to treat the feed URL as a
+    password (defense in depth, §5).</li>
+</ul>
+
+<h2 id="tests">9 · Testing</h2>
+<p>TDD, existing fixtures (<code>client</code>, <code>fake_http</code>, <code>fake_openai</code>); no network.</p>
+<h3>POST /u/{secret}/episodes</h3>
+<ul>
+  <li>Happy path: 202; response has slug, <code>status "pending"</code>, title,
+    absolute <code>status_url</code>/<code>feed_page</code>, <code>remaining 4</code>;
+    record on disk has <code>via: "agent"</code>; ingest runs (episode goes ready
+    with the fake pipeline); <code>article_shared</code> event recorded with
+    <code>props.via == "agent"</code>.</li>
+  <li>No/invalid JSON body and missing <code>url</code> → 400
+    <code>invalid_request</code>; bad scheme/host → 400 <code>invalid_url</code>;
+    in both cases no episode file is written.</li>
+  <li>Unknown secret → 404 <code>not_found</code>.</li>
+  <li>No cookie involved: request with no cookie succeeds; response sets no
+    cookie. The endpoint ignores a valid <code>fm_session</code> cookie for a
+    <em>different</em> feed (path secret wins).</li>
+</ul>
+<h3>Rate limiting</h3>
+<ul>
+  <li>5 agent episodes in-window → 6th returns 429 with <code>Retry-After</code>;
+    <code>remaining</code> decrements 4→0 across the first five.</li>
+  <li>Agent episodes older than 24h don't count (write a record with an old
+    <code>ts</code>).</li>
+  <li>Shortcut shares neither count toward nor are blocked by the cap: with 5
+    agent episodes in-window, <code>GET /share</code> still works.</li>
+  <li>Failed agent episodes count toward the cap.</li>
+</ul>
+<h3>GET /u/{secret}/episodes/{slug}</h3>
+<ul>
+  <li>Pending → ready transition visible across the fake ingest; ready includes
+    <code>audio_url</code>.</li>
+  <li>Failed episode: <code>status "failed"</code> with the error string.</li>
+  <li>Unknown slug, malformed slug, unknown secret → 404.</li>
+</ul>
+<h3>Docs routes &amp; page</h3>
+<ul>
+  <li><code>/AGENTS.md</code>: 200, <code>text/markdown</code>, contains
+    <code>APP_BASE_URL</code>-absolute URLs and the cap value; no em-dash
+    character anywhere in the body.</li>
+  <li><code>/llms.txt</code>: 200, plain text, points at <code>/AGENTS.md</code>.</li>
+  <li>Feed page: "For agents" section renders with the real feed URL inside the
+    copy block.</li>
+  <li>Analytics: a Shortcut share's event now carries
+    <code>props.via == "shortcut"</code>.</li>
+</ul>
+
+<h2 id="scope">10 · Out of scope</h2>
+<ul>
+  <li><strong>Text / PDF / non-URL content.</strong> The JSON body leaves room
+    (<code>{"text": …}</code> later); v3.6 is URLs only.
+    <span class="pill future">future</span></li>
+  <li><strong>MCP server.</strong> Plain HTTP first; an MCP layer could wrap
+    these same endpoints later. <span class="pill future">future</span></li>
+  <li><strong>Storing agent User-Agent strings.</strong> Would reverse the
+    analytics spec's "no user-agents" promise for one path; needs an explicit
+    owner decision, and <code>via</code> already covers agent-vs-human.</li>
+  <li><strong>Per-IP rate limiting.</strong> The per-feed cap bounds spend;
+    feeds are unguessable, so unauthenticated spray isn't a cost vector.</li>
+  <li><strong>JSON episode listing.</strong> Agents that want the catalog can
+    read <code>feed.xml</code>; no need for a second list format yet.</li>
+  <li><strong>Landing-page mention.</strong> Discovery is the feed page section
+    + <code>/llms.txt</code>; marketing copy can come later.</li>
+</ul>
+
+<h2 id="accept">11 · Acceptance criteria</h2>
+<ul>
+  <li>An agent holding only the feed URL can create an episode with one POST and
+    follow it to <code>ready</code> via the status URL, no cookie involved.</li>
+  <li>A 6th agent share inside 24h returns 429 + <code>Retry-After</code> while
+    the iOS Shortcut keeps working uncapped.</li>
+  <li><code>/AGENTS.md</code> and <code>/llms.txt</code> serve correct,
+    environment-absolute documentation; an agent following only
+    <code>/AGENTS.md</code> can complete the share-and-poll flow.</li>
+  <li>The feed page shows the personalized "For agents" prompt.</li>
+  <li><code>article_shared</code> analytics distinguish
+    <code>via: "agent"</code> / <code>"shortcut"</code>; no user-agent strings
+    stored; raw secrets appear nowhere new.</li>
+  <li>Agent endpoints neither read nor set cookies.</li>
+  <li>No em-dashes in any new user-facing or agent-facing copy.</li>
+  <li>README route table updated; <code>CHANGELOG.md</code> gains a v3.6 entry;
+    all existing tests plus the new ones pass.</li>
+</ul>
+
+<hr>
+<p class="small">
+  Brainstormed via terminal Q&amp;A on 2026-06-05. Inspired by
+  usetranscribe.io/AGENTS.md and Gokul Rajaram's "agents are the new mobile"
+  threads. Chose a JSON endpoint under <code>/u/&lt;secret&gt;</code> over
+  extending GET <code>/share</code> (GET side effects misfire with agents and
+  link-preview bots) and over an MCP server (over-engineering for v1; can wrap
+  later). Secret-as-credential keeps the no-login identity model; a 5/day
+  rolling cap (owner's number) bounds TTS spend; User-Agent capture deliberately
+  deferred to preserve the analytics privacy promise.
+</p>
+
+</div>
+</body>
+</html>
