@@ -249,6 +249,17 @@ async def create_episode_api(request: Request, secret: str):
         )
     now = int(_time.time())
     in_window = _agent_episodes_in_window(secret, now)
+    if len(in_window) >= AGENT_DAILY_CAP:
+        retry_after = max(
+            1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now,
+        )
+        return _agent_error(
+            429, "rate_limited",
+            f"Agent cap reached: {AGENT_DAILY_CAP} episodes per feed per "
+            "rolling 24 hours. Do not retry before Retry-After elapses; "
+            "tell the user.",
+            headers={"Retry-After": str(retry_after)},
+        )
     # fetch_title blocks on the network; this route is async (for
     # request.body()), so run it off the event loop.
     title = await run_in_threadpool(ingest.fetch_title, url)

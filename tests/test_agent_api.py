@@ -160,3 +160,107 @@ def test_post_episode_records_agent_analytics(
     assert props["via"] == "agent"
     assert props["url"] == "https://example.com/a"
     assert shared[0]["feed_hash"] == analytics.feed_hash(secret)
+
+
+def test_agent_cap_blocks_sixth_share(client, monkeypatch, fake_http, fake_openai):
+    """Five COMPLETED agent shares block the sixth with 429. Episodes run to
+    completion via the fake pipeline, so this validates daily semantics
+    (via surviving finalization), not concurrent-pending counting."""
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    remaining_seen = []
+    for i in range(5):
+        url = f"https://example.com/a{i}"
+        fake_http.responses[url] = FakeResponse(status_code=200, text=ARTICLE_HTML)
+        resp = client.post(f"/u/{secret}/episodes", json={"url": url})
+        assert resp.status_code == 202
+        remaining_seen.append(resp.json()["remaining"])
+    assert remaining_seen == [4, 3, 2, 1, 0]
+
+    resp = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/a5"})
+    assert resp.status_code == 429
+    assert resp.json()["error"] == "rate_limited"
+    assert int(resp.headers["Retry-After"]) > 0
+
+
+def test_agent_cap_ignores_episodes_older_than_window(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    # Five agent episodes, all outside the 24h window (ts rewritten on disk).
+    old_ts = int(time.time()) - 90000
+    for i in range(5):
+        slug = storage.write_pending_episode(
+            tmp_path, secret, source_url=f"https://ex.com/old{i}", via="agent",
+        )
+        path = tmp_path / secret / f"{slug}.json"
+        record = json.loads(path.read_text())
+        record["ts"] = old_ts
+        path.write_text(json.dumps(record))
+
+    fake_http.responses["https://example.com/new"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    resp = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/new"})
+    assert resp.status_code == 202
+
+
+def test_shortcut_shares_do_not_count_toward_cap(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    secret = make_feed(client)
+    client.get(f"/u/{secret}")     # link cookie for the Shortcut path
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    # A human share first...
+    fake_http.responses["https://example.com/human"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    assert client.get("/share?url=https://example.com/human").status_code == 200
+
+    # ...leaves all five agent slots available.
+    for i in range(5):
+        url = f"https://example.com/a{i}"
+        fake_http.responses[url] = FakeResponse(status_code=200, text=ARTICLE_HTML)
+        assert client.post(f"/u/{secret}/episodes", json={"url": url}).status_code == 202
+
+
+def test_agent_cap_does_not_block_shortcut(client, monkeypatch, fake_http, fake_openai):
+    """Human sharing stays uncapped: with the agent window full, GET /share
+    (cookie path) still works."""
+    secret = make_feed(client)
+    client.get(f"/u/{secret}")     # link cookie for the Shortcut path
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    for i in range(5):
+        url = f"https://example.com/a{i}"
+        fake_http.responses[url] = FakeResponse(status_code=200, text=ARTICLE_HTML)
+        assert client.post(f"/u/{secret}/episodes", json={"url": url}).status_code == 202
+
+    fake_http.responses["https://example.com/human"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    resp = client.get("/share?url=https://example.com/human")
+    assert resp.status_code == 200
+    assert "Added" in resp.text
+
+
+def test_failed_agent_episodes_count_toward_cap(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    """Failed ingests consumed work; an error-looping agent must still hit
+    the cap."""
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    for i in range(5):
+        url = f"https://example.com/dead{i}"
+        fake_http.responses[url] = FakeResponse(status_code=500)
+        resp = client.post(f"/u/{secret}/episodes", json={"url": url})
+        assert resp.status_code == 202     # accepted; ingest then fails
+
+    resp = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/ok"})
+    assert resp.status_code == 429
