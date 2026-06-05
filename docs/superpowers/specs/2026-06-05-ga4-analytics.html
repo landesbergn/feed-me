@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · Audience Analytics via GA4 (v3.7)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .pill.future { background: #ede6f4; color: #5b3990; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.7</div>
+  <h1>Audience Analytics via GA4</h1>
+  <div class="meta">Feed Me · 2026-06-05 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  The self-hosted analytics (v3.1) deliberately store no user agent, no IP-derived
+  geography, and no referrer, so they cannot answer "who are my users and where do they
+  come from." This release adds Google Analytics 4 alongside them: the owner's standard
+  <code>gtag.js</code> snippet on the three user-facing pages, giving device, browser,
+  city/state/country, and referrer reporting in the GA UI. The SQLite analytics and
+  <code>/admin/stats</code> page are unchanged and remain the operational view.
+</p>
+
+<div class="callout">
+  <strong>The one hard constraint.</strong> The settings-page URL
+  (<code>/u/&lt;secret&gt;</code>) <em>is</em> the account credential, and a stock GA
+  install sends the full page URL and referrer to Google with every page view. Every
+  <code>gtag('config', ...)</code> on a page whose URL or referrer can contain the secret
+  must mask it. The secret must never reach Google in any field.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why GA4</a></li>
+    <li><a href="#what">What ships</a></li>
+    <li><a href="#masking">Secret masking</a></li>
+    <li><a href="#answers">What GA answers</a></li>
+    <li><a href="#testing">Testing</a></li>
+    <li><a href="#docs">Documentation updates</a></li>
+    <li><a href="#scope">Out of scope / future</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1. Why GA4</h2>
+<p>
+  Alternatives considered: PostHog (preferred on features, but the free tier's single
+  project is already used by noahlandesberg.com and sharing one project mixes audiences),
+  Microsoft Clarity (free but replay-focused, new account, no session access from tooling),
+  and enriching the homegrown SQLite store with a geo-IP lookup plus UA/referrer columns
+  (most code to build and maintain by a wide margin). GA4 gives a dedicated free property,
+  the requested data out of the box, and a familiar UI. Known trade-offs, accepted:
+  adblockers hide a slice of the audience, standard reports lag up to a day or two, and
+  visitor data lives with Google. The privacy posture of the v3.1 analytics ("no third
+  party") is explicitly relaxed; the README must say so honestly.
+</p>
+
+<h2 id="what">2. What ships</h2>
+<ul>
+  <li>One Jinja partial, <code>templates/_ga.html</code>, containing the owner's snippet
+      (measurement ID <code>G-MQ15LHLSBF</code>, hardcoded; it is public in page source by
+      nature). The partial takes one flag: whether to mask the page location.</li>
+  <li>Included by <code>landing.html</code>, <code>share.html</code> (unmasked location)
+      and <code>settings.html</code> (masked location). <strong>Not</strong> included by
+      <code>admin_stats.html</code> or any non-page response (RSS, audio, JSON).</li>
+  <li>The share page keeps its real URL including <code>?url=&lt;article&gt;</code>: the
+      shared article is content, not a credential, and seeing shared articles in GA is
+      useful.</li>
+  <li>No env-var gating. The snippet renders always; tests never execute JS (TestClient
+      renders HTML only), so the suite stays network-free. Local-dev page views are
+      filterable in GA by hostname if they ever matter.</li>
+</ul>
+
+<h2 id="masking">3. Secret masking</h2>
+<p>Two leak vectors, two masks, both inside the partial:</p>
+<table>
+  <tr><th>Vector</th><th>Where it leaks</th><th>Mask</th></tr>
+  <tr>
+    <td><code>page_location</code> / <code>page_path</code></td>
+    <td>Settings page auto page_view carries <code>/u/&lt;secret&gt;</code></td>
+    <td>Config overrides: <code>page_location: '&lt;APP_BASE_URL&gt;/u/_'</code>,
+        <code>page_path: '/u/_'</code> (base URL from the app, so dev and prod both mask
+        correctly)</td>
+  </tr>
+  <tr>
+    <td><code>page_referrer</code></td>
+    <td>Navigating settings → share (or settings → landing) puts
+        <code>/u/&lt;secret&gt;</code> in <code>document.referrer</code> on the next page</td>
+    <td>On all three pages: if the referrer's path starts with <code>/u/</code>, override
+        <code>page_referrer</code> with the masked form before <code>config</code> fires</td>
+  </tr>
+</table>
+<pre><code>&lt;!-- sketch of the partial's logic --&gt;
+var cfg = {};
+try {
+  var r = document.referrer &amp;&amp; new URL(document.referrer);
+  if (r &amp;&amp; r.pathname.indexOf('/u/') === 0) {
+    cfg.page_referrer = r.origin + '/u/_';
+  }
+} catch (e) {}
+{% if ga_mask_location %}
+cfg.page_location = '{{ base_url }}/u/_';
+cfg.page_path = '/u/_';
+{% endif %}
+gtag('config', 'G-MQ15LHLSBF', cfg);</code></pre>
+<p class="small">
+  Everything else in the owner's snippet (the async loader, dataLayer bootstrap,
+  <code>gtag('js', new Date())</code>) ships byte-for-byte. If GA is blocked or offline
+  the page is unaffected: the loader is async and nothing else on the page depends on it.
+</p>
+
+<h2 id="answers">4. What GA answers</h2>
+<table>
+  <tr><th>Question</th><th>GA report</th></tr>
+  <tr><td>Where do users come from?</td><td>Acquisition → Traffic acquisition (referrer domain, channel)</td></tr>
+  <tr><td>Where are they located?</td><td>Demographics → city / region / country</td></tr>
+  <tr><td>What devices / browsers?</td><td>Tech → browser, OS, device category (from user agent)</td></tr>
+  <tr><td>Which pages get traffic?</td><td>Engagement → Pages (landing vs <code>/u/_</code> vs share)</td></tr>
+</table>
+<p class="small">
+  Feed-level behavior (shares per feed, articles, episode status) stays on
+  <code>/admin/stats</code>, which keeps its hashed-identity, no-PII design.
+</p>
+
+<h2 id="testing">5. Testing</h2>
+<p>TDD, all string assertions against rendered templates (no network, no JS execution):</p>
+<ul>
+  <li>The snippet (<code>googletagmanager.com/gtag/js?id=G-MQ15LHLSBF</code>) renders on
+      landing, settings, and share pages.</li>
+  <li>It does <strong>not</strong> render on <code>/admin/stats</code>.</li>
+  <li>The settings page contains the masked overrides (<code>/u/_</code>) and the raw
+      secret appears nowhere inside the rendered <code>&lt;script&gt;</code> blocks.</li>
+  <li>The referrer-masking logic renders on all three pages.</li>
+  <li>Regression guard: rendering the settings page for a known secret asserts
+      <code>secret not in</code> every gtag-related line (the secret legitimately appears
+      elsewhere on the page, e.g. the feed URL box, so the assertion is scoped to the GA
+      script block).</li>
+</ul>
+
+<h2 id="docs">6. Documentation updates</h2>
+<ul>
+  <li><strong>README</strong>: the analytics section's "no third party" claim becomes a
+      description of the two-tier setup: self-hosted SQLite for feed-level operational
+      stats (still hash-only, no PII), GA4 for audience analytics (Google receives IP,
+      user agent, referrer; never the feed secret).</li>
+  <li><strong>CLAUDE.md gotcha</strong>: "GA's <code>page_location</code> /
+      <code>page_referrer</code> must be masked on any page whose URL can contain
+      <code>/u/&lt;secret&gt;</code>; the masking lives in <code>templates/_ga.html</code>.
+      Never add the GA partial to a new secret-bearing page without it."</li>
+  <li><strong>CHANGELOG</strong>: v3.7 entry.</li>
+</ul>
+
+<h2 id="scope">7. Out of scope / future <span class="pill future">future</span></h2>
+<ul>
+  <li>Custom events (<code>feed_created</code>, <code>article_shared</code> with article
+      domain) and <code>user_id = feed_hash</code> identity stitching.</li>
+  <li>Own-traffic exclusion (localStorage flag set by the admin page).</li>
+  <li>Server-side Measurement Protocol events for adblock-proof counting.</li>
+  <li>Consent banner / EU consent mode (personal project, revisit if audience changes).</li>
+</ul>
+
+</div>
+</body>
+</html>
