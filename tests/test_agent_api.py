@@ -264,3 +264,73 @@ def test_failed_agent_episodes_count_toward_cap(
 
     resp = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/ok"})
     assert resp.status_code == 429
+
+
+def test_episode_status_ready(client, monkeypatch, fake_http, fake_openai):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/a"},
+    ).json()["slug"]
+
+    resp = client.get(f"/u/{secret}/episodes/{slug}")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["slug"] == slug
+    assert body["status"] == "ready"
+    assert body["audio_url"] == f"https://test.local/u/{secret}/audio/{slug}.mp3"
+    assert body["error"] is None
+    assert "set-cookie" not in resp.headers
+
+
+def test_episode_status_pending(client, monkeypatch, fake_http):
+    import app as app_module
+    import ingest
+    secret = make_feed(client)
+    monkeypatch.setattr(ingest, "http_client", fake_http)            # title fetch
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/a"},
+    ).json()["slug"]
+
+    body = client.get(f"/u/{secret}/episodes/{slug}").json()
+    assert body["status"] == "pending"
+    assert "audio_url" not in body
+
+
+def test_episode_status_failed(client, monkeypatch, fake_http, fake_openai):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/dead"] = FakeResponse(status_code=500)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/dead"},
+    ).json()["slug"]
+
+    body = client.get(f"/u/{secret}/episodes/{slug}").json()
+    assert body["status"] == "failed"
+    assert body["error"]
+
+
+def test_episode_status_unknown_slug_404(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}/episodes/zzzzzzzzzzz")
+    assert resp.status_code == 404
+    assert resp.json()["error"] == "not_found"
+
+
+def test_episode_status_malformed_slug_404(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}/episodes/bad.slug")   # '.' fails SLUG_RE
+    assert resp.status_code == 404
+
+
+def test_episode_status_unknown_feed_404(client):
+    resp = client.get("/u/nope/episodes/abc123")
+    assert resp.status_code == 404

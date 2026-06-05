@@ -279,6 +279,32 @@ async def create_episode_api(request: Request, secret: str):
     }, status_code=202)
 
 
+@app.get("/u/{secret}/episodes/{slug}")
+def episode_status_api(secret: str, slug: str):
+    """Agent-facing episode status (documented at /AGENTS.md). Path-secret
+    auth, JSON only, no cookies; the cookie-authed twin is /share/status."""
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    if not SLUG_RE.match(slug):
+        return _agent_error(404, "not_found", "No such episode.")
+    for ep in storage.list_episodes(DATA_DIR, secret):
+        if ep["slug"] == slug:
+            payload = {
+                "slug": slug,
+                "status": ep["status"],
+                "title": ep.get("title"),
+                "ts": ep["ts"],
+                "total_chunks": ep.get("total_chunks"),
+                "error": ep.get("error"),
+            }
+            if ep["status"] == "ready":
+                payload["audio_url"] = (
+                    f"{APP_BASE_URL}/u/{secret}/audio/{slug}.mp3"
+                )
+            return JSONResponse(payload)
+    return _agent_error(404, "not_found", "No such episode.")
+
+
 @app.get("/cover.jpg")
 def cover_route():
     return FileResponse(
