@@ -76,6 +76,7 @@ def spawn_ingest(url: str, secret: str, data_dir: Path, slug: str) -> None:
 
 DATA_DIR = Path(os.environ.get("FEED_ME_DATA_DIR", "/data"))
 STATIC_DIR = Path(__file__).parent / "static"
+TEMPLATES_DIR = Path(__file__).parent / "templates"
 WELCOME_AUDIO_BYTES = (STATIC_DIR / "welcome.mp3").read_bytes()
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:8000")
 SHORTCUT_ICLOUD_URL = os.environ.get(
@@ -139,6 +140,26 @@ templates.env.filters["hostname"] = hostname
 @app.get("/healthz", response_class=PlainTextResponse)
 def healthz():
     return "ok"
+
+
+@app.get("/AGENTS.md")
+def agents_md_route():
+    # Plain .replace, not Jinja (autoescape would mangle the JSON examples)
+    # and not str.format (the JSON braces would break it). Read at request
+    # time so tests that monkeypatch APP_BASE_URL see the right base.
+    text = (TEMPLATES_DIR / "agents.md").read_text().replace(
+        "{base}", APP_BASE_URL,
+    )
+    return PlainTextResponse(text, media_type="text/markdown")
+
+
+@app.get("/llms.txt")
+def llms_txt_route():
+    return PlainTextResponse(
+        "Feed Me turns shared articles into narrated episodes in a private "
+        "podcast feed.\n"
+        f"API documentation for agents: {APP_BASE_URL}/AGENTS.md\n"
+    )
 
 
 @app.get("/share", response_class=HTMLResponse)

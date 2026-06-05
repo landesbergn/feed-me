@@ -334,3 +334,21 @@ def test_episode_status_malformed_slug_404(client):
 def test_episode_status_unknown_feed_404(client):
     resp = client.get("/u/nope/episodes/abc123")
     assert resp.status_code == 404
+
+
+def test_agents_md_served_as_markdown(client):
+    resp = client.get("/AGENTS.md")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/markdown")
+    assert "https://test.local/u/" in resp.text       # APP_BASE_URL substituted
+    assert "{base}" not in resp.text                  # nothing left unsubstituted
+    assert "5 episodes" in resp.text                  # the cap is documented
+    assert "Retry-After" in resp.text
+    assert "—" not in resp.text                       # house style: no em-dashes
+
+
+def test_llms_txt_points_at_agents_md(client):
+    resp = client.get("/llms.txt")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/plain")
+    assert "https://test.local/AGENTS.md" in resp.text
