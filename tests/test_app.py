@@ -809,3 +809,21 @@ def test_ga_snippet_on_landing(client):
     assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
     # referrer-masking logic ships with the snippet everywhere
     assert "page_referrer" in body
+
+
+def test_ga_snippet_on_settings_masks_secret(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    body = client.get(f"/u/{secret}").text
+    assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
+    # The page's own URL contains the secret, so GA must report /u/_ instead.
+    assert 'gaCfg.page_location = "https://test.local/u/_"' in body
+    assert "gaCfg.page_path = '/u/_'" in body
+    assert "page_referrer" in body  # referrer mask ships here too
+    # The secret legitimately appears elsewhere on the page (feed URL box), but
+    # never on any GA-related line.
+    ga_lines = [l for l in body.splitlines()
+                if "gtag" in l or "gaCfg" in l or "googletagmanager" in l]
+    assert ga_lines
+    assert all(secret not in l for l in ga_lines)

@@ -9,16 +9,10 @@
   // pages whose own URL contains the secret (settings sets ga_mask_location)
   // mask the reported location too.
   var gaCfg = {};
-  try {
-    if (document.referrer) {
-      var gaRef = new URL(document.referrer);
-      if (gaRef.pathname.indexOf('/u/') === 0) {
-        gaCfg.page_referrer = gaRef.origin + '/u/_';
-      }
-    }
-  } catch (e) {}
+  var gaRef = document.referrer.match(/^(https?:\/\/[^\/]+)\/u\//);
+  if (gaRef) { gaCfg.page_referrer = gaRef[1] + '/u/_'; }
   {% if ga_mask_location %}
-  gaCfg.page_location = '{{ base_url }}/u/_';
+  gaCfg.page_location = {{ (base_url ~ '/u/_') | tojson }};
   gaCfg.page_path = '/u/_';
   {% endif %}
   gtag('config', 'G-MQ15LHLSBF', gaCfg);
