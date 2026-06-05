@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.7 — 2026-06-05
+
+Audience analytics via Google Analytics 4.
+
+- The landing, settings, and share pages load GA4 (`G-MQ15LHLSBF`) through a
+  shared `templates/_ga.html` partial: device, browser, city/state/country, and
+  referrer reporting. The admin page is not tracked.
+- The feed secret never reaches Google: the settings page reports its location
+  as `/u/_`, and any `/u/<secret>` referrer is masked before the config fires.
+- The self-hosted SQLite analytics and `/admin/stats` are unchanged.
+
 ## v3.6 — 2026-06-05
 
 For agents: AI agents can add articles to a feed.

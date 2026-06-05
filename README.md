@@ -101,13 +101,20 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 
 ### Analytics
 
-Self-hosted, privacy-preserving, no third party. Events (`page_view`,
+Two tiers. **Operational stats are self-hosted**: events (`page_view`,
 `feed_created`, `article_shared`) go to a SQLite DB at
 `/data/_analytics/analytics.db` (its own subdir so the `/data/<secret>/` feed
 level stays pure). Each event is attributed by a **one-way `sha256(secret)[:12]`
-hash, never the raw secret**, so the analytics can never reveal a private feed
+hash, never the raw secret**, so this store can never reveal a private feed
 URL. `article_shared` events also store the article URL + title. Writes are
 fire-and-forget and can never break a page render.
+
+**Audience analytics are Google Analytics 4** (`templates/_ga.html`, included
+by the landing, settings, and share pages; the admin page is not tracked):
+device, browser, city/state/country, and referrer reporting in the GA UI.
+Google receives the visitor's IP, user agent, and referrer, never the feed
+secret: the settings page reports its location as `/u/_`, and any referrer
+containing `/u/<secret>` is masked the same way before the config call fires.
 
 ### Environment variables
 

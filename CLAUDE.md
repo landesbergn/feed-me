@@ -54,3 +54,7 @@ FEED_ME_DATA_DIR=/tmp/feedme OPENAI_API_KEY=sk-test-dummy APP_BASE_URL=http://lo
 - `templates/agents.md` is substituted with plain `.replace("{base}", ...)`,
   not Jinja (autoescape mangles the JSON examples) and not `str.format`
   (the JSON braces break it).
+- GA4 lives in `templates/_ga.html`. `page_location` / `page_referrer` must be
+  masked on any page whose URL can contain `/u/<secret>` (settings sets
+  `ga_mask_location` before the include). Never add the GA partial to a new
+  secret-bearing page without the mask; the raw secret must never reach Google.
