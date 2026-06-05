@@ -37,6 +37,9 @@ app to babysit. It just shows up in the podcast player you already use.
 - **Apple Podcasts, Overcast, Pocket Casts, Castro, etc.** Anything that takes a
   normal podcast link works. Spotify doesn't (it won't accept personal feeds).
 - **Bookmark your feed link.** It's the only way back in.
+- **Agents welcome.** Your AI agent (Claude Code and friends) can add
+  articles for you. Open your feed page and copy the "For agents" prompt,
+  or point your agent at [feed-me.xyz/AGENTS.md](https://feed-me.xyz/AGENTS.md).
 
 ---
 
@@ -74,6 +77,9 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `GET /u/{secret}` | Feed home/settings; refreshes the cookie. Leads with the episodes table once a real article has been shared, else with setup instructions |
 | `GET /share?url=` | Capture endpoint hit by the Shortcut; cookie-identified. Renders a live adding/added/failed page |
 | `GET /share/status?slug=` | JSON status for one episode, polled by the `/share` page |
+| `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}`); 5/day rolling cap |
+| `GET /u/{secret}/episodes/{slug}` | Agent API: JSON episode status, secret-authed |
+| `GET /AGENTS.md`, `GET /llms.txt` | Agent-facing API docs |
 | `GET /u/{secret}/episodes_partial` | Episode-table fragment, polled every 3s by the settings page |
 | `POST /u/{secret}/voice` | Change the TTS voice (shimmer / alloy / nova / echo) |
 | `POST /u/{secret}/rotate` | Rotate the secret (invalidates the old URL) |

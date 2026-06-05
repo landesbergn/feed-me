@@ -47,3 +47,10 @@ FEED_ME_DATA_DIR=/tmp/feedme OPENAI_API_KEY=sk-test-dummy APP_BASE_URL=http://lo
   together.
 - Deploys sometimes print a "not listening on 0.0.0.0:8000" warning; it's a
   benign Fly timing artifact; verify with `curl https://feed-me.xyz/healthz`.
+- The agent API (`POST/GET /u/<secret>/episodes*`) authenticates by the
+  path secret only: never read or set the session cookie there, and keep
+  its errors as `{"error", "message"}` JSON (the POST parses its body by
+  hand because a Pydantic model would 422 instead of the documented 400).
+- `templates/agents.md` is substituted with plain `.replace("{base}", ...)`,
+  not Jinja (autoescape mangles the JSON examples) and not `str.format`
+  (the JSON braces break it).

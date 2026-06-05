@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.6 — 2026-06-05
+
+For agents: AI agents can add articles to a feed.
+
+- New agent API: `POST /u/<secret>/episodes` (JSON in, 202 + status URL out) and `GET /u/<secret>/episodes/<slug>` for polling. Authenticated by the path secret only; the session cookie is never read or set on these routes.
+- `/AGENTS.md` (plus an `/llms.txt` pointer) documents the API for agents: endpoints, stable error codes, etiquette, rate limit, curl/Python examples.
+- "For agents" section on the feed page with a copy-paste prompt personalized to the feed.
+- Agent shares capped at 5 per feed per rolling 24h (429 + `Retry-After` beyond that); phone sharing is never throttled. The `via: "agent"` record tag now survives episode finalization so the cap counts completed episodes, not just pending ones.
+- `article_shared` analytics carry `via: "agent" | "shortcut"`. No user-agent strings are stored (keeps the v3.1 analytics privacy promise).
+
 ## v3.5 — 2026-06-05
 
 Stats: Pacific time + totals rows.
