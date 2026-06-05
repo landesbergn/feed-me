@@ -802,3 +802,10 @@ def test_share_event_props_tag_via_shortcut(client, monkeypatch, tmp_path):
     shared = [e for e in analytics.all_events(db) if e["event"] == "article_shared"]
     assert len(shared) == 1
     assert _json.loads(shared[0]["props"])["via"] == "shortcut"
+
+
+def test_ga_snippet_on_landing(client):
+    body = client.get("/").text
+    assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
+    # referrer-masking logic ships with the snippet everywhere
+    assert "page_referrer" in body

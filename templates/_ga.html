@@ -1,0 +1,25 @@
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-MQ15LHLSBF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  // Never send a /u/<secret> URL to Google: mask the referrer always, and on
+  // pages whose own URL contains the secret (settings sets ga_mask_location)
+  // mask the reported location too.
+  var gaCfg = {};
+  try {
+    if (document.referrer) {
+      var gaRef = new URL(document.referrer);
+      if (gaRef.pathname.indexOf('/u/') === 0) {
+        gaCfg.page_referrer = gaRef.origin + '/u/_';
+      }
+    }
+  } catch (e) {}
+  {% if ga_mask_location %}
+  gaCfg.page_location = '{{ base_url }}/u/_';
+  gaCfg.page_path = '/u/_';
+  {% endif %}
+  gtag('config', 'G-MQ15LHLSBF', gaCfg);
+</script>
