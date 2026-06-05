@@ -836,8 +836,39 @@ def test_ga_snippet_on_share_page(client):
     assert "page_referrer" in body
 
 
+def test_ga_lines_never_contain_secret_on_share_states(client, monkeypatch):
+    """GA lines must never include the feed secret on any secret-bearing share state."""
+    import app as app_module
+
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # links this browser (sets fm_session)
+
+    # --- "error" state: no url param ---
+    body = client.get("/share").text
+    assert "Couldn't add that" in body  # page rendered the error state; guard is not vacuous
+    assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
+    ga_lines = [l for l in body.splitlines()
+                if "gtag" in l or "gaCfg" in l or "googletagmanager" in l]
+    assert ga_lines
+    assert all(secret not in l for l in ga_lines)
+
+    # --- "added" state: valid url param ---
+    monkeypatch.setattr(app_module, "spawn_ingest", lambda *a, **k: None)
+    monkeypatch.setattr(app_module.ingest, "fetch_title", lambda url: "T")
+
+    body = client.get("/share?url=https://example.com/a").text
+    assert "T" in body  # page rendered the added state; guard is not vacuous
+    assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
+    ga_lines = [l for l in body.splitlines()
+                if "gtag" in l or "gaCfg" in l or "googletagmanager" in l]
+    assert ga_lines
+    assert all(secret not in l for l in ga_lines)
+
+
 def test_ga_snippet_not_on_admin_stats(client, monkeypatch):
     import app as app_module
     monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
     body = client.get("/admin/stats?token=right").text
+    assert "All feeds" in body  # page rendered; guard is not vacuous
     assert "googletagmanager" not in body
