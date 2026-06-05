@@ -827,3 +827,17 @@ def test_ga_snippet_on_settings_masks_secret(client):
                 if "gtag" in l or "gaCfg" in l or "googletagmanager" in l]
     assert ga_lines
     assert all(secret not in l for l in ga_lines)
+
+
+def test_ga_snippet_on_share_page(client):
+    # No cookie -> the "connect" state renders; the snippet ships on all states.
+    body = client.get("/share?url=https://example.com/a").text
+    assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
+    assert "page_referrer" in body
+
+
+def test_ga_snippet_not_on_admin_stats(client, monkeypatch):
+    import app as app_module
+    monkeypatch.setattr(app_module, "STATS_TOKEN", "right")
+    body = client.get("/admin/stats?token=right").text
+    assert "googletagmanager" not in body
