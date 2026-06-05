@@ -385,3 +385,60 @@ def test_list_feeds_falls_back_to_mtime_when_created_at_missing(tmp_path):
     feeds = storage.list_feeds(tmp_path)
     entry = next(f for f in feeds if f["secret"] == "legacy-feed")
     assert entry["created_at"] == int(settings.stat().st_mtime)
+
+
+def test_write_pending_episode_stores_via(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://ex.com/a", via="agent",
+    )
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert record["via"] == "agent"
+
+
+def test_write_pending_episode_omits_via_by_default(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://ex.com/a",
+    )
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert "via" not in record
+
+
+def test_write_episode_carries_via_through_finalization(tmp_path):
+    """The agent daily cap counts via == "agent" records; via must survive
+    the fresh-dict rewrite that write_episode does on completion."""
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://ex.com/a", via="agent",
+    )
+    storage.write_episode(
+        tmp_path, secret, slug=slug,
+        title="T", source_url="https://ex.com/a", audio=b"MP3",
+    )
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert record["via"] == "agent"
+    assert "pending" not in record    # fresh-dict semantics otherwise intact
+
+
+def test_write_failed_episode_carries_via_through_finalization(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_pending_episode(
+        tmp_path, secret, source_url="https://ex.com/a", via="agent",
+    )
+    storage.write_failed_episode(
+        tmp_path, secret, slug=slug,
+        source_url="https://ex.com/a", error="boom",
+    )
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert record["via"] == "agent"
+
+
+def test_finalization_without_pending_record_has_no_via(tmp_path):
+    secret = storage.create_user(tmp_path)
+    slug = storage.write_episode(
+        tmp_path, secret,
+        title="T", source_url="https://ex.com/a", audio=b"MP3",
+    )
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert "via" not in record

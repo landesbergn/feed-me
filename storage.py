@@ -27,6 +27,20 @@ def _new_slug() -> str:
     return _secrets.token_urlsafe(12)
 
 
+def _pending_via(data_dir: Path, secret: str, slug: str) -> str | None:
+    """Read the via tag off an existing (pending) record before finalization
+    overwrites it. write_episode / write_failed_episode rebuild the record
+    from scratch; the agent daily cap counts via == "agent" episodes, so
+    dropping the tag would silently turn the daily cap into a concurrency cap.
+    """
+    try:
+        record = json.loads((data_dir / secret / f"{slug}.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    via = record.get("via")
+    return via if isinstance(via, str) else None
+
+
 def write_episode(
     data_dir: Path, secret: str, *,
     title: str, source_url: str, audio: bytes,
@@ -35,6 +49,7 @@ def write_episode(
 ) -> str:
     if slug is None:
         slug = _new_slug()
+    via = _pending_via(data_dir, secret, slug)
     user_dir = data_dir / secret
     (user_dir / f"{slug}.mp3").write_bytes(audio)
     record = {
@@ -44,6 +59,8 @@ def write_episode(
     }
     if description is not None:
         record["description"] = description
+    if via is not None:
+        record["via"] = via
     (user_dir / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
@@ -56,6 +73,7 @@ def write_failed_episode(
 ) -> str:
     if slug is None:
         slug = _new_slug()
+    via = _pending_via(data_dir, secret, slug)
     record = {
         "title": None,
         "url": source_url,
@@ -64,6 +82,8 @@ def write_failed_episode(
     }
     if description is not None:
         record["description"] = description
+    if via is not None:
+        record["via"] = via
     (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
@@ -73,6 +93,7 @@ def write_pending_episode(
     source_url: str,
     title: str | None = None,
     description: str | None = None,
+    via: str | None = None,
 ) -> str:
     slug = _new_slug()
     record = {
@@ -83,6 +104,8 @@ def write_pending_episode(
     }
     if description is not None:
         record["description"] = description
+    if via is not None:
+        record["via"] = via
     (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
