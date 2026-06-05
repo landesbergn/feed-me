@@ -1,4 +1,5 @@
 import hmac
+import json
 import os
 import re
 import threading
@@ -17,6 +18,7 @@ from fastapi.responses import (
     Response,
 )
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 import analytics
 import ingest
@@ -84,6 +86,9 @@ STATS_TOKEN = os.environ.get("STATS_TOKEN")
 
 COOKIE_NAME = "fm_session"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
+
+AGENT_DAILY_CAP = 5            # agent-created episodes per feed, rolling 24h
+AGENT_CAP_WINDOW_S = 86400
 
 
 def set_session_cookie(response: Response, secret: str) -> None:
@@ -192,6 +197,75 @@ def share_status(request: Request, slug: str = ""):
                 "error": ep.get("error"),
             })
     return JSONResponse({"status": "unknown"})
+
+
+def _agent_error(status: int, code: str, message: str,
+                 headers: dict | None = None) -> JSONResponse:
+    """Stable JSON error shape for the agent API: {"error", "message"}."""
+    return JSONResponse(
+        {"error": code, "message": message},
+        status_code=status, headers=headers,
+    )
+
+
+def _agent_episodes_in_window(secret: str, now: int) -> list[dict]:
+    """Agent-created episodes (any status) inside the rolling cap window."""
+    return [
+        ep for ep in storage.list_episodes(DATA_DIR, secret)
+        if ep.get("via") == "agent" and ep["ts"] > now - AGENT_CAP_WINDOW_S
+    ]
+
+
+@app.post("/u/{secret}/episodes")
+async def create_episode_api(request: Request, secret: str):
+    """Agent-facing episode creation (documented at /AGENTS.md).
+
+    Authenticates solely by the path secret; the fm_session cookie is
+    deliberately never read and never set (no ambient authority, so no
+    CSRF surface). Parses the body manually: a Pydantic body model would
+    reject malformed JSON with FastAPI's 422 and break the documented
+    400 {"error": "invalid_request"} contract.
+    """
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    try:
+        payload = json.loads(await request.body())
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return _agent_error(
+            400, "invalid_request",
+            'Body must be JSON like {"url": "https://..."}.',
+        )
+    url = payload.get("url") if isinstance(payload, dict) else None
+    if not isinstance(url, str) or not url:
+        return _agent_error(
+            400, "invalid_request",
+            'Body must include a string "url" field.',
+        )
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return _agent_error(
+            400, "invalid_url",
+            f"Invalid URL: {url[:200]!r} (must be http or https).",
+        )
+    now = int(_time.time())
+    in_window = _agent_episodes_in_window(secret, now)
+    # fetch_title blocks on the network; this route is async (for
+    # request.body()), so run it off the event loop.
+    title = await run_in_threadpool(ingest.fetch_title, url)
+    slug = storage.write_pending_episode(
+        DATA_DIR, secret, source_url=url, title=title, via="agent",
+    )
+    spawn_ingest(url, secret, DATA_DIR, slug)
+    _track("article_shared", secret=secret, path="agent",
+           props={"url": url, "title": title, "via": "agent"})
+    return JSONResponse({
+        "slug": slug,
+        "status": "pending",
+        "title": title,
+        "status_url": f"{APP_BASE_URL}/u/{secret}/episodes/{slug}",
+        "feed_page": f"{APP_BASE_URL}/u/{secret}",
+        "remaining": AGENT_DAILY_CAP - len(in_window) - 1,
+    }, status_code=202)
 
 
 @app.get("/cover.jpg")
