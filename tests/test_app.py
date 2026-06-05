@@ -858,7 +858,7 @@ def test_ga_lines_never_contain_secret_on_share_states(client, monkeypatch):
     monkeypatch.setattr(app_module.ingest, "fetch_title", lambda url: "T")
 
     body = client.get("/share?url=https://example.com/a").text
-    assert "T" in body  # page rendered the added state; guard is not vacuous
+    assert "Adding to your feed…" in body  # page rendered the added state; guard is not vacuous
     assert "googletagmanager.com/gtag/js?id=G-MQ15LHLSBF" in body
     ga_lines = [l for l in body.splitlines()
                 if "gtag" in l or "gaCfg" in l or "googletagmanager" in l]
