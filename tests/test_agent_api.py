@@ -352,3 +352,17 @@ def test_llms_txt_points_at_agents_md(client):
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/plain")
     assert "https://test.local/AGENTS.md" in resp.text
+
+
+def test_settings_page_shows_for_agents_section(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    resp = client.get(f"/u/{secret}")
+
+    assert resp.status_code == 200
+    assert "For agents" in resp.text
+    assert "I have a Feed Me podcast feed" in resp.text
+    # The prompt is personalized with this feed's URL and the docs URL.
+    assert f"My feed page: https://test.local/u/{secret}." in resp.text
+    assert "https://test.local/AGENTS.md" in resp.text

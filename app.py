@@ -438,6 +438,7 @@ def settings(request: Request, secret: str):
         "feed_host_and_path": feed_host_and_path,
         "shortcut_url": SHORTCUT_ICLOUD_URL,
         "setup_done": setup_done,
+        "base_url": APP_BASE_URL,
     })
     set_session_cookie(response, secret)
     return response
