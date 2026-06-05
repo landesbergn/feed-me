@@ -110,6 +110,76 @@ def test_fetch_article_strips_title_from_winning_body(monkeypatch, fake_http):
     assert not body.startswith("On Time")
 
 
+def _paywalled_html(paragraphs: int, marker: str) -> str:
+    """Article HTML carrying a machine-readable paywall declaration."""
+    body = "".join(
+        f"<p>Paragraph {i} of the gated piece, padded with enough prose that "
+        f"each one contributes a realistic amount of extracted text.</p>"
+        for i in range(paragraphs)
+    )
+    return (
+        "<!doctype html><html><head><title>Gated</title>"
+        f"{marker}"
+        "</head><body><article><h1>Gated</h1>"
+        f"{body}</article></body></html>"
+    )
+
+
+JSONLD_PAYWALL = (
+    '<script type="application/ld+json">'
+    '{"@type":"NewsArticle","isAccessibleForFree":false}</script>'
+)
+META_PAYWALL = '<meta property="article:content_tier" content="locked"/>'
+
+
+def test_fetch_article_fails_fast_on_declared_paywall_with_teaser_body(
+    monkeypatch, fake_http,
+):
+    """A page that declares itself paywalled (schema.org isAccessibleForFree)
+    and serves only a teaser fails with subscription copy instead of becoming
+    a 2-minute episode that ends mid-article. Detection reads the page's own
+    markup, never a site list. (Verified live: nytimes.com declares
+    isAccessibleForFree:false and serves a 1,827-char teaser.)"""
+    fake_http.responses["https://www.nytimes.com/a"] = FakeResponse(
+        status_code=200, text=_paywalled_html(paragraphs=12, marker=JSONLD_PAYWALL),
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    with pytest.raises(ingest.FetchError) as exc_info:
+        ingest.fetch_article("https://www.nytimes.com/a")
+
+    msg = str(exc_info.value)
+    assert "www.nytimes.com" in msg
+    assert "subscriber" in msg
+
+
+def test_fetch_article_fails_fast_on_content_tier_locked(monkeypatch, fake_http):
+    fake_http.responses["https://example.com/locked"] = FakeResponse(
+        status_code=200, text=_paywalled_html(paragraphs=12, marker=META_PAYWALL),
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    with pytest.raises(ingest.FetchError):
+        ingest.fetch_article("https://example.com/locked")
+
+
+def test_fetch_article_allows_declared_paywall_with_full_body(
+    monkeypatch, fake_http,
+):
+    """Metered sites often serve the full text anyway (the newyorker.com
+    case). A paywall declaration alone must not fail the fetch; only the
+    declaration plus a teaser-sized body does."""
+    fake_http.responses["https://example.com/metered"] = FakeResponse(
+        status_code=200, text=_paywalled_html(paragraphs=40, marker=JSONLD_PAYWALL),
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    title, body = ingest.fetch_article("https://example.com/metered")
+
+    assert "Gated" in title
+    assert len(body) > ingest.PAYWALL_BODY_MIN_CHARS
+
+
 def test_fetch_article_raises_on_http_error(monkeypatch, fake_http):
     fake_http.responses["https://example.com/y"] = FakeResponse(status_code=500)
     monkeypatch.setattr(ingest, "http_client", fake_http)

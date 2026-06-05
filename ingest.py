@@ -1,4 +1,5 @@
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import urlparse
@@ -37,6 +38,23 @@ DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
 MAX_BODY_CHARS = 100_000  # ~50 min of TTS audio, ~$1.50 max cost per article
 MIN_BODY_CHARS = 600  # below this it's a teaser/paywall shell, not an article
+# On a page that declares itself paywalled, anything under this is a teaser
+# (nytimes.com serves ~1,800 chars without subscriber cookies); above it the
+# site evidently served the full text anyway, so narrate it.
+PAYWALL_BODY_MIN_CHARS = 2500
+
+# Machine-readable paywall declarations: schema.org's isAccessibleForFree
+# (publishers must set it for Google to index gated content) and Facebook's
+# article:content_tier. Read from the page's own markup; never a site list.
+_PAYWALL_DECLARATIONS = (
+    re.compile(r'"isAccessibleForFree"\s*:\s*"?[Ff]alse"?'),
+    re.compile(r'article:content_tier["\'][^>]*content=["\']locked'),
+    re.compile(r'content=["\']locked["\'][^>]*article:content_tier'),
+)
+
+
+def _declares_paywall(html_text: str) -> bool:
+    return any(p.search(html_text) for p in _PAYWALL_DECLARATIONS)
 
 
 class FetchError(RuntimeError):
@@ -104,6 +122,12 @@ def fetch_article(url: str) -> tuple[str, str]:
     # Longest extraction wins: an extractor that missed part of the article
     # can't beat one that got all of it.
     body = max(candidates, key=len)
+
+    if len(body) < PAYWALL_BODY_MIN_CHARS and _declares_paywall(resp.text):
+        raise FetchError(
+            f"{urlparse(url).netloc} marks this article as subscriber-only "
+            f"and served only a preview ({len(body)} characters of text)."
+        )
     return title, body
 
 
