@@ -132,6 +132,14 @@
   existing agents). URL validation matches <code>/share</code>: scheme must be
   http/https with a host.
 </p>
+<p class="small">
+  <strong>Implementation note.</strong> The handler must take the raw
+  <code>Request</code> and parse the JSON itself, not declare a Pydantic body
+  model: FastAPI's automatic validation would reject malformed or missing-field
+  bodies with its own <code>422 {"detail": […]}</code>, breaking the
+  <code>400 {"error": "invalid_request"}</code> contract below. Don't "clean
+  this up" into a model later.
+</p>
 <p>On success, <strong>202 Accepted</strong>:</p>
 <pre><code>{
   "slug": "k3kQ9rTzVx0",
@@ -283,6 +291,17 @@ Keep this private: that link is your whole account.</code></pre>
     <code>list_episodes</code> already passes unknown keys through, and all
     episode consumers (rss, templates, status) read records as plain dicts, so
     the extra key is inert everywhere else.</li>
+  <li><strong><code>via</code> must survive finalization.</strong> Both
+    finalization writers build fresh dicts today:
+    <code>write_episode</code> (success) and <code>write_failed_episode</code>
+    (ingest failure) overwrite the pending JSON with only
+    title/url/ts(/error/description). Without a fix, <code>via</code> vanishes
+    the moment an episode completes, silently turning the daily cap into a
+    concurrency cap (a drip agent would never hit 5). Both functions must, when
+    finalizing an existing slug, read the existing record and carry
+    <code>via</code> forward. Targeted carry-over of exactly that key; the
+    fresh-dict semantics otherwise stay (e.g. <code>pending</code> is still
+    dropped).</li>
   <li>Analytics <code>article_shared</code> props gain a <code>via</code> key on
     <em>both</em> paths: <code>"agent"</code> from the new endpoint,
     <code>"shortcut"</code> from <code>share_route</code>, so the split is
@@ -323,9 +342,13 @@ Keep this private: that link is your whole account.</code></pre>
 <ul>
   <li>Happy path: 202; response has slug, <code>status "pending"</code>, title,
     absolute <code>status_url</code>/<code>feed_page</code>, <code>remaining 4</code>;
-    record on disk has <code>via: "agent"</code>; ingest runs (episode goes ready
-    with the fake pipeline); <code>article_shared</code> event recorded with
+    ingest runs (episode goes ready with the fake pipeline); the on-disk record
+    still has <code>via: "agent"</code> <em>after</em> reaching ready (pins the
+    finalization carry-over from §7, not just the pending write);
+    <code>article_shared</code> event recorded with
     <code>props.via == "agent"</code>.</li>
+  <li>Failed ingest keeps <code>via: "agent"</code> on the failed record (the
+    <code>write_failed_episode</code> carry-over).</li>
   <li>No/invalid JSON body and missing <code>url</code> → 400
     <code>invalid_request</code>; bad scheme/host → 400 <code>invalid_url</code>;
     in both cases no episode file is written.</li>
@@ -337,7 +360,10 @@ Keep this private: that link is your whole account.</code></pre>
 <h3>Rate limiting</h3>
 <ul>
   <li>5 agent episodes in-window → 6th returns 429 with <code>Retry-After</code>;
-    <code>remaining</code> decrements 4→0 across the first five.</li>
+    <code>remaining</code> decrements 4→0 across the first five. This test
+    drives five real POSTs through the fake pipeline to completion (episodes
+    reach ready), so it validates daily semantics, not concurrent-pending
+    counting; a via-drop at finalization would fail it.</li>
   <li>Agent episodes older than 24h don't count (write a record with an old
     <code>ts</code>).</li>
   <li>Shortcut shares neither count toward nor are blocked by the cap: with 5
