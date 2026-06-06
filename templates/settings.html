@@ -143,12 +143,6 @@
     details.settings .body .label:first-child { margin-top: 8px; }
     details.settings .body p { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
     .voices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-    .agent-prompt {
-      white-space: pre-wrap; overflow-wrap: anywhere; background: #fff;
-      border: 1.5px solid #E9C9AC; border-radius: 12px; padding: 12px 14px;
-      font-size: 12px; line-height: 1.5; margin: 10px 0 0;
-      font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    }
     .voice-chip {
       padding: 6px 13px; border: 1.5px solid #E9C9AC; background: #fff; color: var(--ink);
       border-radius: 999px; font-size: 12px; cursor: pointer; font-family: var(--sans); font-weight: 600;
@@ -182,6 +176,7 @@
     <div id="episodes-section">
       {% include "_episodes_section.html" %}
     </div>
+    {% include "_agents_card.html" %}
 
     <details class="setup-fold">
       <summary>Setup &amp; sharing</summary>
@@ -195,6 +190,7 @@
     <div id="episodes-section">
       {% include "_episodes_section.html" %}
     </div>
+    {% include "_agents_card.html" %}
   {% endif %}
 
   <details class="settings">
@@ -222,25 +218,10 @@
     </div>
   </details>
 
-  <details class="settings">
-    <summary>For agents</summary>
-    <div class="body">
-      <p>Your AI agent (Claude Code and friends) can add articles to this
-         feed. Copy this into your agent's instructions or memory:</p>
-      <pre class="agent-prompt" id="agent-prompt">I have a Feed Me podcast feed. To send an article to it, read {{ base_url }}/AGENTS.md and follow it. My feed page: {{ base_url }}/u/{{ secret }}. Agents can add up to 5 episodes per day.</pre>
-      <button class="btn-secondary" type="button" onclick="copyAgentPrompt()">Copy prompt</button>
-      <p>Keep this private: that link is your whole account.</p>
-    </div>
-  </details>
-
   <script>
     var FEED_URL = {{ feed_url | tojson }};
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
-    }
-    function copyAgentPrompt() {
-      var el = document.getElementById("agent-prompt");
-      try { navigator.clipboard.writeText(el.textContent.trim()); } catch (e) {}
     }
   </script>
 

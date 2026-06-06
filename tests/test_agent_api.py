@@ -354,18 +354,33 @@ def test_llms_txt_points_at_agents_md(client):
     assert "https://test.local/AGENTS.md" in resp.text
 
 
-def test_settings_page_shows_for_agents_section(client):
+def test_settings_page_links_to_agents_page(client):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
 
     resp = client.get(f"/u/{secret}")
 
     assert resp.status_code == 200
-    assert "For agents" in resp.text
-    assert "I have a Feed Me podcast feed" in resp.text
-    # The prompt is personalized with this feed's URL and the docs URL.
-    assert f"My feed page: https://test.local/u/{secret}." in resp.text
-    assert "https://test.local/AGENTS.md" in resp.text
+    assert "Your agent can share here too" in resp.text
+    assert f"/u/{secret}/agents" in resp.text
+    # The prompt moved to the agents page; it must be gone from here.
+    assert "I have a Feed Me podcast feed" not in resp.text
+
+
+def test_settings_page_agents_card_shows_after_setup(client, monkeypatch, fake_http, fake_openai):
+    """The card renders in BOTH page states; this covers the episodes-leading
+    (setup_done) state, the other test covers the fresh-feed state."""
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/a"})
+
+    resp = client.get(f"/u/{secret}")
+
+    assert "Your agent can share here too" in resp.text
+    assert f"/u/{secret}/agents" in resp.text
 
 
 def test_agents_page_renders_personalized_prompt(client):
