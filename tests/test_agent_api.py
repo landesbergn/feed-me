@@ -434,3 +434,11 @@ def test_agents_page_masks_ga_location(client):
 
     assert "googletagmanager.com" in resp.text            # GA partial included
     assert '"https://test.local/u/_"' in resp.text        # masked page_location
+
+
+def test_landing_page_advertises_agents(client):
+    resp = client.get("/")
+
+    assert resp.status_code == 200
+    assert "or have your AI agent send things" in resp.text
+    assert "/AGENTS.md" in resp.text

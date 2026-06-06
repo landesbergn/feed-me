@@ -59,6 +59,37 @@
     }
     .step { align-items: center; }
     .step .t { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+    /* The agents robot: peeks over the "Share any article" step. Decorative;
+       positions tuned for the 480px column ("fix it in post" per the owner). */
+    .agent-peek { position: relative; margin-top: 46px; }
+    .agent-peek .step { position: relative; z-index: 1; }
+    .robot { position: absolute; top: -36px; left: 175px; transform: rotate(-5deg); z-index: 0; }
+    .robot-head { position: relative; width: 44px; height: 40px; background: #8a6f5e; border-radius: 11px 11px 5px 5px; }
+    .robot-head .antenna { position: absolute; top: -8px; left: 20px; width: 3px; height: 8px; background: #8a6f5e; }
+    .robot-head .bobble { position: absolute; top: -14px; left: 17px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .robot-head .eye { position: absolute; top: 9px; width: 9px; height: 9px; border-radius: 50%; background: #fff; }
+    .robot-head .eye.left { left: 8px; }
+    .robot-head .eye.right { right: 8px; }
+    .robot-head .pupil { position: absolute; top: 12px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink); }
+    .robot-head .pupil.left { left: 11px; }
+    .robot-head .pupil.right { right: 11px; }
+    .robot-head .smile { position: absolute; top: 24px; left: 16px; width: 12px; height: 6px; border-radius: 0 0 10px 10px; background: #fff; }
+    .finger { position: absolute; top: -4px; width: 6px; height: 6px; border-radius: 3px 3px 0 0; background: #8a6f5e; z-index: 2; }
+    .finger.f1 { left: 180px; }
+    .finger.f2 { left: 207px; }
+    .agent-bubble {
+      position: absolute; top: -52px; left: 230px; max-width: 200px;
+      background: #fff; border: 1.5px solid #E9C9AC; border-radius: 12px;
+      padding: 5px 11px; font-size: 12px; line-height: 1.35; color: #5c4636;
+      font-weight: 400; text-decoration: none; z-index: 2;
+      box-shadow: 0 2px 6px rgba(176, 74, 0, .06);
+    }
+    .agent-bubble:hover { text-decoration: none; border-color: var(--accent); }
+    .agent-bubble .tail {
+      position: absolute; left: -6px; bottom: 9px; width: 9px; height: 9px;
+      background: #fff; border-bottom: 1.5px solid #E9C9AC; border-left: 1.5px solid #E9C9AC;
+      transform: rotate(45deg);
+    }
     form { margin: 0; }
     .site-footer {
       margin-top: 48px; padding-top: 18px; border-top: 1px solid #EFE2D6;
@@ -83,9 +114,25 @@
     <div class="t">Create your private podcast feed</div>
   </div>
 
-  <div class="step">
-    <div class="n">2</div>
-    <div class="t">Share any article</div>
+  <div class="agent-peek">
+    <div class="robot" aria-hidden="true">
+      <div class="robot-head">
+        <div class="antenna"></div>
+        <div class="bobble"></div>
+        <div class="eye left"></div>
+        <div class="eye right"></div>
+        <div class="pupil left"></div>
+        <div class="pupil right"></div>
+        <div class="smile"></div>
+      </div>
+    </div>
+    <div class="finger f1" aria-hidden="true"></div>
+    <div class="finger f2" aria-hidden="true"></div>
+    <a class="agent-bubble" href="/AGENTS.md">or have your AI agent send things<span class="tail" aria-hidden="true"></span></a>
+    <div class="step">
+      <div class="n">2</div>
+      <div class="t">Share any article</div>
+    </div>
   </div>
 
   <div class="step">
