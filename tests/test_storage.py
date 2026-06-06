@@ -2,6 +2,8 @@ import json
 import time as _time
 from pathlib import Path
 
+import pytest
+
 import storage
 
 
@@ -442,3 +444,31 @@ def test_finalization_without_pending_record_has_no_via(tmp_path):
     )
     record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
     assert "via" not in record
+
+
+def test_write_episode_accepts_audio_path(tmp_path):
+    """audio_path= renames the streamed temp file into place (no copy)."""
+    secret = storage.create_user(tmp_path)
+    tmp_audio = tmp_path / secret / "incoming.mp3.tmp"
+    tmp_audio.write_bytes(b"STREAMED")
+
+    slug = storage.write_episode(
+        tmp_path, secret, title="T", source_url="https://e.com/a",
+        audio_path=tmp_audio,
+    )
+
+    assert (tmp_path / secret / f"{slug}.mp3").read_bytes() == b"STREAMED"
+    assert not tmp_audio.exists()
+
+
+def test_write_episode_requires_exactly_one_audio_source(tmp_path):
+    secret = storage.create_user(tmp_path)
+    with pytest.raises(ValueError):
+        storage.write_episode(
+            tmp_path, secret, title="T", source_url="https://e.com/a",
+        )
+    with pytest.raises(ValueError):
+        storage.write_episode(
+            tmp_path, secret, title="T", source_url="https://e.com/a",
+            audio=b"X", audio_path=tmp_path / secret / "x.tmp",
+        )

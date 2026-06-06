@@ -1,4 +1,5 @@
 import json
+import os
 import secrets as _secrets
 import time
 from pathlib import Path
@@ -43,15 +44,26 @@ def _pending_via(data_dir: Path, secret: str, slug: str) -> str | None:
 
 def write_episode(
     data_dir: Path, secret: str, *,
-    title: str, source_url: str, audio: bytes,
+    title: str, source_url: str,
+    audio: bytes | None = None,
+    audio_path: Path | None = None,
     slug: str | None = None,
     description: str | None = None,
 ) -> str:
+    """Audio comes as bytes (audio=) or as a file to rename into place
+    (audio_path=, used by ingest so a long synthesis streams to disk and never
+    holds the full MP3 in memory; rename is atomic on the same filesystem).
+    Exactly one of the two is required."""
+    if (audio is None) == (audio_path is None):
+        raise ValueError("exactly one of audio / audio_path is required")
     if slug is None:
         slug = _new_slug()
     via = _pending_via(data_dir, secret, slug)
     user_dir = data_dir / secret
-    (user_dir / f"{slug}.mp3").write_bytes(audio)
+    if audio_path is not None:
+        os.replace(audio_path, user_dir / f"{slug}.mp3")
+    else:
+        (user_dir / f"{slug}.mp3").write_bytes(audio)
     record = {
         "title": title,
         "url": source_url,
