@@ -595,6 +595,44 @@ def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch):
     assert audio == b"alphabravocharlie"
 
 
+def test_synthesize_bounds_parallelism(monkeypatch):
+    """With more chunks than TTS_MAX_PARALLEL, peak in-flight TTS calls stay
+    at or under the bound, and output bytes stay in input order."""
+    import threading
+    import time
+
+    known_chunks = [f"chunk-{i:02d}" for i in range(20)]
+    monkeypatch.setattr(ingest, "chunk_text", lambda body, max_chars: known_chunks)
+
+    class ConcurrencyFake:
+        def __init__(self):
+            self.lock = threading.Lock()
+            self.in_flight = 0
+            self.peak = 0
+        @property
+        def audio(self):
+            return self
+        @property
+        def speech(self):
+            return self
+        def create(self, *, model, voice, input):
+            with self.lock:
+                self.in_flight += 1
+                self.peak = max(self.peak, self.in_flight)
+            time.sleep(0.05)  # hold the slot so overlap is observable
+            with self.lock:
+                self.in_flight -= 1
+            return type("R", (), {"content": input.encode("utf-8")})()
+
+    fake = ConcurrencyFake()
+    monkeypatch.setattr(ingest, "openai_client", fake)
+
+    audio = ingest.synthesize("any body", "shimmer")
+
+    assert fake.peak <= ingest.TTS_MAX_PARALLEL
+    assert audio == b"".join(c.encode("utf-8") for c in known_chunks)
+
+
 def test_process_writes_total_chunks_before_synthesize(
     monkeypatch, fake_http, fake_openai, tmp_path,
 ):

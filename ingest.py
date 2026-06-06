@@ -34,6 +34,7 @@ openai_client = OpenAI()  # reads OPENAI_API_KEY from env
 
 TTS_CHAR_LIMIT = 4000
 TTS_MODEL = "tts-1"
+TTS_MAX_PARALLEL = 12  # synthesize() worker bound; see comment there
 DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
 MAX_BODY_CHARS = 500_000  # ~4h10m of TTS audio, ~$7.50 max cost per article
@@ -222,10 +223,14 @@ def synthesize(text: str, voice: str) -> bytes:
         )
         return response.content
 
-    # max_workers=len(chunks) → one worker per chunk, no bound. Worst-case 25
-    # concurrent calls (100k char cap / 4k per chunk), well under OpenAI's
-    # tier-1 limit of 50 req/min.
-    with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
+    # Bounded pool: a 500k-char article is up to 125 chunks, and firing them
+    # all at once blows OpenAI's 50 req/min tier-1 limit in one burst. 12
+    # workers keeps the typical article (<= 12 chunks, ~48k chars) fully
+    # parallel. The bound does NOT guarantee staying under the rate limit
+    # (W workers at T seconds/call sustain W*60/T req/min, and per-call
+    # latency isn't promised); the correctness guarantee is the client's
+    # 429 retry with backoff (max_retries=5, honors Retry-After).
+    with ThreadPoolExecutor(max_workers=min(len(chunks), TTS_MAX_PARALLEL)) as pool:
         parts = list(pool.map(render_one, chunks))
     return b"".join(parts)
 
