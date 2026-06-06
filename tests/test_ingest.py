@@ -34,6 +34,13 @@ def test_http_client_sends_browser_accept_headers():
     assert "Safari" in headers.get("user-agent", "")
 
 
+def test_openai_client_has_retry_headroom():
+    """max_retries=5 (SDK default: 2). The bounded TTS pool can still exceed
+    the per-minute rate limit when calls return quickly; 429 retries with
+    backoff are the rate-limit correctness guarantee, so give them headroom."""
+    assert ingest.openai_client.max_retries == 5
+
+
 def test_fetch_article_returns_title_and_body(monkeypatch, fake_http):
     fake_http.responses["https://example.com/x"] = FakeResponse(
         status_code=200, text=HTML_SAMPLE,

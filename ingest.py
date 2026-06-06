@@ -30,7 +30,9 @@ http_client = httpx.Client(
     follow_redirects=True,
 )
 
-openai_client = OpenAI()  # reads OPENAI_API_KEY from env
+# max_retries=5 (SDK default 2): 429 retries are the rate-limit correctness
+# guarantee for long articles (see synthesize), so give them headroom.
+openai_client = OpenAI(max_retries=5)  # reads OPENAI_API_KEY from env
 
 TTS_CHAR_LIMIT = 4000
 TTS_MODEL = "tts-1"
