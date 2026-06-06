@@ -483,24 +483,41 @@ def test_process_fails_when_extraction_is_a_teaser(
     assert "paywalled" in eps[0]["error"]
 
 
+def _huge_html(target_chars: int) -> str:
+    """HTML whose extracted body comfortably exceeds target_chars.
+
+    Extraction trims (readability/trafilatura drop markup and can drop
+    fragments), so overshoot by ~10 paragraphs; tests that need a body
+    *over* a cap must assert on the extracted length, not the HTML length.
+    """
+    sentence = "This sentence is very long and detailed and exists "  # 52 chars
+    paragraph = "<p>" + (sentence * 50) + "</p>"  # 2,600 chars of text
+    n = target_chars // 2600 + 10
+    return (
+        "<!doctype html><html><head><title>Huge</title></head>"
+        "<body><article><h1>Big</h1>"
+        + (paragraph * n)
+        + "</article></body></html>"
+    )
+
+
 def test_process_writes_failure_when_body_exceeds_cap(
     monkeypatch, fake_http, fake_openai, tmp_path,
 ):
-    """Bodies > MAX_BODY_CHARS fail with a clear error, no TTS calls made."""
+    """Bodies > MAX_BODY_CHARS fail with a clear error, no TTS calls made.
+
+    Body size derives from the constant so this keeps testing the boundary
+    when the cap changes."""
     monkeypatch.setattr(ingest, "http_client", fake_http)
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
 
-    # Build HTML with a body that, after Readability extraction, is > 100k chars.
-    huge_paragraph = "<p>" + ("This sentence is very long and detailed and exists " * 50) + "</p>"
-    huge_html = (
-        "<!doctype html><html><head><title>Huge</title></head>"
-        "<body><article><h1>Big</h1>"
-        + (huge_paragraph * 100)
-        + "</article></body></html>"
-    )
     fake_http.responses["https://example.com/huge"] = FakeResponse(
-        status_code=200, text=huge_html,
+        status_code=200, text=_huge_html(ingest.MAX_BODY_CHARS),
     )
+
+    # Precondition: the *extracted* body really is over the cap.
+    _, body = ingest.fetch_article("https://example.com/huge")
+    assert len(body) > ingest.MAX_BODY_CHARS
 
     secret = storage.create_user(tmp_path)
     ingest.process("https://example.com/huge", secret, tmp_path)
@@ -511,6 +528,31 @@ def test_process_writes_failure_when_body_exceeds_cap(
     assert len(eps) == 1
     assert eps[0]["status"] == "failed"
     assert "too long" in eps[0]["error"].lower()
+
+
+def test_process_succeeds_at_encyclical_length(
+    monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """A ~265k-char article (the share that motivated v3.8: over the old
+    100k cap, under the new 500k one) processes to a ready episode."""
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+
+    fake_http.responses["https://example.com/encyclical"] = FakeResponse(
+        status_code=200, text=_huge_html(265_000),
+    )
+    _, body = ingest.fetch_article("https://example.com/encyclical")
+    assert 100_000 < len(body) < ingest.MAX_BODY_CHARS
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/encyclical", secret, tmp_path)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "ready"
+    assert eps[0]["has_audio"]
+    # More chunks than the old 25-chunk worst case actually synthesized.
+    assert len(fake_openai.calls) > 25
 
 
 def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch):

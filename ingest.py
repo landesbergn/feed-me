@@ -36,7 +36,7 @@ TTS_CHAR_LIMIT = 4000
 TTS_MODEL = "tts-1"
 DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
-MAX_BODY_CHARS = 100_000  # ~50 min of TTS audio, ~$1.50 max cost per article
+MAX_BODY_CHARS = 500_000  # ~4h10m of TTS audio, ~$7.50 max cost per article
 MIN_BODY_CHARS = 600  # below this it's a teaser/paywall shell, not an article
 # On a page that declares itself paywalled, anything under this is a teaser
 # (nytimes.com serves ~1,800 chars without subscriber cookies); above it the
