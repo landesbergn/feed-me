@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me — For Agents UI (v3.7)</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.7</div>
+  <h1>For Agents UI</h1>
+  <div class="meta">Feed Me · 2026-06-06 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Iterate on the v3.6 For Agents surfaces. The agent prompt moves from a
+  collapsed fold at the bottom of the feed page to a dedicated, personalized
+  page at <code>/u/&lt;secret&gt;/agents</code>, reached by an always-visible
+  card under the episodes. The landing page advertises the capability with a
+  small CSS robot peeking over the "Share any article" step. The prompt copy
+  gets shorter, and copying becomes click-the-box instead of a separate button.
+  No API changes; <code>/AGENTS.md</code> and the agent endpoints are untouched.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#card">The feed page card</a></li>
+    <li><a href="#page">The agents page</a></li>
+    <li><a href="#robot">The landing page robot</a></li>
+    <li><a href="#copy">Copy changes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  v3.6 buried the agent feature in a collapsed "For agents" fold below
+  Settings, where nobody scrolls, and the landing page says nothing about it.
+  The owner wants the capability prominent on the feed page, advertised on the
+  landing page with personality, and the prompt itself leaner (details like
+  the rate cap belong in <code>AGENTS.md</code>, which the agent reads anyway).
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li><strong>A step-style card on the feed page</strong> (under the episodes
+    section, both page states): 🤖 badge, one line, and a button to the new
+    agents page. Replaces the v3.6 "For agents" fold entirely.</li>
+  <li><strong><code>GET /u/{secret}/agents</code></strong>: a small personalized
+    page holding the click-to-copy prompt and a link to
+    <code>/AGENTS.md</code>. New template <code>templates/agents_page.html</code>.</li>
+  <li><strong>A CSS robot on the landing page</strong> peeking over the
+    "Share any article" step with a speech bubble linking to
+    <code>/AGENTS.md</code>.</li>
+  <li><strong>Copy trims</strong>: no cap sentence in the prompt, no privacy
+    line, no "(Claude Code and friends)".</li>
+</ol>
+
+<h2 id="card">3 · The feed page card</h2>
+<p>
+  In <code>templates/settings.html</code>, directly after the
+  <code>#episodes-section</code> div (so it is always visible in both the
+  setup-leading and episodes-leading states), a card in the page's existing
+  <code>.step</code> style:
+</p>
+<ul>
+  <li>The number-circle slot holds 🤖 instead of a digit.</li>
+  <li>Text: <strong>"Your agent can share here too"</strong>.</li>
+  <li>A <code>.btn-secondary</code> link, label <strong>"For agents →"</strong>,
+    href <code>/u/{{ secret }}/agents</code> (relative path, no base needed).</li>
+</ul>
+<p>
+  The v3.6 <code>&lt;details class="settings"&gt;</code> "For agents" block,
+  its <code>.agent-prompt</code> CSS, and the <code>copyAgentPrompt()</code>
+  script are removed from <code>settings.html</code> (the prompt now lives on
+  the agents page). The <code>base_url</code> context key stays (harmless,
+  and other templates may use it later); the settings route no longer needs
+  to render the prompt.
+</p>
+
+<h2 id="page">4 · The agents page</h2>
+<p>
+  <code>GET /u/{secret}/agents</code>, route <code>agents_page</code> in
+  <code>app.py</code>:
+</p>
+<ul>
+  <li>404 for an unknown feed (match the other <code>/u/{secret}</code> pages).</li>
+  <li>Renders <code>templates/agents_page.html</code> with
+    <code>secret</code> and <code>base_url</code>.</li>
+  <li>Sets the session cookie like the feed page does (it is a human-facing
+    feed page; CLAUDE.md's "set on every feed-page view" convention).</li>
+  <li>Tracks a <code>page_view</code> with <code>path="agents_page"</code>.</li>
+</ul>
+<p>Page content, in the feed page's visual style (same palette, brand header):</p>
+<ul>
+  <li>Brand line, then h1: <strong>"Agents welcome."</strong></li>
+  <li>One sentence: <strong>"Give your agent this prompt and it can add
+    articles to your feed:"</strong></li>
+  <li>The prompt box (whole box is the copy control, see below):
+    <pre><code>I have a Feed Me podcast feed. To send an article to it, read
+{base}/AGENTS.md and follow it. My feed page: {base}/u/&lt;secret&gt;.</code></pre>
+    rendered as one paragraph (no line break), personalized via
+    <code>base_url</code> and <code>secret</code>.</li>
+  <li>A hint line inside the box footer: <strong>"⧉ click to copy"</strong>,
+    which flips to <strong>"copied!"</strong> for about 1.5 seconds after a
+    successful copy, then reverts. Clipboard failure stays silent (matches
+    <code>copyFeedUrl</code>).</li>
+  <li>Below the box: <strong>"The full API, for your agent's eyes:"</strong>
+    linking to <code>{base}/AGENTS.md</code>.</li>
+  <li>A back link: <strong>"← Back to your feed"</strong> to
+    <code>/u/{{ secret }}</code>.</li>
+</ul>
+<div class="callout">
+  <strong>Click-to-copy.</strong> No separate Copy button. The box has
+  <code>cursor: pointer</code>, a click handler that writes the prompt text
+  (trimmed, hint excluded) to the clipboard, and <code>role="button"</code> +
+  <code>tabindex="0"</code> + an Enter/Space key handler so it stays
+  keyboard-accessible without a button element.
+</div>
+
+<h2 id="robot">5 · The landing page robot</h2>
+<p>
+  In <code>templates/landing.html</code>, the "Share any article" step (step 2)
+  gains a decorative pure-CSS robot peeking over its top edge, per the
+  brainstorm mockup (take 4):
+</p>
+<ul>
+  <li><strong>Position:</strong> the robot's head pokes above the card's top
+    edge, horizontally just past where "Share any article" ends; its lower
+    body hides behind the card (robot <code>z-index</code> below the card,
+    which gets a white background and a stacking context). Two small finger
+    nubs sit on the card edge. The head tilts about −5°.</li>
+  <li><strong>Look:</strong> head <code>#8a6f5e</code> (the app's muted brown),
+    rounded top corners; two white eyes with dark pupils; a small white smile;
+    an antenna with a <code>#b04a00</code> bobble.</li>
+  <li><strong>Bubble:</strong> to the robot's right, one line:
+    <strong>"or have your AI agent send things"</strong>. White, 1.5px
+    <code>#E9C9AC</code> border, rounded, with a tail pointing left at the
+    robot's mouth. The bubble is a link to <code>/AGENTS.md</code> (plain ink
+    color, no underline; it is an easter-eggy affordance, not a primary CTA).</li>
+  <li><strong>Spacing:</strong> the gap above step 2 grows (~46px instead of
+    11px) so the robot and bubble have their own air.</li>
+  <li><strong>Accessibility:</strong> the robot drawing is
+    <code>aria-hidden="true"</code>; the bubble link's text is the accessible
+    name. Nothing animates.</li>
+  <li><strong>Small screens:</strong> positions are tuned in px against the
+    page's 480px max-width column; at narrower widths the bubble may wrap to
+    two lines, which is acceptable ("fix it in post" per the owner).</li>
+</ul>
+
+<h2 id="copy">6 · Copy changes</h2>
+<table>
+  <thead><tr><th>Where</th><th>Before (v3.6)</th><th>After (v3.7)</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>The prompt</td>
+      <td>"… My feed page: …. Agents can add up to 5 episodes per day."</td>
+      <td>Cap sentence removed; the cap stays documented in <code>AGENTS.md</code> only (unchanged there).</td>
+    </tr>
+    <tr>
+      <td>Privacy line</td>
+      <td>"Keep this private: that link is your whole account."</td>
+      <td>Removed entirely.</td>
+    </tr>
+    <tr>
+      <td>Explainer</td>
+      <td>"Your AI agent (Claude Code and friends) can add articles…"</td>
+      <td>No "(Claude Code and friends)" anywhere in templates.</td>
+    </tr>
+    <tr>
+      <td>README "Good to know" bullet</td>
+      <td>"…copy the 'For agents' prompt…" + "(Claude Code and friends)"</td>
+      <td>Reworded: "Your AI agent can add articles for you. Tap <em>For agents</em> on your feed page, or point your agent at feed-me.xyz/AGENTS.md."</td>
+    </tr>
+  </tbody>
+</table>
+<p class="small">House rule throughout: no em-dashes in any template or copy.</p>
+
+<h2 id="tests">7 · Testing</h2>
+<ul>
+  <li><code>GET /u/{secret}/agents</code>: 200; body contains the personalized
+    prompt (with <code>https://test.local/u/&lt;secret&gt;</code>), the
+    <code>AGENTS.md</code> link, and the back link; sets the
+    <code>fm_session</code> cookie; unknown secret → 404.</li>
+  <li>Prompt copy: page does NOT contain "5 episodes", "Keep this private",
+    or "Claude Code and friends".</li>
+  <li>Feed page: contains the card ("Your agent can share here too") and the
+    link to <code>/u/{secret}/agents</code>; no longer contains the prompt
+    text or "For agents" fold (update the v3.6 test
+    <code>test_settings_page_shows_for_agents_section</code> accordingly).</li>
+  <li>Landing page: contains "or have your AI agent send things" and an
+    <code>/AGENTS.md</code> link.</li>
+  <li>Analytics: viewing the agents page records a <code>page_view</code>
+    with <code>path="agents_page"</code>.</li>
+  <li><code>grep -rn "—" templates/</code> stays empty.</li>
+</ul>
+
+<h2 id="scope">8 · Out of scope</h2>
+<ul>
+  <li><strong>No API changes.</strong> <code>/AGENTS.md</code>,
+    <code>/llms.txt</code>, and the episode endpoints are untouched.</li>
+  <li><strong>Robot animation</strong> (waving, blinking). Static only.</li>
+  <li><strong>Pixel-perfect responsive tuning</strong> of the robot; positions
+    are tuned for the standard column and accepted as-is elsewhere.</li>
+  <li><strong>The unimplemented GA4 spec</strong> claims v3.7 in its title; it
+    will renumber when it ships. This release takes v3.7 (it ships first).</li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+<ul>
+  <li>From the feed page, one tap on "For agents →" lands on
+    <code>/u/&lt;secret&gt;/agents</code>; one click on the prompt box copies
+    the shortened prompt; the hint flips to "copied!".</li>
+  <li>The prompt contains no cap sentence, no privacy line, no
+    "(Claude Code and friends)"; the cap remains documented in
+    <code>AGENTS.md</code>.</li>
+  <li>The landing page shows the robot peeking over step 2 with the bubble
+    "or have your AI agent send things" linking to <code>/AGENTS.md</code>.</li>
+  <li>The old "For agents" fold is gone from the feed page; the new card shows
+    in both page states.</li>
+  <li>All existing tests pass with the v3.6 page-section test updated;
+    <code>CHANGELOG.md</code> gains a v3.7 entry; no em-dashes in templates.</li>
+</ul>
+
+<hr>
+<p class="small">
+  Brainstormed 2026-06-06 with the visual companion: feed-page placement
+  options (chose the step-card direction, then evolved to card + standalone
+  page), landing-page options (rejected; owner proposed the peeking robot),
+  and four robot iterations (settled on take 4: robot past the end of the
+  step text, one-line bubble to its right pointing at its mouth).
+</p>
+
+</div>
+</body>
+</html>
