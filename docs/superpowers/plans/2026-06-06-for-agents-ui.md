@@ -1,4 +1,4 @@
-# For Agents UI (v3.7) Implementation Plan
+# For Agents UI (v3.9) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -24,14 +24,14 @@
 | `templates/settings.html` | Modify | Remove v3.6 fold + its CSS/JS; include the card in both states |
 | `templates/landing.html` | Modify | Robot + bubble over step 2 |
 | `tests/test_agent_api.py` | Modify | New page tests; rewrite the v3.6 settings-section test; landing test |
-| `README.md`, `CHANGELOG.md` | Modify | Reworded bullet + route row; v3.7 entry |
+| `README.md`, `CHANGELOG.md` | Modify | Reworded bullet + route row; v3.9 entry |
 
 Conventions that apply throughout:
 
 - `client` fixture: `app.DATA_DIR` → tmp_path, `app.APP_BASE_URL` → `https://test.local`.
 - Tests never hit the network. `make_feed`, `wire_fake_pipeline`, `ARTICLE_HTML`, and `FakeResponse` already exist at the top of `tests/test_agent_api.py`.
 - NO EM-DASHES in templates or copy (`→` and `←` arrows are fine; they are not em-dashes). After template changes run `grep -rn "—" templates/` and expect empty.
-- Current suite: 187 passed. Expected after this plan: 193.
+- Current suite: 198 passed (branch rebased onto the shipped v3.8). Expected after this plan: 204.
 
 ---
 
@@ -203,7 +203,7 @@ Run: `uv run pytest tests/test_agent_api.py -v`
 Expected: 26 passed (22 prior + 4 new).
 
 Then: `uv run pytest -q`
-Expected: 191 passed.
+Expected: 202 passed.
 
 - [ ] **Step 6: Commit**
 
@@ -311,7 +311,7 @@ Run: `grep -rn "—" templates/`
 Expected: no output (exit 1).
 
 Then: `uv run pytest -q`
-Expected: 192 passed.
+Expected: 203 passed.
 
 - [ ] **Step 6: Commit**
 
@@ -423,7 +423,7 @@ Run: `grep -rn "—" templates/`
 Expected: no output.
 
 Run: `uv run pytest -q`
-Expected: 193 passed.
+Expected: 204 passed.
 
 - [ ] **Step 6: Eyeball it** (the one visual change worth a human glance before committing): start the app (`FEED_ME_DATA_DIR=$(mktemp -d) OPENAI_API_KEY=sk-test-dummy APP_BASE_URL=http://localhost:8000 uv run uvicorn app:app --port 8000`), open `http://localhost:8000/`, confirm the robot peeks over step 2 with the bubble to its right, then stop the server. If positions are off by a few px, ship anyway (owner: "fix it in post").
 
@@ -457,10 +457,10 @@ b. ADD a route-table row after the `GET /u/{secret}/episodes/{slug}` row:
 | `GET /u/{secret}/agents` | Personalized "give this to your agent" prompt page |
 ```
 
-- [ ] **Step 2: CHANGELOG** (new entry at the top, above v3.6):
+- [ ] **Step 2: CHANGELOG** (new entry at the top, above v3.8):
 
 ```markdown
-## v3.7 — 2026-06-06
+## v3.9 — 2026-06-06
 
 For Agents UI: the agent prompt gets a proper home.
 
@@ -470,12 +470,12 @@ For Agents UI: the agent prompt gets a proper home.
 - Prompt copy trimmed: the daily-cap detail lives only in `AGENTS.md`; the privacy line and "(Claude Code and friends)" are removed.
 ```
 
-(The CHANGELOG header em-dash is the existing convention; keep it. Note: the unimplemented GA4 spec doc claims v3.7 in its title; this release takes v3.7 because it ships first. Do not edit the GA4 spec.)
+(The CHANGELOG header em-dash is the existing convention; keep it. Note: this release ships as v3.9 because v3.8 shipped on 2026-06-06 while it was in design; the changelog stays chronological. The unimplemented GA4 spec doc still claims v3.7 in its title; do not edit it.)
 
 - [ ] **Step 3: Full verification**
 
 Run: `uv run pytest -q`
-Expected: 193 passed.
+Expected: 204 passed.
 
 Run: `grep -rn "—" templates/`
 Expected: no output.
@@ -484,11 +484,11 @@ Expected: no output.
 
 ```bash
 git add README.md CHANGELOG.md
-git commit -m "docs: README and changelog for v3.7"
+git commit -m "docs: README and changelog for v3.9"
 ```
 
 ---
 
 ## After the plan
 
-Release steps (NOT part of this plan; follow superpowers:finishing-a-development-branch): merge `for-agents-ui` to `main`, tag `v3.7`, deploy with `~/.fly/bin/fly deploy --app feed-me-noah-willow-grove-8052`, verify `https://feed-me.xyz/` shows the robot and `/u/<secret>/agents` works in prod.
+Release steps (NOT part of this plan; follow superpowers:finishing-a-development-branch): merge `for-agents-ui` to `main`, tag `v3.9`, deploy with `~/.fly/bin/fly deploy --app feed-me-noah-willow-grove-8052`, verify `https://feed-me.xyz/` shows the robot and `/u/<secret>/agents` works in prod.
