@@ -247,42 +247,47 @@ def test_process_writes_friendly_error_on_blocked_fetch(
     assert "developer.mozilla" not in eps[0]["error"]
 
 
-def test_synthesize_returns_audio_bytes(monkeypatch, fake_openai):
+def test_synthesize_writes_audio_file(monkeypatch, fake_openai, tmp_path):
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    out = tmp_path / "out.mp3"
 
-    audio = ingest.synthesize("hello world", "shimmer")
+    ingest.synthesize("hello world", "shimmer", out)
 
-    assert audio == b"FAKEMP3"
+    assert out.read_bytes() == b"FAKEMP3"
     assert fake_openai.calls[0]["voice"] == "shimmer"
     assert fake_openai.calls[0]["input"] == "hello world"
 
 
-def test_synthesize_long_text_calls_tts_for_each_chunk(monkeypatch, fake_openai):
+def test_synthesize_long_text_calls_tts_for_each_chunk(
+    monkeypatch, fake_openai, tmp_path,
+):
     """Long input is chunked; synthesize calls TTS once per chunk and concatenates."""
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
     one_sentence = "This is a sentence that takes up some text. "
     long_body = one_sentence * 200  # ~9000 chars
+    out = tmp_path / "out.mp3"
 
-    audio = ingest.synthesize(long_body, "shimmer")
+    ingest.synthesize(long_body, "shimmer", out)
 
     # synthesize called the fake TTS multiple times
     assert len(fake_openai.calls) >= 2
     # Each call got a chunk under the limit
     for call in fake_openai.calls:
         assert len(call["input"]) <= ingest.TTS_CHAR_LIMIT
-    # Returned bytes are the concatenation of all the fake response bodies
-    assert audio == fake_openai.audio_bytes * len(fake_openai.calls)
+    # Written bytes are the concatenation of all the fake response bodies
+    assert out.read_bytes() == fake_openai.audio_bytes * len(fake_openai.calls)
 
 
-def test_synthesize_short_text_calls_tts_once(monkeypatch, fake_openai):
+def test_synthesize_short_text_calls_tts_once(monkeypatch, fake_openai, tmp_path):
     """Body shorter than TTS_CHAR_LIMIT → single call, no chunking visible."""
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    out = tmp_path / "out.mp3"
 
-    audio = ingest.synthesize("Short body.", "shimmer")
+    ingest.synthesize("Short body.", "shimmer", out)
 
     assert len(fake_openai.calls) == 1
     assert fake_openai.calls[0]["input"] == "Short body."
-    assert audio == fake_openai.audio_bytes
+    assert out.read_bytes() == fake_openai.audio_bytes
 
 
 def test_process_writes_episode_on_success(
@@ -562,7 +567,7 @@ def test_process_succeeds_at_encyclical_length(
     assert len(fake_openai.calls) > 25
 
 
-def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch):
+def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch, tmp_path):
     """When TTS calls complete out of order, output bytes are still in input order.
 
     Monkey-patches chunk_text to return a known list (bypassing chunking heuristics)
@@ -594,15 +599,16 @@ def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch):
             return type("R", (), {"content": input.encode("utf-8")})()
 
     monkeypatch.setattr(ingest, "openai_client", OrderingFake())
+    out = tmp_path / "out.mp3"
 
-    audio = ingest.synthesize("any body", "shimmer")
+    ingest.synthesize("any body", "shimmer", out)
 
     # Bytes must be in INPUT order (alpha, bravo, charlie), not completion order
     # (charlie finished first, alpha finished last).
-    assert audio == b"alphabravocharlie"
+    assert out.read_bytes() == b"alphabravocharlie"
 
 
-def test_synthesize_bounds_parallelism(monkeypatch):
+def test_synthesize_bounds_parallelism(monkeypatch, tmp_path):
     """With more chunks than TTS_MAX_PARALLEL, peak in-flight TTS calls stay
     at or under the bound, and output bytes stay in input order."""
     import threading
@@ -633,11 +639,12 @@ def test_synthesize_bounds_parallelism(monkeypatch):
 
     fake = ConcurrencyFake()
     monkeypatch.setattr(ingest, "openai_client", fake)
+    out = tmp_path / "out.mp3"
 
-    audio = ingest.synthesize("any body", "shimmer")
+    ingest.synthesize("any body", "shimmer", out)
 
     assert fake.peak <= ingest.TTS_MAX_PARALLEL
-    assert audio == b"".join(c.encode("utf-8") for c in known_chunks)
+    assert out.read_bytes() == b"".join(c.encode("utf-8") for c in known_chunks)
 
 
 def test_process_writes_total_chunks_before_synthesize(
@@ -657,14 +664,14 @@ def test_process_writes_total_chunks_before_synthesize(
     # At that moment the pending record MUST have total_chunks set.
     observed_total_chunks = []
     real_synthesize = ingest.synthesize
-    def observing_synthesize(text, voice):
+    def observing_synthesize(text, voice, out_path):
         eps = storage.list_episodes(tmp_path, secret)
         # Find the pending row for our URL and capture its total_chunks
         for e in eps:
             if e.get("status") == "pending" and e.get("url") == "https://example.com/t":
                 observed_total_chunks.append(e.get("total_chunks"))
                 break
-        return real_synthesize(text, voice)
+        return real_synthesize(text, voice, out_path)
     monkeypatch.setattr(ingest, "synthesize", observing_synthesize)
 
     ingest.process("https://example.com/t", secret, tmp_path)
@@ -673,3 +680,36 @@ def test_process_writes_total_chunks_before_synthesize(
     assert len(observed_total_chunks) == 1
     assert observed_total_chunks[0] is not None
     assert observed_total_chunks[0] >= 1
+
+
+def test_process_failed_synthesis_leaves_no_audio_files(
+    monkeypatch, fake_http, tmp_path,
+):
+    """A TTS failure mid-stream leaves no .mp3 and no .mp3.tmp; the episode
+    is recorded as failed."""
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+    fake_http.responses["https://example.com/boom"] = FakeResponse(
+        status_code=200, text=HTML_SAMPLE,
+    )
+
+    class ExplodingFake:
+        @property
+        def audio(self):
+            return self
+        @property
+        def speech(self):
+            return self
+        def create(self, **kwargs):
+            raise RuntimeError("tts exploded")
+
+    monkeypatch.setattr(ingest, "openai_client", ExplodingFake())
+
+    secret = storage.create_user(tmp_path)
+    ingest.process("https://example.com/boom", secret, tmp_path)
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "failed"
+    user_dir = tmp_path / secret
+    assert list(user_dir.glob("*.mp3")) == []
+    assert list(user_dir.glob("*.tmp")) == []

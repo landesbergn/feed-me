@@ -36,7 +36,7 @@ openai_client = OpenAI(max_retries=5)  # reads OPENAI_API_KEY from env
 
 TTS_CHAR_LIMIT = 4000
 TTS_MODEL = "tts-1"
-TTS_MAX_PARALLEL = 12  # synthesize() worker bound; see comment there
+TTS_MAX_PARALLEL = 12  # synthesize() batch size and worker bound; see comment there
 DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
 MAX_BODY_CHARS = 500_000  # ~4h10m of TTS audio, ~$7.50 max cost per article
@@ -204,18 +204,25 @@ def chunk_text(body: str, max_chars: int) -> list[str]:
     return chunks
 
 
-def synthesize(text: str, voice: str) -> bytes:
-    """Generate MP3 audio for the full text.
+def synthesize(text: str, voice: str, out_path: Path) -> None:
+    """Stream MP3 audio for the full text to out_path.
 
-    Chunks at sentence boundaries (via chunk_text) and issues ALL TTS calls in
-    parallel via ThreadPoolExecutor. Returns concatenated MP3 bytes — order is
-    preserved by pool.map() regardless of completion order.
+    Renders chunks (chunk_text, sentence boundaries) in sequential batches of
+    TTS_MAX_PARALLEL, appending each batch to out_path as it completes. The
+    batches are the memory bound: one big pool.map would buffer every
+    completed chunk's MP3 in its futures (the first v3.8 deploy OOM-killed
+    the 1GB VM that way at 69 chunks); a batch holds at most ~12 x ~4MB.
+    pool.map preserves order within a batch and batches run sequentially, so
+    the file is in input order.
 
-    Naive byte concat works because tts-1 MP3 frames are self-contained.
+    Rate limit: the batch size bounds the burst, not requests/min (W workers
+    at T seconds/call sustain W*60/T req/min, and per-call latency isn't
+    promised); the correctness guarantee is the client's 429 retry with
+    backoff (max_retries=5, honors Retry-After).
+
+    Naive byte append works because tts-1 MP3 frames are self-contained.
     """
     chunks = chunk_text(text, TTS_CHAR_LIMIT)
-    if not chunks:
-        return b""
 
     def render_one(chunk: str) -> bytes:
         response = openai_client.audio.speech.create(
@@ -225,16 +232,12 @@ def synthesize(text: str, voice: str) -> bytes:
         )
         return response.content
 
-    # Bounded pool: a 500k-char article is up to 125 chunks, and firing them
-    # all at once blows OpenAI's 50 req/min tier-1 limit in one burst. 12
-    # workers keeps the typical article (<= 12 chunks, ~48k chars) fully
-    # parallel. The bound does NOT guarantee staying under the rate limit
-    # (W workers at T seconds/call sustain W*60/T req/min, and per-call
-    # latency isn't promised); the correctness guarantee is the client's
-    # 429 retry with backoff (max_retries=5, honors Retry-After).
-    with ThreadPoolExecutor(max_workers=min(len(chunks), TTS_MAX_PARALLEL)) as pool:
-        parts = list(pool.map(render_one, chunks))
-    return b"".join(parts)
+    with out_path.open("wb") as f:
+        with ThreadPoolExecutor(max_workers=TTS_MAX_PARALLEL) as pool:
+            for i in range(0, len(chunks), TTS_MAX_PARALLEL):
+                batch = chunks[i:i + TTS_MAX_PARALLEL]
+                for part in pool.map(render_one, batch):
+                    f.write(part)
 
 
 def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> None:
@@ -260,13 +263,20 @@ def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> N
             data_dir, secret, slug, total_chunks=len(chunks),
         )
         settings = storage.get_settings(data_dir, secret)
-        audio = synthesize(body, settings["voice"])
-        description = _excerpt(body, DESCRIPTION_EXCERPT_CHARS)
-        storage.write_episode(
-            data_dir, secret, slug=slug,
-            title=title, source_url=url, audio=audio,
-            description=description,
-        )
+        tmp_audio = data_dir / secret / f"{slug}.mp3.tmp"
+        try:
+            synthesize(body, settings["voice"], tmp_audio)
+            description = _excerpt(body, DESCRIPTION_EXCERPT_CHARS)
+            storage.write_episode(
+                data_dir, secret, slug=slug,
+                title=title, source_url=url, audio_path=tmp_audio,
+                description=description,
+            )
+        finally:
+            # On success the rename already consumed the tmp; on failure this
+            # removes the partial file (the outer except records the episode
+            # as failed).
+            tmp_audio.unlink(missing_ok=True)
     except Exception as e:
         log.exception("ingest failed user=%s url=%s", secret[:6], url)
         storage.write_failed_episode(
