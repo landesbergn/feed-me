@@ -408,3 +408,14 @@ def test_agents_page_records_page_view(client, tmp_path):
              if e["event"] == "page_view" and e["path"] == "agents_page"]
     assert len(views) == 1
     assert views[0]["feed_hash"] == analytics.feed_hash(secret)
+
+
+def test_agents_page_masks_ga_location(client):
+    """Secret-bearing pages include GA only with the location mask (CLAUDE.md
+    gotcha: the raw secret must never reach Google)."""
+    secret = make_feed(client)
+
+    resp = client.get(f"/u/{secret}/agents")
+
+    assert "googletagmanager.com" in resp.text            # GA partial included
+    assert '"https://test.local/u/_"' in resp.text        # masked page_location
