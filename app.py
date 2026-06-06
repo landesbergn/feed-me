@@ -326,6 +326,20 @@ def episode_status_api(secret: str, slug: str):
     return _agent_error(404, "not_found", "No such episode.")
 
 
+@app.get("/u/{secret}/agents", response_class=HTMLResponse)
+def agents_page(request: Request, secret: str):
+    """Human-facing page holding the personalized agent prompt."""
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    _track("page_view", secret=secret, path="agents_page")
+    response = templates.TemplateResponse(request, "agents_page.html", {
+        "secret": secret,
+        "base_url": APP_BASE_URL,
+    })
+    set_session_cookie(response, secret)
+    return response
+
+
 @app.get("/cover.jpg")
 def cover_route():
     return FileResponse(

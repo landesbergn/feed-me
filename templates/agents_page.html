@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feed Me · for agents</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #FFF8F2; --ink: #2a1f18; --accent: #b04a00;
+      --muted: #8a6f5e; --faint: #b89a84; --card: #ffffff;
+      --hair: #EFE2D6;
+      --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      --sans: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--sans);
+      max-width: 480px; margin: 44px auto; padding: 0 22px 64px;
+      line-height: 1.5; color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-family: var(--round); font-size: 12px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--accent);
+      margin-bottom: 18px;
+    }
+    h1 {
+      font-family: var(--round); font-size: 28px; font-weight: 800;
+      letter-spacing: -.01em; line-height: 1.12; margin: 0 0 14px;
+    }
+    p { font-size: 15px; margin: 0 0 16px; }
+    .prompt-box {
+      background: var(--card); border: 1.5px solid #E9C9AC; border-radius: 16px;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      box-shadow: 0 1px 0 #F3E6D9, 0 6px 16px rgba(176, 74, 0, .05);
+    }
+    .prompt-box .text {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 13px; line-height: 1.55; overflow-wrap: anywhere;
+    }
+    .prompt-box .hint { font-size: 12px; color: var(--faint); margin-top: 10px; font-weight: 600; }
+    .api-link { font-size: 14px; margin-top: 22px; }
+    a { color: var(--accent); font-weight: 700; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back { display: block; margin-top: 36px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="brand">🎧 Feed Me</div>
+  <h1>Agents welcome.</h1>
+  <p>Give your agent this prompt and it can add articles to your feed:</p>
+
+  <div class="prompt-box" id="prompt-box" role="button" tabindex="0"
+       onclick="copyPrompt()" onkeydown="promptKey(event)">
+    <div class="text" id="prompt-text">I have a Feed Me podcast feed. To send an article to it, read {{ base_url }}/AGENTS.md and follow it. My feed page: {{ base_url }}/u/{{ secret }}.</div>
+    <div class="hint" id="copy-hint">⧉ click to copy</div>
+  </div>
+
+  <p class="api-link">The full API, for your agent's eyes: <a href="{{ base_url }}/AGENTS.md">{{ base_url }}/AGENTS.md</a></p>
+
+  <a class="back" href="/u/{{ secret }}">← Back to your feed</a>
+
+  <script>
+    function copyPrompt() {
+      var text = document.getElementById("prompt-text").textContent.trim();
+      try {
+        navigator.clipboard.writeText(text);
+        var hint = document.getElementById("copy-hint");
+        hint.textContent = "copied!";
+        setTimeout(function () { hint.textContent = "⧉ click to copy"; }, 1500);
+      } catch (e) {}
+    }
+    function promptKey(e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copyPrompt(); }
+    }
+  </script>
+</body>
+</html>

@@ -366,3 +366,45 @@ def test_settings_page_shows_for_agents_section(client):
     # The prompt is personalized with this feed's URL and the docs URL.
     assert f"My feed page: https://test.local/u/{secret}." in resp.text
     assert "https://test.local/AGENTS.md" in resp.text
+
+
+def test_agents_page_renders_personalized_prompt(client):
+    secret = make_feed(client)
+
+    resp = client.get(f"/u/{secret}/agents")
+
+    assert resp.status_code == 200
+    assert "Agents welcome." in resp.text
+    assert "I have a Feed Me podcast feed" in resp.text
+    assert f"My feed page: https://test.local/u/{secret}." in resp.text
+    assert "https://test.local/AGENTS.md" in resp.text
+    assert "click to copy" in resp.text
+    assert f"/u/{secret}" in resp.text                      # back link
+    assert "fm_session" in resp.headers.get("set-cookie", "")
+
+
+def test_agents_page_unknown_feed_404(client):
+    resp = client.get("/u/doesnotexist/agents")
+    assert resp.status_code == 404
+
+
+def test_agents_page_prompt_omits_removed_copy(client):
+    secret = make_feed(client)
+
+    resp = client.get(f"/u/{secret}/agents")
+
+    assert "5 episodes" not in resp.text          # cap detail lives in AGENTS.md only
+    assert "Keep this private" not in resp.text
+    assert "Claude Code and friends" not in resp.text
+
+
+def test_agents_page_records_page_view(client, tmp_path):
+    secret = make_feed(client)
+
+    client.get(f"/u/{secret}/agents")
+
+    db = tmp_path / "_analytics" / "analytics.db"
+    views = [e for e in analytics.all_events(db)
+             if e["event"] == "page_view" and e["path"] == "agents_page"]
+    assert len(views) == 1
+    assert views[0]["feed_hash"] == analytics.feed_hash(secret)
