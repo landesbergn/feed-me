@@ -83,7 +83,7 @@
   <ol>
     <li><a href="#what">What ships</a></li>
     <li><a href="#pacing">Rate limit reasoning</a></li>
-    <li><a href="#memory">Memory: known risk, accepted</a></li>
+    <li><a href="#memory">Memory: streamed synthesis</a></li>
     <li><a href="#testing">Testing</a></li>
     <li><a href="#verify">Production verification</a></li>
     <li><a href="#docs">Documentation updates</a></li>
@@ -110,6 +110,12 @@
     <td>OpenAI client</td>
     <td><code>OpenAI()</code> (SDK default: 2 retries)</td>
     <td><code>OpenAI(max_retries=5)</code></td>
+  </tr>
+  <tr>
+    <td><code>synthesize()</code> output</td>
+    <td>returns the full MP3 as bytes; caller writes the file</td>
+    <td>streams batches to <code>&lt;slug&gt;.mp3.tmp</code>;
+        <code>write_episode</code> atomic-renames it into place (see §3)</td>
   </tr>
 </table>
 <ul>
@@ -143,23 +149,41 @@
   article unthrottled while making sustained overrun mild instead of 3x.
 </p>
 
-<h2 id="memory">3. Memory: known risk, accepted</h2>
+<h2 id="memory">3. Memory: streamed synthesis (required, learned the hard way)</h2>
 <p>
-  <code>synthesize()</code> holds every chunk's MP3 bytes in a list, then
-  <code>b"".join(parts)</code> allocates the full result alongside them: peak is roughly
-  2x the final MP3. A 500k-char episode is on the order of 120-250MB of MP3, so a
-  worst-case ingest peaks at roughly 250-500MB transiently. The Fly VM has 1GB.
+  The first draft of this spec called memory a "known risk, accepted": the old
+  <code>synthesize()</code> held every chunk's MP3 in a list, then
+  <code>b"".join(parts)</code> allocated a second full copy. The first production run
+  falsified "accepted" immediately: the 265k-char encyclical (69 chunks) OOM-killed the
+  1GB VM (<code>anon-rss: 866MB</code>), orphaning the episode as forever-pending. The
+  arithmetic: a 4k-char chunk is ~4-5 minutes of speech, ~3-5MB of MP3, so 69 chunks is
+  ~300MB held by the <code>pool.map</code> futures (all tasks are submitted up front;
+  results are retained until consumed) plus ~300MB more for the join, plus lxml /
+  readability / trafilatura trees from the 265k-char parse, plus the uvicorn baseline.
+  At the 500k cap (125 chunks) the audio buffers alone are ~1.1GB: <strong>no VM size
+  makes the accumulate-then-join design serve the stated range</strong>.
 </p>
 <p>
-  Nothing caps concurrent ingests: <code>spawn_ingest</code> starts a thread per share,
-  the share path has no cap at all, and the agent cap (5 per rolling 24h) does not stop
-  two or three arriving in the same minute. Two simultaneous max-length ingests could
-  approach the 1GB ceiling and OOM the machine.
+  So <code>synthesize(text, voice, out_path)</code> now streams: it renders chunks in
+  sequential batches of <code>TTS_MAX_PARALLEL</code>, appending each batch to
+  <code>out_path</code> as it completes and releasing the bytes. Batch order preserves
+  chunk order, and appending is byte-identical to the old join (tts-1 MP3 frames are
+  self-contained). Peak audio memory is one batch, ~12 x 4MB = ~50MB, regardless of
+  article length. Lazy iteration of one big <code>pool.map</code> would <em>not</em>
+  achieve this (completed futures buffer their results); the sequential batches are the
+  load-bearing part.
 </p>
 <p>
-  For a single-user personal app this is judged acceptable and is documented here rather
-  than coded around. If it ever OOMs in practice, the fix is streaming chunk bytes to
-  disk instead of accumulating in RAM (see §7).
+  <code>process()</code> synthesizes to <code>&lt;slug&gt;.mp3.tmp</code> in the user
+  dir (same filesystem, so the rename is atomic) and
+  <code>storage.write_episode(audio_path=...)</code> renames it into place. A crash
+  mid-synthesis leaves only a <code>.tmp</code> (cleaned up best-effort, invisible to
+  <code>list_episodes</code> and the feed), never a ready episode with partial audio.
+</p>
+<p>
+  Still uncapped, still accepted: concurrent ingests (a thread per share). With
+  streaming, N simultaneous max-length ingests cost ~N x 50MB, which the 1GB VM absorbs
+  for any plausible N on a single-user app.
 </p>
 
 <h2 id="testing">4. Testing</h2>
@@ -176,9 +200,20 @@
   <li><strong>Peak concurrency is bounded.</strong> Monkeypatch <code>chunk_text</code>
       to return 20+ chunks; a fake client counts in-flight calls under a lock (the
       <code>OrderingFake</code> pattern already in the file, plus small sleeps). Assert
-      peak in-flight never exceeds <code>TTS_MAX_PARALLEL</code> and output bytes stay in
-      input order. Do not assert on the <code>ThreadPoolExecutor</code> constructor args;
-      that is an implementation detail and is wrong for small articles anyway.</li>
+      peak in-flight never exceeds <code>TTS_MAX_PARALLEL</code> and the written file's
+      bytes stay in input order. Do not assert on the <code>ThreadPoolExecutor</code>
+      constructor args; that is an implementation detail and is wrong for small articles
+      anyway.</li>
+  <li><strong>Streaming writes incrementally and fails clean.</strong> The synthesize
+      tests assert against the file at <code>out_path</code> (the function no longer
+      returns bytes). A fake whose <code>create</code> raises partway through must leave
+      no final <code>.mp3</code> and no leftover <code>.mp3.tmp</code> after
+      <code>process()</code>, and the episode must be recorded as failed. A
+      memory-bound assertion is not testable with tiny fake bytes; the batch structure
+      is the guarantee (see §3) and prod verification watches RSS directly (§5).</li>
+  <li><strong><code>write_episode</code> accepts exactly one audio source.</strong>
+      <code>audio=</code> bytes (existing behavior) or <code>audio_path=</code> (renames
+      the temp file into place); passing both or neither raises <code>ValueError</code>.</li>
   <li><strong>Retry headroom is configured.</strong>
       <code>ingest.openai_client.max_retries == 5</code>, so a refactor cannot silently
       drop it back to the default.</li>
@@ -187,10 +222,12 @@
 <h2 id="verify">5. Production verification</h2>
 <p>
   After deploy, re-share the encyclical through the agent API and poll its status URL.
-  This is the empirical test of §2: watch the logs for 429s and check the finished
-  episode's audio length is plausible (~2h12m for 265k chars) rather than truncated.
-  If 429s show up in bulk, drop <code>TTS_MAX_PARALLEL</code>; the constants exist to be
-  tuned.
+  This is the empirical test of §2 and §3: watch the logs for 429s and OOM kills, watch
+  process RSS during the run (the first attempt died at <code>anon-rss: 866MB</code>;
+  the streamed version should stay flat), and check the finished episode's audio length
+  is plausible (~2h12m for 265k chars) rather than truncated. If 429s show up in bulk,
+  drop <code>TTS_MAX_PARALLEL</code>; the constants exist to be tuned. Note the
+  encyclical exercises 69 chunks, not the 125-chunk ceiling; report accordingly.
 </p>
 
 <h2 id="docs">6. Documentation updates</h2>
@@ -204,7 +241,6 @@
 <ul>
   <li>Multi-part splitting (Part 1 / Part 2 episodes for arbitrarily long texts):
       considered for this release, rejected in favor of the simpler cap raise.</li>
-  <li>Streaming chunk audio to disk during synthesis (removes the 2x memory peak).</li>
   <li>A cap on concurrent ingests per machine.</li>
   <li>Token-bucket request pacing (the bounded pool plus retries makes it unnecessary).</li>
 </ul>
