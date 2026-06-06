@@ -7,7 +7,7 @@ Article cap raised 100k → 500k chars (~4h10m audio, ~$7.50 max cost):
 - `MAX_BODY_CHARS` 100_000 → 500_000. Triggered by a 265k-char encyclical share failing with "Article too long". One article stays one episode (multi-part splitting considered and rejected).
 - `synthesize()` bounds its pool at `TTS_MAX_PARALLEL = 12` workers (was unbounded; the old justification "worst-case 25 chunks stays under 50 req/min" died with the old cap, since 500k chars is up to 125 chunks). Articles of 12 chunks or fewer (~48k chars, the typical case) are unaffected.
 - The worker bound can't bound requests/min (that depends on per-call latency), so the client is constructed with `max_retries=5`: the SDK's 429 backoff honoring Retry-After is the actual rate-limit guarantee.
-- Known accepted risk: peak memory during synthesis is ~2x the final MP3 (250-500MB transient worst case on the 1GB VM) and concurrent ingests are uncapped. Documented in the spec, not coded around.
+- The first production run (265k chars, 69 chunks) OOM-killed the 1GB VM (`anon-rss: 866MB`): `pool.map` futures held ~300MB of MP3 and `b"".join` doubled it; at the 500k cap the buffers alone would be ~1.1GB. `synthesize()` now streams to disk: sequential batches of `TTS_MAX_PARALLEL` chunks append to `<slug>.mp3.tmp` and `write_episode(audio_path=...)` atomic-renames it into place. Peak audio memory is one batch (~50MB) at any article length; a mid-stream crash leaves a cleaned-up `.tmp`, never a ready episode with partial audio. Concurrent ingests remain uncapped (~50MB each now).
 - Spec: `docs/superpowers/specs/2026-06-06-article-cap-500k.html`
 
 ## v3.7 — 2026-06-05
