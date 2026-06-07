@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.12 — 2026-06-07
+
+Landing page robot: drop the speech bubble 18px so its tail meets the robot's face instead of floating above its head.
+
 ## v3.11 — 2026-06-07
 
 The "For your agent" tab now shows the agent prompt inline (click-to-copy) plus the `AGENTS.md` link, instead of linking to a separate page. The standalone `/u/<secret>/agents` page is removed.
