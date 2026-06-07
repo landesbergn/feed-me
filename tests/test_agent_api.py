@@ -511,3 +511,23 @@ def test_list_episodes_caps_at_twenty(client, tmp_path):
 
     body = client.get(f"/u/{secret}/episodes").json()
     assert len(body["episodes"]) == 20
+
+
+def test_agents_md_tells_agent_to_persist_feed(client):
+    text = client.get("/AGENTS.md").text
+    assert "Remember this feed" in text
+    assert "durable memory" in text
+
+
+def test_agents_md_forbids_guessing_the_feed(client):
+    text = client.get("/AGENTS.md").text
+    assert "ask the user" in text
+    assert "Never guess" in text
+
+
+def test_agents_md_documents_list_endpoint(client):
+    text = client.get("/AGENTS.md").text
+    assert "List the feed" in text
+    # The list endpoint line, base substituted, terminated by newline so it
+    # does not match the POST line or the per-slug poll line.
+    assert "GET https://test.local/u/<secret>/episodes\n" in text

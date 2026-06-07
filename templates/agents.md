@@ -5,6 +5,31 @@ A user shares an article; a few minutes later it is in their podcast app,
 read aloud. This page is for AI agents and scripts adding articles on a
 user's behalf. Base URL: {base}
 
+## TL;DR
+
+You have a feed URL of the form {base}/u/<secret>. To narrate an article:
+
+1. POST the article URL to {base}/u/<secret>/episodes.
+2. Poll the returned status_url every few seconds until status is "ready".
+3. Tell the user it is in their feed. Done.
+
+    curl -s -X POST {base}/u/<secret>/episodes \
+      -H 'Content-Type: application/json' \
+      -d '{"url": "https://example.com/some-article"}'
+
+## Step 0 · Remember this feed
+
+The feed URL is the only credential and the only thing you need to do this
+again. The first time a user gives it to you, save the feed URL to your
+durable memory or project config so future requests need no URL and no
+questions. For example, a Claude Code agent saves it to CLAUDE.md or its
+memory directory; other agents save it wherever they keep per-user config.
+The prompt the user pasted already contains the URL, so capture it once.
+
+If you do not have the feed URL, ask the user for it. Never guess it, scan
+history or past transcripts, or probe candidate feeds. A guessed feed is
+the wrong feed.
+
 ## Auth: the feed URL is the credential
 
 There is no API key and no signup. The user gives you their feed page URL:
@@ -14,6 +39,7 @@ There is no API key and no signup. The user gives you their feed page URL:
 The secret in that URL is their entire account. Treat it like a password:
 
 - Never log it, post it publicly, or echo it into shared context.
+- If you do not have it, ask the user. Never guess or rediscover it.
 - If you believe it leaked, tell the user to use "Rotate URL" on their
   feed page (the old URL stops working).
 
@@ -63,6 +89,32 @@ error, article too long). Narration usually takes one to a few minutes;
 poll no faster than every few seconds. When an episode fails, report the
 error to the user and do not retry the same URL.
 
+## List the feed
+
+    GET {base}/u/<secret>/episodes
+
+    {
+      "feed_page": "{base}/u/<secret>",
+      "feed_url": "{base}/u/<secret>/feed.xml",
+      "voice": "shimmer",
+      "remaining": 3,
+      "episodes": [
+        {
+          "slug": "k3kQ9rTzVx0",
+          "title": "The Article Title",
+          "status": "ready",
+          "ts": 1781234567,
+          "audio_url": "{base}/u/<secret>/audio/k3kQ9rTzVx0.mp3"
+        }
+      ]
+    }
+
+The 20 most recent episodes, newest first, plus the feed's voice and your
+"remaining" agent quota. "audio_url" appears only on "ready" episodes;
+"error" appears only on "failed" ones. Use this to confirm you have the
+right feed (a 404 means the URL is wrong or was rotated, so ask the user)
+and to check your remaining quota before sharing.
+
 ## Read the feed
 
     GET {base}/u/<secret>/feed.xml
@@ -90,6 +142,9 @@ user instead.
 
 ## Etiquette
 
+- Save the feed URL the first time you get it; do not ask again next time.
+- If you do not have the feed URL, ask the user. Never guess, scan history,
+  or probe feeds.
 - Share only what the user asked you to share.
 - Do not retry permanent errors (400, 404).
 - On 429, stop and tell the user.
@@ -108,6 +163,7 @@ user instead.
     import httpx
 
     feed = "{base}/u/<secret>"      # the URL the user gave you
+    # Save `feed` to your durable memory so you need not ask again next time.
 
     created = httpx.post(
         feed + "/episodes",
