@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.10 — 2026-06-07
+
+For Agents UI polish.
+
+- The "Share an article" section gains a "For you / For your agent" tab toggle. "For you" (default) shows the iOS share-sheet steps; "For your agent" shows the "Your agent can share here too" card linking to the agents page. The standalone agent card under the episodes is gone.
+- Landing page robot bubble now reads "or have your agent send things" and is decoration only (no longer links to `AGENTS.md`).
+
 ## v3.9 — 2026-06-06
 
 For Agents UI: the agent prompt gets a proper home.

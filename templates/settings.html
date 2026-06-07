@@ -142,6 +142,13 @@
     details.settings .body .label { font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 18px; }
     details.settings .body .label:first-child { margin-top: 8px; }
     details.settings .body p { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
+    .share-tabs { display: flex; gap: 7px; margin: 0 0 14px; }
+    .share-tab {
+      font-family: var(--sans); font-size: 13px; font-weight: 700;
+      padding: 7px 16px; border-radius: 999px; cursor: pointer;
+      border: 1.5px solid #E9C9AC; background: #fff; color: var(--accent);
+    }
+    .share-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
     .voices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
     .voice-chip {
       padding: 6px 13px; border: 1.5px solid #E9C9AC; background: #fff; color: var(--ink);
@@ -176,7 +183,6 @@
     <div id="episodes-section">
       {% include "_episodes_section.html" %}
     </div>
-    {% include "_agents_card.html" %}
 
     <details class="setup-fold">
       <summary>Setup &amp; sharing</summary>
@@ -190,7 +196,6 @@
     <div id="episodes-section">
       {% include "_episodes_section.html" %}
     </div>
-    {% include "_agents_card.html" %}
   {% endif %}
 
   <details class="settings">
@@ -222,6 +227,17 @@
     var FEED_URL = {{ feed_url | tojson }};
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
+    }
+    function showSharePanel(which) {
+      var ids = { you: "share-you", agent: "share-agent" };
+      document.getElementById("share-you").hidden = which !== "you";
+      document.getElementById("share-agent").hidden = which !== "agent";
+      var tabs = document.querySelectorAll(".share-tab");
+      for (var i = 0; i < tabs.length; i++) {
+        var on = tabs[i].dataset.panel === ids[which];
+        tabs[i].classList.toggle("active", on);
+        tabs[i].setAttribute("aria-selected", on ? "true" : "false");
+      }
     }
   </script>
 

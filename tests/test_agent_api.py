@@ -440,5 +440,21 @@ def test_landing_page_advertises_agents(client):
     resp = client.get("/")
 
     assert resp.status_code == 200
-    assert "or have your AI agent send things" in resp.text
-    assert "/AGENTS.md" in resp.text
+    assert "or have your agent send things" in resp.text
+    # The landing bubble is decorative now: no link to AGENTS.md.
+    assert "/AGENTS.md" not in resp.text
+
+
+def test_settings_page_has_share_toggle(client):
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    resp = client.get(f"/u/{secret}")
+
+    assert resp.status_code == 200
+    assert "For you" in resp.text
+    assert "For your agent" in resp.text
+    # The agents card now lives inside the "For your agent" tab of the
+    # Share an article section.
+    assert "Your agent can share here too" in resp.text
+    assert f"/u/{secret}/agents" in resp.text

@@ -22,34 +22,47 @@
 
   <div class="sec">Share an article <span class="tag">· anytime</span></div>
 
-  <div class="step">
-    <div class="n">1</div>
-    <div class="body">
-      <div class="t">Tap the <svg class="ios-share"><use href="#ios-share"/></svg> share button</div>
-    </div>
+  <div class="share-tabs" role="tablist">
+    <button class="share-tab active" type="button" role="tab" aria-selected="true"
+            data-panel="share-you" onclick="showSharePanel('you')">For you</button>
+    <button class="share-tab" type="button" role="tab" aria-selected="false"
+            data-panel="share-agent" onclick="showSharePanel('agent')">For your agent</button>
   </div>
 
-  <div class="step">
-    <div class="n">2</div>
-    <div class="body">
-      <div class="t">Tap <span class="em">More</span>, then tap <span class="em">Feed Me</span></div>
+  <div class="share-panel" id="share-you" role="tabpanel">
+    <div class="step">
+      <div class="n">1</div>
+      <div class="body">
+        <div class="t">Tap the <svg class="ios-share"><use href="#ios-share"/></svg> share button</div>
+      </div>
     </div>
+
+    <div class="step">
+      <div class="n">2</div>
+      <div class="body">
+        <div class="t">Tap <span class="em">More</span>, then tap <span class="em">Feed Me</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="n">3</div>
+      <div class="body">
+        <div class="t">Your podcast arrives in 2-3 minutes</div>
+      </div>
+    </div>
+
+    <details class="pin-tip">
+      <summary>
+        <span class="pin-tip-title">Tip: Pin Feed Me shortcut for easier sharing</span>
+      </summary>
+      <ol>
+        <li>Open the share sheet, and hit <strong>View More</strong></li>
+        <li>Scroll to the bottom and tap <strong>Edit Actions</strong></li>
+        <li>In <strong>Other Actions</strong> find <strong>Feed Me</strong> and press the <strong>+</strong></li>
+      </ol>
+    </details>
   </div>
 
-  <div class="step">
-    <div class="n">3</div>
-    <div class="body">
-      <div class="t">Your podcast arrives in 2-3 minutes</div>
-    </div>
+  <div class="share-panel" id="share-agent" role="tabpanel" hidden>
+    {% include "_agents_card.html" %}
   </div>
-
-  <details class="pin-tip">
-    <summary>
-      <span class="pin-tip-title">Tip: Pin Feed Me shortcut for easier sharing</span>
-    </summary>
-    <ol>
-      <li>Open the share sheet, and hit <strong>View More</strong></li>
-      <li>Scroll to the bottom and tap <strong>Edit Actions</strong></li>
-      <li>In <strong>Other Actions</strong> find <strong>Feed Me</strong> and press the <strong>+</strong></li>
-    </ol>
-  </details>
