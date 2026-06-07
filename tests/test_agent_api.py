@@ -413,3 +413,101 @@ def test_settings_page_has_share_toggle(client):
     assert "For your agent" in resp.text
     # The agent prompt is inline inside the "For your agent" tab.
     assert "I have a Feed Me podcast feed" in resp.text
+
+
+# --- GET /u/{secret}/episodes : list / confirm -------------------------------
+
+def test_list_episodes_returns_feed_info_and_episodes(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/a"},
+    ).json()["slug"]
+
+    resp = client.get(f"/u/{secret}/episodes")
+
+    assert resp.status_code == 200
+    assert "set-cookie" not in resp.headers          # path-secret auth, no cookie
+    body = resp.json()
+    assert body["feed_page"] == f"https://test.local/u/{secret}"
+    assert body["feed_url"] == f"https://test.local/u/{secret}/feed.xml"
+    assert body["voice"] in storage.ALLOWED_VOICES
+    assert body["remaining"] == 4                    # one agent share used
+    shared = next(e for e in body["episodes"] if e["slug"] == slug)
+    assert shared["status"] == "ready"
+    assert shared["title"] == "On Time"
+    assert shared["ts"]
+    assert shared["audio_url"] == f"https://test.local/u/{secret}/audio/{slug}.mp3"
+
+
+def test_list_episodes_failed_has_error_and_no_audio(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/dead"] = FakeResponse(status_code=500)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/dead"},
+    ).json()["slug"]
+
+    body = client.get(f"/u/{secret}/episodes").json()
+    failed = next(e for e in body["episodes"] if e["slug"] == slug)
+    assert failed["status"] == "failed"
+    assert failed["error"]
+    assert "audio_url" not in failed
+
+
+def test_list_episodes_hides_internal_fields(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/a"})
+
+    body = client.get(f"/u/{secret}/episodes").json()
+    assert body["episodes"]
+    for ep in body["episodes"]:
+        # "url" is the real source-URL key in stored records (storage writes
+        # it there; source_url is the kwarg name, not the stored key).
+        for leaked in ("mtime", "audio_bytes", "has_audio", "url", "source_url", "via"):
+            assert leaked not in ep
+
+
+def test_list_episodes_unknown_feed_404(client):
+    resp = client.get("/u/nope/episodes")
+    assert resp.status_code == 404
+    assert resp.json()["error"] == "not_found"
+
+
+def test_list_episodes_remaining_tracks_cap(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    for i in range(3):
+        url = f"https://example.com/a{i}"
+        fake_http.responses[url] = FakeResponse(status_code=200, text=ARTICLE_HTML)
+        client.post(f"/u/{secret}/episodes", json={"url": url})
+
+    body = client.get(f"/u/{secret}/episodes").json()
+    assert body["remaining"] == 2                    # 5 cap - 3 used
+
+
+def test_list_episodes_caps_at_twenty(client, tmp_path):
+    secret = make_feed(client)
+    # Welcome already seeded; add 25 more so the feed exceeds the cap.
+    for i in range(25):
+        storage.write_pending_episode(
+            tmp_path, secret, source_url=f"https://ex.com/{i}", title=f"E{i}",
+        )
+
+    body = client.get(f"/u/{secret}/episodes").json()
+    assert len(body["episodes"]) == 20

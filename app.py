@@ -300,6 +300,45 @@ async def create_episode_api(request: Request, secret: str):
     }, status_code=202)
 
 
+@app.get("/u/{secret}/episodes")
+def list_episodes_api(secret: str):
+    """Agent-facing feed listing + confirmation (documented at /AGENTS.md).
+
+    Path-secret auth, JSON only, no cookies. Returns the 20 most recent
+    episodes (newest first) plus the feed voice and the agent's remaining
+    24h quota. Doubles as the cheap feed-exists check: a 404 means the
+    secret is wrong or was rotated. The per-episode poll twin is
+    GET /u/{secret}/episodes/{slug}.
+    """
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    now = int(_time.time())
+    remaining = max(
+        0, AGENT_DAILY_CAP - len(_agent_episodes_in_window(secret, now)),
+    )
+    episodes = []
+    for ep in storage.list_episodes(DATA_DIR, secret)[:20]:
+        slug = ep["slug"]
+        item = {
+            "slug": slug,
+            "title": ep.get("title"),
+            "status": ep["status"],
+            "ts": ep["ts"],
+        }
+        if ep["status"] == "ready":
+            item["audio_url"] = f"{APP_BASE_URL}/u/{secret}/audio/{slug}.mp3"
+        elif ep["status"] == "failed":
+            item["error"] = ep.get("error")
+        episodes.append(item)
+    return JSONResponse({
+        "feed_page": f"{APP_BASE_URL}/u/{secret}",
+        "feed_url": f"{APP_BASE_URL}/u/{secret}/feed.xml",
+        "voice": storage.get_settings(DATA_DIR, secret)["voice"],
+        "remaining": remaining,
+        "episodes": episodes,
+    })
+
+
 @app.get("/u/{secret}/episodes/{slug}")
 def episode_status_api(secret: str, slug: str):
     """Agent-facing episode status (documented at /AGENTS.md). Path-secret
