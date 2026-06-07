@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · Seamless agent sharing</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.12</div>
+  <h1>Seamless agent sharing</h1>
+  <div class="meta">Feed Me · 2026-06-07 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Make "send this article to my feed" a one-shot, zero-question action for an
+  AI agent. Today an agent that does not already hold the feed URL has no safe,
+  documented way to get it: it either asks the user every time or, worse, tries
+  to rediscover the URL by scanning history and probing candidate feeds. This
+  spec fixes that with one additive endpoint and a re-sequenced
+  <code>AGENTS.md</code> that tells the agent to capture the feed URL once, from
+  the prompt the user already pastes, and never rediscover it.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#endpoint">The list / confirm endpoint</a></li>
+    <li><a href="#agentsmd">AGENTS.md rewrite</a></li>
+    <li><a href="#prompt">The copy-paste prompt</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  A real session: the owner told his agent "send the new Blackbird Spyplane to
+  my Feed Me feed" with no feed URL in the conversation. The agent had no saved
+  URL and no documented recovery path, so it scanned past transcripts and probed
+  eight candidate feeds to find the live one. That behavior was expensive (many
+  wasted calls), and a safety classifier correctly blocked the final
+  <code>POST</code> because the target feed had been <em>inferred</em>, not
+  supplied, forcing a confirmation round-trip the owner should never have seen.
+</p>
+<p>
+  Two root causes:
+</p>
+<ul>
+  <li><strong>The feed URL is never persisted.</strong> The copy-paste prompt on
+    the feed page already contains the URL, but nothing tells the agent to save
+    it, so every new session starts from zero.</li>
+  <li><strong>There is no cheap "is this my feed?" call.</strong>
+    <code>GET /u/&lt;secret&gt;/episodes</code> returns <code>405 Method Not
+    Allowed</code> (only <code>POST</code> and the per-slug <code>GET</code>
+    exist), so an agent wanting to confirm a feed has to fetch and parse
+    <code>feed.xml</code>.</li>
+</ul>
+<p class="small">
+  Audience: both memory-having agents (Claude Code, Cowork, which persist the URL)
+  and stateless chat agents (re-pasted each time). The design serves both.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li><strong>A new <code>GET /u/{secret}/episodes</code> endpoint</strong> that
+    lists the feed's episodes plus feed info and remaining quota, as JSON:
+    path-secret auth, no cookie, the same <code>{"error","message"}</code>
+    contract as the other agent endpoints. Doubles as the cheap feed-exists
+    check (404 when the secret is unknown).</li>
+  <li><strong>An <code>AGENTS.md</code> rewrite</strong> that leads with the
+    happy path, adds a "Step 0 · remember this feed" instruction, adds an
+    explicit "if you don't have the URL, ask, never guess, scan, or probe"
+    rule, and documents the new endpoint.</li>
+  <li><strong>A one-clause change to the copy-paste prompt</strong> in
+    <code>templates/_setup_instructions.html</code> so the agent is told to save
+    the feed URL on first contact.</li>
+</ol>
+<p>
+  No change to the cookie-authed <code>/share</code> path, the
+  <code>POST /episodes</code> creation logic, the rate limiter, storage, or the
+  RSS feed.
+</p>
+
+<h2 id="endpoint">3 · The list / confirm endpoint</h2>
+<p>
+  New route in <code>app.py</code>, registered before the existing
+  <code>GET /u/{secret}/episodes/{slug}</code> (distinct path, so ordering is
+  not load-bearing, but keep them adjacent for readability). Mirrors
+  <code>episode_status_api</code>: synchronous, path-secret auth, never reads or
+  sets the session cookie, returns <code>_agent_error(404, "not_found", …)</code>
+  when the secret has no feed.
+</p>
+<pre><code>GET {base}/u/&lt;secret&gt;/episodes
+
+200 OK
+{
+  "feed_page": "{base}/u/&lt;secret&gt;",
+  "feed_url":  "{base}/u/&lt;secret&gt;/feed.xml",
+  "voice": "shimmer",
+  "remaining": 3,
+  "episodes": [
+    { "slug": "ZMs8QEngXImu06nE",
+      "title": "Hiking-sandal realness",
+      "status": "ready",
+      "ts": 1780857382,
+      "audio_url": "{base}/u/&lt;secret&gt;/audio/ZMs8QEngXImu06nE.mp3" }
+  ]
+}</code></pre>
+<h3>Field rules</h3>
+<ul>
+  <li><strong>Scope:</strong> the whole feed (agent shares, phone shares, and the
+    seeded welcome), most-recent-first, the same set <code>feed.xml</code> and
+    the settings page show. Built from <code>storage.list_episodes</code>, which
+    already sorts by mtime descending.</li>
+  <li><strong>Cap:</strong> the 20 most recent episodes, documented in
+    <code>AGENTS.md</code>. (The settings page uses 30; 20 is plenty for an
+    agent confirming a feed and keeps the payload small.)</li>
+  <li><strong>Per-episode fields:</strong> <code>slug</code>, <code>title</code>
+    (may be <code>null</code>), <code>status</code>
+    (<code>pending|ready|failed</code>, derived by <code>list_episodes</code>),
+    <code>ts</code>. Add <code>audio_url</code> only when
+    <code>status == "ready"</code> (same rule as the per-slug endpoint). Add
+    <code>error</code> only when <code>status == "failed"</code>.</li>
+  <li><strong>Never leak internals:</strong> do not emit <code>mtime</code>,
+    <code>audio_bytes</code>, <code>has_audio</code>, <code>source_url</code>, or
+    <code>via</code>. Build each episode dict explicitly; do not pass the raw
+    storage record through.</li>
+  <li><strong>Feed info:</strong> <code>voice</code> from
+    <code>storage.get_settings</code>; <code>feed_page</code> and
+    <code>feed_url</code> built from <code>APP_BASE_URL</code> and the secret.</li>
+  <li><strong>remaining:</strong> <code>AGENT_DAILY_CAP -
+    len(_agent_episodes_in_window(secret, now))</code>, the same quota the
+    <code>POST</code> reports, so an agent can see its budget before sharing,
+    not only after. Floor at 0 defensively.</li>
+</ul>
+<div class="callout">
+  The secret is in the path but must never appear in logs or analytics values.
+  Follow the existing agent endpoints: no <code>_track</code> call that records
+  the raw secret, and no logging of the URL. (A <code>page_view</code>-style
+  track keyed by secret is fine if it matches how the other agent endpoints
+  already attribute, i.e. not at all today; keep this endpoint untracked.)
+</div>
+
+<h2 id="agentsmd">4 · AGENTS.md rewrite</h2>
+<p>
+  Same facts, re-sequenced so the cheapest correct path is first and the
+  failure modes from this session are named. <code>templates/agents.md</code> is
+  substituted with a plain <code>.replace("{base}", …)</code> (per the repo
+  gotcha: not Jinja, not <code>str.format</code>), so the rewrite keeps using
+  the literal <code>{base}</code> token and adds no new braces outside the JSON
+  examples it already contains.
+</p>
+<ol>
+  <li><strong>TL;DR at the top</strong> (three lines): you have a feed URL of the
+    form <code>{base}/u/&lt;secret&gt;</code>; to narrate an article,
+    <code>POST</code> it, poll until ready, done. One <code>curl</code>.</li>
+  <li><strong>"Step 0 · Remember this feed"</strong>: on first contact, save the
+    feed URL to your durable memory so future requests need no URL and no
+    questions. Wording is ecosystem-neutral ("your durable memory or project
+    config"), with Claude Code's <code>CLAUDE.md</code> / memory file named as a
+    concrete example. The user's pasted prompt already carries the URL; capture
+    it once.</li>
+  <li><strong>"If you don't have the feed URL, ask the user."</strong> Stated in
+    the Auth section and again in Etiquette: never guess the secret, never scan
+    history or prior transcripts, never probe candidate feeds. This is the exact
+    behavior that was blocked this session; naming it keeps well-behaved agents
+    out of that trap.</li>
+  <li><strong>Document <code>GET /episodes</code></strong> (list + confirm)
+    beside the existing per-slug poll endpoint, noting the 20-item cap and that a
+    404 means "wrong or rotated URL, ask the user".</li>
+  <li><strong>Keep</strong> Add / Poll / Read-the-feed / Errors / Rate-limit /
+    curl + Python examples. The Python example gains a one-line comment to
+    persist <code>feed</code> for next time.</li>
+</ol>
+<p class="small">
+  Copy constraint (repo-wide): no em-dashes in any user- or agent-facing text;
+  the middot <code>·</code> is fine. Grep the rewritten file before shipping.
+</p>
+
+<h2 id="prompt">5 · The copy-paste prompt</h2>
+<p>
+  In <code>templates/_setup_instructions.html</code>, the prompt text gains a
+  persistence clause. From:
+</p>
+<pre><code>I have a Feed Me podcast feed. To send an article to it, read
+{base}/AGENTS.md and follow it. My feed page: {base}/u/&lt;secret&gt;.</code></pre>
+<p>to:</p>
+<pre><code>I have a Feed Me podcast feed. Save my feed page so you don't have to ask
+again, then read {base}/AGENTS.md to send articles.
+My feed page: {base}/u/&lt;secret&gt;.</code></pre>
+<p>
+  The template keeps its Jinja <code>{{ base_url }}</code> / <code>{{ secret }}</code>
+  variables; only the prose changes. The click-to-copy box and its script are
+  untouched.
+</p>
+
+<h2 id="tests">6 · Testing</h2>
+<p>TDD, no network, using the existing <code>client</code> fixture (temp
+  <code>DATA_DIR</code> per test). New tests in <code>tests/test_app.py</code>:</p>
+<ul>
+  <li><strong>Lists episodes:</strong> create a feed, share an article (or seed
+    one), <code>GET /u/&lt;secret&gt;/episodes</code> → 200, body has
+    <code>episodes</code> (the shared slug present), <code>voice</code>,
+    <code>remaining</code>, <code>feed_page</code>, <code>feed_url</code>.</li>
+  <li><strong>Ready vs not:</strong> <code>audio_url</code> appears only on a
+    <code>ready</code> episode; a <code>failed</code> episode carries
+    <code>error</code> and no <code>audio_url</code>.</li>
+  <li><strong>No internals leak:</strong> response episodes contain none of
+    <code>mtime</code>, <code>audio_bytes</code>, <code>has_audio</code>,
+    <code>source_url</code>, <code>via</code>.</li>
+  <li><strong>Bad secret:</strong> <code>GET</code> on an unknown secret → 404
+    with JSON <code>{"error":"not_found", "message":…}</code> (not HTML).</li>
+  <li><strong>remaining tracks the cap:</strong> after N agent shares,
+    <code>remaining == AGENT_DAILY_CAP - N</code>; reflects the same window the
+    <code>POST</code> uses.</li>
+  <li><strong>Cap at 20:</strong> with &gt;20 episodes, exactly 20 most-recent
+    are returned, newest first.</li>
+  <li><strong>Copy guard:</strong> assert the em-dash character is absent from
+    the rendered <code>AGENTS.md</code> and the prompt text.</li>
+</ul>
+
+<h2 id="scope">7 · Out of scope</h2>
+<ul>
+  <li>A downloadable Claude Code skill or MCP server pre-loaded with the feed URL
+    (a good later add; more surface to maintain than the problem justifies now).</li>
+  <li>URL de-duplication / idempotency on <code>POST</code> (re-sharing the same
+    URL still creates a new episode).</li>
+  <li>Any change to the cookie-authed <code>/share</code> flow, the rate limiter,
+    storage, voices, or rotation.</li>
+  <li>A short-lived "claim code" handoff: the pasted prompt already carries the
+    URL, so persistence solves the same problem without a new mechanism.</li>
+</ul>
+
+<h2 id="accept">8 · Acceptance criteria</h2>
+<ul>
+  <li><code>GET /u/&lt;secret&gt;/episodes</code> returns the documented JSON for
+    a real feed and a 404 <code>{"error","message"}</code> for a bad secret; no
+    internal fields leak; <code>remaining</code> matches the <code>POST</code>'s
+    accounting.</li>
+  <li><code>AGENTS.md</code> leads with the happy path, instructs the agent to
+    persist the feed URL on first contact, forbids guessing / scanning / probing,
+    and documents the list endpoint, with no em-dashes.</li>
+  <li>The feed-page prompt tells the agent to save the feed URL.</li>
+  <li>Full suite green (<code>uv run pytest</code>); a <code>CHANGELOG.md</code>
+    entry and a <code>v3.12</code> tag accompany the change.</li>
+  <li><strong>End-to-end:</strong> a fresh agent given only the pasted prompt can
+    save the feed, share an article, and confirm it landed, with no question to
+    the user and no feed probing.</li>
+</ul>
+
+</div>
+</body>
+</html>
