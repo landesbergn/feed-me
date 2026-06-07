@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.9 — 2026-06-06
+
+For Agents UI: the agent prompt gets a proper home.
+
+- New page `/u/<secret>/agents`: the copy-paste agent prompt (click the box to copy) plus a link to `AGENTS.md`. Reached from an always-visible card under the episodes: "Your agent can share here too".
+- The collapsed "For agents" fold (v3.6) is gone from the feed page.
+- Landing page: a small robot peeks over the "Share any article" step saying "or have your AI agent send things", linking to `AGENTS.md`.
+- Prompt copy trimmed: the daily-cap detail lives only in `AGENTS.md`; the privacy line and "(Claude Code and friends)" are removed.
+
 ## v3.8 — 2026-06-06
 
 Article cap raised 100k → 500k chars (~4h10m audio, ~$7.50 max cost):
