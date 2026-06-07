@@ -531,3 +531,9 @@ def test_agents_md_documents_list_endpoint(client):
     # The list endpoint line, base substituted, terminated by newline so it
     # does not match the POST line or the per-slug poll line.
     assert "GET https://test.local/u/<secret>/episodes\n" in text
+
+
+def test_settings_prompt_tells_agent_to_save_feed(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}")
+    assert "Save my feed page so you don't have to ask again" in resp.text
