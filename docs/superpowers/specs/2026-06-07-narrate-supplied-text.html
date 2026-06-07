@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · Narrate supplied text</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.14</div>
+  <h1>Narrate supplied text</h1>
+  <div class="meta">Feed Me · 2026-06-07 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Let an agent send the full text of an article or email directly to the agent
+  API, and narrate that text instead of fetching a URL. The motivating case is
+  paywalls: a user who is a paying subscriber receives the complete article in
+  their inbox, but a server-side browser fetch of the same article's URL sees
+  only the free preview (the fetch carries none of the user's credentials).
+  When the agent already holds the full text, it should hand that text to Feed
+  Me rather than a link.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#contract">Request contract</a></li>
+    <li><a href="#ingest">Ingest path</a></li>
+    <li><a href="#rss">Source link and RSS</a></li>
+    <li><a href="#limits">Limits and validation</a></li>
+    <li><a href="#agentsmd">AGENTS.md</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  The existing url path fetches the article server-side
+  (<code>ingest.fetch_article</code>) with a spoofed browser User-Agent. It has
+  no subscriber cookies, so a gated publisher serves a preview, and Feed Me
+  correctly refuses to narrate a stub (the paywall and minimum-length guards in
+  <code>ingest.py</code>). That is the right behavior for a link, but it throws
+  away a case the agent can handle: the user already received the full text by
+  email as a paying subscriber. This spec adds a text path so the agent can pass
+  that content straight through, bypassing the fetch entirely.
+</p>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li>A <strong>text mode</strong> on <code>POST /u/{secret}/episodes</code>: a
+    body carrying <code>text</code> (and a required <code>title</code>, optional
+    <code>url</code>) narrates that text directly, with no network fetch.</li>
+  <li><strong><code>ingest.process</code></strong> learns to narrate
+    pre-supplied text: when given text it skips <code>fetch_article</code> (and
+    the readability/trafilatura extraction, the paywall check, and the
+    minimum-length guard) and feeds the text into the existing
+    <code>chunk_text -&gt; synthesize -&gt; write_episode</code> flow.</li>
+  <li>A small <strong><code>rss.py</code></strong> change so a text episode with
+    no source <code>url</code> omits the "Original article" line instead of
+    rendering a broken link.</li>
+  <li><strong><code>AGENTS.md</code></strong> documents the text mode and when
+    to prefer it (paywalled content the user already receives in full).</li>
+</ol>
+<p>
+  No change to the cookie-authed <code>/share</code> flow, the rate limiter
+  (a text share counts as one <code>via="agent"</code> episode against the same
+  cap), the TTS synthesis, voices, or the v3.13 list endpoint.
+</p>
+
+<h2 id="contract">3 · Request contract</h2>
+<p>
+  <code>POST /u/{secret}/episodes</code> keeps its hand-parsed JSON body (a
+  Pydantic model would 422 instead of the documented 400). The body is
+  inspected in this order:
+</p>
+<pre><code>POST {base}/u/&lt;secret&gt;/episodes
+Content-Type: application/json
+
+{
+  "text":  "Full article or email body to narrate...",
+  "title": "Hiking-sandal realness",
+  "url":   "https://example.com/the-source"   // optional source link
+}
+
+Response: 202 Accepted   (identical shape to the url path)
+{
+  "slug": "k3kQ9rTzVx0",
+  "status": "pending",
+  "title": "Hiking-sandal realness",
+  "status_url": "{base}/u/&lt;secret&gt;/episodes/k3kQ9rTzVx0",
+  "feed_page": "{base}/u/&lt;secret&gt;",
+  "remaining": 4
+}</code></pre>
+<h3>Mode selection and validation</h3>
+<ul>
+  <li><strong>Text mode</strong> is chosen when the body has a non-empty string
+    <code>text</code> (non-empty after trimming whitespace). In text mode:
+    <ul>
+      <li><code>title</code> is <strong>required</strong>: a non-empty string.
+        Missing or empty title returns
+        <code>400 {"error":"invalid_request"}</code> with the message
+        "Text requires a non-empty title."</li>
+      <li><code>url</code> is optional. If present it must be http/https with a
+        host, else <code>400 {"error":"invalid_url"}</code> (the existing URL
+        validation). It is used only as the episode's source link and is never
+        fetched.</li>
+      <li>If <code>len(text) &gt; MAX_BODY_CHARS</code> (500,000), return
+        <code>400 {"error":"invalid_request"}</code> with the message
+        "Text too long: N characters (limit 500,000)." This rejects synchronously
+        so an over-long paste never creates an episode or consumes a rate-limit
+        share.</li>
+    </ul>
+  </li>
+  <li><strong>URL mode</strong> (unchanged): no <code>text</code>, but a string
+    <code>url</code>. Existing behavior, including the async fetch and its
+    paywall/length failures.</li>
+  <li><strong>Neither</strong> a non-empty <code>text</code> nor a string
+    <code>url</code>: <code>400 {"error":"invalid_request"}</code>, message
+    'Body must include a string "url" or "text" field.'</li>
+  <li><strong>Both</strong> <code>text</code> and <code>url</code>:
+    text mode. The text is narrated; the url is only the source link (not
+    fetched).</li>
+</ul>
+<p>
+  Validation (400) is checked before the rate-limit (429), which is checked
+  before any episode is written, matching the current handler order. Unknown
+  body fields are still ignored.
+</p>
+<div class="callout">
+  Text mode does <strong>no</strong> network I/O in the request: it does not call
+  <code>fetch_title</code> (the title is supplied). The url path keeps its quick
+  <code>fetch_title</code> call.
+</div>
+
+<h2 id="ingest">4 · Ingest path</h2>
+<p>
+  <code>ingest.process</code> gains two keyword-only parameters,
+  <code>text</code> and <code>title</code>, both defaulting to <code>None</code>:
+</p>
+<pre><code>def process(url, secret, data_dir, slug=None, *, text=None, title=None):</code></pre>
+<ul>
+  <li><strong>Text branch</strong> (<code>text is not None</code>): the body is
+    the supplied <code>text</code>; the final episode title is the supplied
+    <code>title</code>; the source link is <code>url or ""</code>. Skip
+    <code>fetch_article</code>, the paywall declaration check, and the
+    <code>MIN_BODY_CHARS</code> guard (the agent vouches for real content, and a
+    legitimately short note should narrate).</li>
+  <li><strong>URL branch</strong> (<code>text is None</code>): unchanged. Fetch,
+    extract, apply the <code>MIN_BODY_CHARS</code> guard, source link is the
+    <code>url</code>.</li>
+  <li><strong>Shared tail</strong>: the <code>MAX_BODY_CHARS</code> ceiling is
+    enforced on the resolved body in both branches (defensive in text mode,
+    since the POST already rejected over-long text). Then
+    <code>chunk_text</code>, <code>update_pending_episode(total_chunks=...)</code>,
+    <code>synthesize</code>, <code>_excerpt</code> description, and
+    <code>write_episode(title=..., source_url=...)</code> run exactly as today.
+    A failure still writes a failed episode via
+    <code>write_failed_episode(source_url=...)</code>.</li>
+</ul>
+<p>
+  <code>spawn_ingest</code> in <code>app.py</code> gains matching
+  <code>text</code>/<code>title</code> keyword args and forwards them to the
+  background <code>ingest.process</code> thread. The POST handler writes the
+  pending episode with <code>source_url = url or ""</code>, <code>title</code>,
+  and <code>via="agent"</code> (as today), then spawns ingest with the text and
+  title.
+</p>
+
+<h2 id="rss">5 · Source link and RSS</h2>
+<p>
+  Today <code>rss._episode_description_html</code> and
+  <code>_episode_description_text</code> always render an "Original article:"
+  line from the episode's <code>url</code>. A text episode may have no source
+  url (stored as the empty string). The change: <strong>when the episode url is
+  empty, omit the "Original article" line entirely</strong> (both the HTML and
+  text descriptions); the "Generated with Feed Me" line stays. When a url is
+  present (url mode, or text mode with an optional <code>url</code>), the line
+  renders exactly as now. Storage writes <code>url: ""</code> for a text episode
+  without a source link.
+</p>
+
+<h2 id="limits">6 · Limits and validation</h2>
+<table>
+  <tr><th>Guard</th><th>URL mode</th><th>Text mode</th></tr>
+  <tr><td>MAX_BODY_CHARS (500k, cost ceiling)</td><td>Async failure after fetch</td><td><strong>Synchronous 400 at POST</strong></td></tr>
+  <tr><td>MIN_BODY_CHARS (600, teaser guard)</td><td>Enforced</td><td><strong>Skipped</strong> (agent-vouched)</td></tr>
+  <tr><td>Paywall declaration check</td><td>Enforced</td><td><strong>Skipped</strong> (the point of the feature)</td></tr>
+  <tr><td>Empty body</td><td>Caught by MIN guard</td><td>Rejected at POST (text must be non-empty after trim)</td></tr>
+  <tr><td>Agent rate cap (5 / 24h)</td><td>Counts</td><td>Counts (one via=agent share)</td></tr>
+</table>
+
+<h2 id="agentsmd">7 · AGENTS.md</h2>
+<p>
+  Add a short "Narrate text directly" section after "Add an article" (and a
+  pointer from the TL;DR). Content: when you already hold the full text of an
+  article or email (for example a newsletter the user receives as a paying
+  subscriber), POST <code>{"text": "...", "title": "..."}</code> instead of
+  <code>{"url": "..."}</code> to narrate it directly and bypass the paywall a
+  server-side fetch would hit. <code>title</code> is required; an optional
+  <code>url</code> becomes the episode's source link. House style still applies:
+  no em-dashes; keep the literal <code>{base}</code> token (plain
+  <code>.replace</code> render). The existing
+  <code>test_agents_md_served_as_markdown</code> assertions (the "5 episodes"
+  cap, "Retry-After", no em-dash, no leftover <code>{base}</code>) must keep
+  passing.
+</p>
+
+<h2 id="tests">8 · Testing</h2>
+<p>TDD, no network, using the existing <code>client</code> / <code>fake_http</code>
+  / <code>fake_openai</code> fixtures and the
+  <code>wire_fake_pipeline</code> helper. New tests in
+  <code>tests/test_agent_api.py</code>:</p>
+<ul>
+  <li><strong>Text happy path:</strong> POST <code>{"text","title"}</code> with
+    the pipeline wired synchronously yields a <code>ready</code> episode whose
+    title is the supplied title and whose audio exists; no
+    <code>fake_http</code> response is registered, proving no fetch occurred.</li>
+  <li><strong>Source link:</strong> POST <code>{"text","title","url"}</code>
+    stores the url; the rendered <code>feed.xml</code> contains the "Original
+    article" link to that url, and the url was never fetched.</li>
+  <li><strong>No source link:</strong> POST <code>{"text","title"}</code> (no
+    url) produces a feed item with no "Original article" line, and the episode's
+    stored <code>url</code> is the empty string.</li>
+  <li><strong>Title required:</strong> POST <code>{"text"}</code> with no title
+    (and with empty-string title) returns 400 <code>invalid_request</code>; no
+    episode is created (welcome only).</li>
+  <li><strong>Empty text:</strong> POST <code>{"text": "   ", "title": "x"}</code>
+    returns 400 <code>invalid_request</code>; no episode created.</li>
+  <li><strong>Over-length text:</strong> POST text longer than
+    <code>MAX_BODY_CHARS</code> returns 400 <code>invalid_request</code> with a
+    "too long" message; no episode created and the rate-limit window is
+    untouched.</li>
+  <li><strong>Bad optional url:</strong> POST <code>{"text","title","url":"ftp://x"}</code>
+    returns 400 <code>invalid_url</code>.</li>
+  <li><strong>Neither field:</strong> POST <code>{"foo":"bar"}</code> returns 400
+    <code>invalid_request</code> (message mentions both url and text).</li>
+  <li><strong>Counts toward cap:</strong> a text share decrements
+    <code>remaining</code> and is visible in the v3.13
+    <code>GET /episodes</code> listing.</li>
+  <li><strong>AGENTS.md:</strong> the rendered doc documents the text mode
+    (a "Narrate text directly" section) and still passes the existing assertions
+    and the em-dash guard.</li>
+</ul>
+
+<h2 id="scope">9 · Out of scope</h2>
+<ul>
+  <li>Text sharing from the iOS Shortcut / the cookie-authed <code>/share</code>
+    path. This is agent-API only for now.</li>
+  <li>HTML sanitizing: <code>text</code> is treated as plain text to narrate. If
+    the agent has HTML it strips markup before sending. Feed Me does not parse or
+    clean it.</li>
+  <li>De-duplication of repeated text or url shares.</li>
+  <li>Any change to TTS chunking, voices, the rate cap value, or storage record
+    shape beyond reusing the existing <code>url</code>/<code>title</code> fields.</li>
+</ul>
+
+<h2 id="accept">10 · Acceptance criteria</h2>
+<ul>
+  <li>POST with <code>{"text","title"}</code> narrates the supplied text with no
+    network fetch and produces a normal ready episode.</li>
+  <li><code>title</code> is required in text mode; missing/empty title, empty
+    text, and over-<code>MAX</code> text each return a 400
+    <code>{"error","message"}</code> and create no episode.</li>
+  <li>An optional <code>url</code> renders as the episode's "Original article"
+    link; with no url, that line is omitted (no broken link).</li>
+  <li>A text share counts as one agent share against the 5/24h cap and appears in
+    the <code>GET /episodes</code> listing.</li>
+  <li><code>AGENTS.md</code> documents the text mode with no em-dashes; the url
+    path is unchanged.</li>
+  <li>Full suite green (<code>uv run pytest</code>); a <code>CHANGELOG.md</code>
+    entry and a <code>v3.14</code> tag accompany the change.</li>
+</ul>
+
+</div>
+</body>
+</html>
