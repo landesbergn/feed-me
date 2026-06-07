@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.13 · 2026-06-07
+
+Seamless agent sharing.
+
+- New `GET /u/<secret>/episodes`: a JSON listing of the feed (the 20 most recent episodes, newest first) plus the feed's voice and the agent's remaining 24h quota. Path-secret auth, no cookie, the same `{"error","message"}` errors as the other agent endpoints; a 404 doubles as the cheap "is this feed real?" check. Previously this path accepted only POST and returned 405 to a GET.
+- `AGENTS.md` rewritten to lead with the happy path, tell agents to save the feed URL on first contact ("Step 0 · Remember this feed"), and never guess, scan history, or probe feeds when they lack the URL. The list endpoint is documented.
+- The "For your agent" prompt now tells the agent to save the feed page so it does not have to ask again.
+
 ## v3.12 — 2026-06-07
 
 Landing page robot: drop the speech bubble 18px so its tail meets the robot's face instead of floating above its head.

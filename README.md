@@ -78,6 +78,7 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `GET /share?url=` | Capture endpoint hit by the Shortcut; cookie-identified. Renders a live adding/added/failed page |
 | `GET /share/status?slug=` | JSON status for one episode, polled by the `/share` page |
 | `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}`); 5/day rolling cap |
+| `GET /u/{secret}/episodes` | Agent API: JSON feed listing (20 most recent) + voice + remaining quota, secret-authed |
 | `GET /u/{secret}/episodes/{slug}` | Agent API: JSON episode status, secret-authed |
 | `GET /AGENTS.md`, `GET /llms.txt` | Agent-facing API docs |
 | `GET /u/{secret}/episodes_partial` | Episode-table fragment, polled every 3s by the settings page |
