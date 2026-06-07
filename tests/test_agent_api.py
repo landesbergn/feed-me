@@ -354,22 +354,26 @@ def test_llms_txt_points_at_agents_md(client):
     assert "https://test.local/AGENTS.md" in resp.text
 
 
-def test_settings_page_links_to_agents_page(client):
+def test_settings_page_inlines_agent_prompt(client):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
 
     resp = client.get(f"/u/{secret}")
 
     assert resp.status_code == 200
-    assert "Your agent can share here too" in resp.text
-    assert f"/u/{secret}/agents" in resp.text
-    # The prompt moved to the agents page; it must be gone from here.
-    assert "I have a Feed Me podcast feed" not in resp.text
+    # The agent prompt is inline in the "For your agent" tab, not a separate page.
+    assert "I have a Feed Me podcast feed" in resp.text
+    assert f"My feed page: https://test.local/u/{secret}." in resp.text
+    assert "https://test.local/AGENTS.md" in resp.text
+    assert "click to copy" in resp.text
+    # The cap detail and privacy line stay out of the prompt (cap is in AGENTS.md).
+    assert "5 episodes" not in resp.text
+    assert "Keep this private" not in resp.text
 
 
-def test_settings_page_agents_card_shows_after_setup(client, monkeypatch, fake_http, fake_openai):
-    """The card renders in BOTH page states; this covers the episodes-leading
-    (setup_done) state, the other test covers the fresh-feed state."""
+def test_settings_page_agent_prompt_shows_after_setup(client, monkeypatch, fake_http, fake_openai):
+    """The inline prompt renders in BOTH page states; this covers the
+    episodes-leading (setup_done) state, the other test covers fresh-feed."""
     secret = make_feed(client)
     fake_http.responses["https://example.com/a"] = FakeResponse(
         status_code=200, text=ARTICLE_HTML,
@@ -379,61 +383,14 @@ def test_settings_page_agents_card_shows_after_setup(client, monkeypatch, fake_h
 
     resp = client.get(f"/u/{secret}")
 
-    assert "Your agent can share here too" in resp.text
-    assert f"/u/{secret}/agents" in resp.text
-
-
-def test_agents_page_renders_personalized_prompt(client):
-    secret = make_feed(client)
-
-    resp = client.get(f"/u/{secret}/agents")
-
-    assert resp.status_code == 200
-    assert "Agents welcome." in resp.text
     assert "I have a Feed Me podcast feed" in resp.text
-    assert f"My feed page: https://test.local/u/{secret}." in resp.text
-    assert "https://test.local/AGENTS.md" in resp.text
     assert "click to copy" in resp.text
-    assert f"/u/{secret}" in resp.text                      # back link
-    assert "fm_session" in resp.headers.get("set-cookie", "")
 
 
-def test_agents_page_unknown_feed_404(client):
-    resp = client.get("/u/doesnotexist/agents")
-    assert resp.status_code == 404
-
-
-def test_agents_page_prompt_omits_removed_copy(client):
+def test_agents_page_route_removed(client):
+    """The standalone agents page was folded into the feed page's toggle."""
     secret = make_feed(client)
-
-    resp = client.get(f"/u/{secret}/agents")
-
-    assert "5 episodes" not in resp.text          # cap detail lives in AGENTS.md only
-    assert "Keep this private" not in resp.text
-    assert "Claude Code and friends" not in resp.text
-
-
-def test_agents_page_records_page_view(client, tmp_path):
-    secret = make_feed(client)
-
-    client.get(f"/u/{secret}/agents")
-
-    db = tmp_path / "_analytics" / "analytics.db"
-    views = [e for e in analytics.all_events(db)
-             if e["event"] == "page_view" and e["path"] == "agents_page"]
-    assert len(views) == 1
-    assert views[0]["feed_hash"] == analytics.feed_hash(secret)
-
-
-def test_agents_page_masks_ga_location(client):
-    """Secret-bearing pages include GA only with the location mask (CLAUDE.md
-    gotcha: the raw secret must never reach Google)."""
-    secret = make_feed(client)
-
-    resp = client.get(f"/u/{secret}/agents")
-
-    assert "googletagmanager.com" in resp.text            # GA partial included
-    assert '"https://test.local/u/_"' in resp.text        # masked page_location
+    assert client.get(f"/u/{secret}/agents").status_code == 404
 
 
 def test_landing_page_advertises_agents(client):
@@ -454,7 +411,5 @@ def test_settings_page_has_share_toggle(client):
     assert resp.status_code == 200
     assert "For you" in resp.text
     assert "For your agent" in resp.text
-    # The agents card now lives inside the "For your agent" tab of the
-    # Share an article section.
-    assert "Your agent can share here too" in resp.text
-    assert f"/u/{secret}/agents" in resp.text
+    # The agent prompt is inline inside the "For your agent" tab.
+    assert "I have a Feed Me podcast feed" in resp.text

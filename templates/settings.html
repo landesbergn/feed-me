@@ -149,6 +149,20 @@
       border: 1.5px solid #E9C9AC; background: #fff; color: var(--accent);
     }
     .share-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .agent-intro { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+    .prompt-box {
+      background: var(--card); border: 1.5px solid #E9C9AC; border-radius: 16px;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      box-shadow: 0 1px 0 #F3E6D9, 0 6px 16px rgba(176, 74, 0, .05);
+    }
+    .prompt-box .text {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; color: var(--ink);
+    }
+    .prompt-box .hint { font-size: 12px; color: var(--faint); margin-top: 10px; font-weight: 600; }
+    .agent-api-link { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+    .agent-api-link a { color: var(--accent); font-weight: 700; text-decoration: none; }
+    .agent-api-link a:hover { text-decoration: underline; }
     .voices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
     .voice-chip {
       padding: 6px 13px; border: 1.5px solid #E9C9AC; background: #fff; color: var(--ink);
@@ -238,6 +252,18 @@
         tabs[i].classList.toggle("active", on);
         tabs[i].setAttribute("aria-selected", on ? "true" : "false");
       }
+    }
+    function copyPrompt() {
+      var text = document.getElementById("prompt-text").textContent.trim();
+      try {
+        navigator.clipboard.writeText(text);
+        var hint = document.getElementById("copy-hint");
+        hint.textContent = "copied!";
+        setTimeout(function () { hint.textContent = "⧉ click to copy"; }, 1500);
+      } catch (e) {}
+    }
+    function promptKey(e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copyPrompt(); }
     }
   </script>
 

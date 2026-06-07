@@ -64,5 +64,11 @@
   </div>
 
   <div class="share-panel" id="share-agent" role="tabpanel" hidden>
-    {% include "_agents_card.html" %}
+    <p class="agent-intro">Give your agent this prompt and it can add articles to your feed:</p>
+    <div class="prompt-box" id="prompt-box" role="button" tabindex="0"
+         onclick="copyPrompt()" onkeydown="promptKey(event)">
+      <div class="text" id="prompt-text">I have a Feed Me podcast feed. To send an article to it, read {{ base_url }}/AGENTS.md and follow it. My feed page: {{ base_url }}/u/{{ secret }}.</div>
+      <div class="hint" id="copy-hint">⧉ click to copy</div>
+    </div>
+    <p class="agent-api-link">The full API, for your agent's eyes: <a href="{{ base_url }}/AGENTS.md">{{ base_url }}/AGENTS.md</a></p>
   </div>
