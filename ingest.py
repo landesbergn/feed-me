@@ -32,7 +32,18 @@ http_client = httpx.Client(
 
 # max_retries=5 (SDK default 2): 429 retries are the rate-limit correctness
 # guarantee for long articles (see synthesize), so give them headroom.
-openai_client = OpenAI(max_retries=5)  # reads OPENAI_API_KEY from env
+# timeout: the SDK default is 600s read, which is a *silence* timeout (it only
+# fires after 600s with no bytes), so a slow-trickling or stalled TTS call can
+# block for ~10 min per attempt. A single stalled chunk once held a 12-chunk
+# article at "pending" for ~21 min (the ordered pool.map gates the whole job on
+# the slowest chunk, and max_retries masked the stall instead of recovering
+# fast). read=60s caps a stalled call so a retry fires within ~1 min; connect
+# stays at the SDK default 5s. tts-1 latency for a 4000-char chunk is seconds,
+# so 60s has wide headroom over legitimate generation.
+openai_client = OpenAI(  # reads OPENAI_API_KEY from env
+    max_retries=5,
+    timeout=httpx.Timeout(60.0, connect=5.0),
+)
 
 TTS_CHAR_LIMIT = 4000
 TTS_MODEL = "tts-1"

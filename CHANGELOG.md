@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.15 · 2026-06-08
+
+Bound a stalled TTS call so an episode can't hang for 10+ minutes.
+
+- The OpenAI client now sets `timeout=httpx.Timeout(60.0, connect=5.0)` instead of riding the SDK default (600s read). The default `read` is a *silence* timeout (it only fires after 600s with no bytes received), so a slow-trickling or stalled `tts-1` call could block for ~10 min per attempt. `synthesize()` writes chunks in input order via `pool.map`, so the whole job is gated on the slowest chunk; one stalled chunk held a real 12-chunk article (newyorker.com, ~48k chars) at "pending" for ~21 min, with `max_retries=5` masking the stall instead of recovering fast.
+- `read=60s` caps a stalled call so a retry fires within ~1 min; `connect` stays at the SDK default 5s. tts-1 latency for a 4000-char chunk is seconds, so 60s leaves wide headroom over legitimate generation, and the existing retries re-attempt the now-bounded call. Concurrency (`TTS_MAX_PARALLEL = 12`) is unchanged: it is what keeps long articles at ~90s, and lowering it would not rescue a stalled call (the order-preserving `pool.map` blocks on the slowest chunk regardless of batch size).
+
 ## v3.14 · 2026-06-07
 
 Narrate supplied text.

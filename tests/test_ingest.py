@@ -41,6 +41,17 @@ def test_openai_client_has_retry_headroom():
     assert ingest.openai_client.max_retries == 5
 
 
+def test_openai_client_has_explicit_timeout():
+    """A TTS call must give up quickly when the connection stalls, not ride the
+    SDK's 600s default (a single stalled chunk blocked a 12-chunk article for
+    ~21 min in prod, with max_retries masking the stall instead of recovering
+    fast). read=60s caps the per-call stall; connect stays at the SDK default
+    5s. Retries then re-attempt the bounded call."""
+    timeout = ingest.openai_client.timeout
+    assert timeout.read == 60
+    assert timeout.connect == 5
+
+
 def test_fetch_article_returns_title_and_body(monkeypatch, fake_http):
     fake_http.responses["https://example.com/x"] = FakeResponse(
         status_code=200, text=HTML_SAMPLE,
