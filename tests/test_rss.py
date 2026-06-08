@@ -214,3 +214,36 @@ def test_render_feed_enclosure_uses_real_audio_bytes():
     root = _parse(xml)
     enc = root.find("channel/item/enclosure")
     assert enc.attrib["length"] == "137154"
+
+
+def test_render_feed_omits_original_article_when_url_empty():
+    eps = [
+        {"slug": "t1", "title": "From text", "url": "", "ts": 5,
+         "mtime": 5.0, "has_audio": True, "audio_bytes": 10,
+         "description": "An excerpt."},
+    ]
+    xml = rss.render_feed(
+        feed_url="https://feed-me.xyz/u/abc/feed.xml",
+        audio_base="https://feed-me.xyz/u/abc/audio",
+        cover_url="https://feed-me.xyz/cover.jpg",
+        episodes=eps,
+    )
+    assert "Original article" not in xml
+    assert "Generated with" in xml          # the other description line stays
+    assert "An excerpt." in xml
+
+
+def test_render_feed_includes_original_article_when_url_present():
+    eps = [
+        {"slug": "u1", "title": "From url", "url": "https://example.com/x", "ts": 6,
+         "mtime": 6.0, "has_audio": True, "audio_bytes": 10,
+         "description": "An excerpt."},
+    ]
+    xml = rss.render_feed(
+        feed_url="https://feed-me.xyz/u/abc/feed.xml",
+        audio_base="https://feed-me.xyz/u/abc/audio",
+        cover_url="https://feed-me.xyz/cover.jpg",
+        episodes=eps,
+    )
+    assert "Original article" in xml
+    assert "https://example.com/x" in xml

@@ -23,10 +23,11 @@ def _episode_description_html(excerpt: str, article_url: str, home_url: str) -> 
     parts = []
     if excerpt:
         parts.append(html.escape(excerpt))
-    parts.append(
-        f'Original article: <a href="{html.escape(article_url, quote=True)}">'
-        f"{html.escape(article_url)}</a>"
-    )
+    if article_url:
+        parts.append(
+            f'Original article: <a href="{html.escape(article_url, quote=True)}">'
+            f"{html.escape(article_url)}</a>"
+        )
     parts.append(
         f'Generated with <a href="{html.escape(home_url, quote=True)}">Feed Me</a>'
     )
@@ -37,7 +38,8 @@ def _episode_description_text(excerpt: str, article_url: str, home_url: str) -> 
     lines = []
     if excerpt:
         lines.append(excerpt)
-    lines.append(f"Original article: {article_url}")
+    if article_url:
+        lines.append(f"Original article: {article_url}")
     lines.append(f"Generated with Feed Me: {home_url}")
     return "\n\n".join(lines)
 
