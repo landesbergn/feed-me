@@ -713,3 +713,66 @@ def test_process_failed_synthesis_leaves_no_audio_files(
     user_dir = tmp_path / secret
     assert list(user_dir.glob("*.mp3")) == []
     assert list(user_dir.glob("*.tmp")) == []
+
+
+def test_process_narrates_supplied_text(monkeypatch, fake_openai, tmp_path):
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    secret = storage.create_user(tmp_path)
+
+    ingest.process(
+        "", secret, tmp_path,
+        text="This is the full body of an emailed newsletter, narrated as-is.",
+        title="My Newsletter",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert len(eps) == 1
+    assert eps[0]["status"] == "ready"
+    assert eps[0]["has_audio"] is True
+    assert eps[0]["title"] == "My Newsletter"
+    assert eps[0]["url"] == ""          # no source link
+    # The supplied text (not a fetched body) was sent to TTS.
+    assert "emailed newsletter" in fake_openai.calls[0]["input"]
+
+
+def test_process_text_skips_fetch_and_min_guard(monkeypatch, fake_openai, tmp_path):
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    # If text mode ever fetches, this explodes the test.
+    def boom(*a, **k):
+        raise AssertionError("text mode must not fetch")
+    monkeypatch.setattr(ingest, "fetch_article", boom)
+    secret = storage.create_user(tmp_path)
+
+    # Body far below MIN_BODY_CHARS (600). URL mode would reject this as a
+    # teaser; text mode narrates it.
+    ingest.process("", secret, tmp_path, text="A short note.", title="Note")
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["status"] == "ready"
+
+
+def test_process_text_stores_optional_source_url(monkeypatch, fake_openai, tmp_path):
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    secret = storage.create_user(tmp_path)
+
+    ingest.process(
+        "https://src.example/post", secret, tmp_path,
+        text="Body text to narrate.", title="T",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["url"] == "https://src.example/post"
+
+
+def test_process_text_over_max_fails(monkeypatch, fake_openai, tmp_path):
+    monkeypatch.setattr(ingest, "openai_client", fake_openai)
+    secret = storage.create_user(tmp_path)
+
+    ingest.process(
+        "", secret, tmp_path,
+        text="x" * (ingest.MAX_BODY_CHARS + 1), title="Too long",
+    )
+
+    eps = storage.list_episodes(tmp_path, secret)
+    assert eps[0]["status"] == "failed"
+    assert "too long" in eps[0]["error"].lower()

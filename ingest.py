@@ -240,24 +240,34 @@ def synthesize(text: str, voice: str, out_path: Path) -> None:
                     f.write(part)
 
 
-def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> None:
+def process(url, secret, data_dir, slug=None, *, text=None, title=None):
+    """Narrate an article into an episode.
+
+    URL mode (text is None): fetch and extract the article at `url`.
+    Text mode (text is not None): narrate the supplied `text` directly with the
+    given `title`, skipping the fetch, the paywall check, and the minimum-length
+    guard (the caller has vouched for real content). `url`, if any, is only the
+    episode's source link, never fetched.
+    """
+    source_url = url or ""
     if slug is None:
-        slug = storage.write_pending_episode(data_dir, secret, source_url=url)
+        slug = storage.write_pending_episode(data_dir, secret, source_url=source_url)
     try:
-        title, body = fetch_article(url)
-        if len(body) < MIN_BODY_CHARS:
-            raise FetchError(
-                f"Could only extract a snippet ({len(body)} characters) from "
-                f"{urlparse(url).netloc}. The article may be paywalled."
-            )
+        if text is not None:
+            episode_title, body = title, text
+        else:
+            episode_title, body = fetch_article(url)
+            if len(body) < MIN_BODY_CHARS:
+                raise FetchError(
+                    f"Could only extract a snippet ({len(body)} characters) from "
+                    f"{urlparse(url).netloc}. The article may be paywalled."
+                )
         if len(body) > MAX_BODY_CHARS:
             raise ValueError(
                 f"Article too long: {len(body):,} chars (limit: {MAX_BODY_CHARS:,}). "
                 f"Try sharing a shorter article."
             )
         # Write total_chunks so the settings page can show smooth % progress.
-        # chunk_text runs again inside synthesize — small re-cost (<10ms on 50k chars),
-        # avoids changing synthesize's public signature.
         chunks = chunk_text(body, TTS_CHAR_LIMIT)
         storage.update_pending_episode(
             data_dir, secret, slug, total_chunks=len(chunks),
@@ -269,7 +279,7 @@ def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> N
             description = _excerpt(body, DESCRIPTION_EXCERPT_CHARS)
             storage.write_episode(
                 data_dir, secret, slug=slug,
-                title=title, source_url=url, audio_path=tmp_audio,
+                title=episode_title, source_url=source_url, audio_path=tmp_audio,
                 description=description,
             )
         finally:
@@ -281,5 +291,5 @@ def process(url: str, secret: str, data_dir: Path, slug: str | None = None) -> N
         log.exception("ingest failed user=%s url=%s", secret[:6], url)
         storage.write_failed_episode(
             data_dir, secret, slug=slug,
-            source_url=url, error=str(e)[:200],
+            source_url=source_url, error=str(e)[:200],
         )
