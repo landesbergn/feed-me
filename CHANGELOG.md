@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.14 · 2026-06-07
+
+Narrate supplied text.
+
+- `POST /u/<secret>/episodes` now accepts `{"text": "...", "title": "..."}` to narrate an article or email body directly, with no server-side fetch. This bypasses paywalls when the user already receives the full text (for example a newsletter they get as a paying subscriber); a browser fetch of the URL would see only the preview. An optional `url` becomes the episode's source link.
+- `title` is required in text mode; over-length text (more than 500,000 characters) and empty text are rejected at request time, so they never create an episode or spend a rate-limit share.
+- A text episode with no source link omits the "Original article" line in the feed instead of showing a broken link.
+
 ## v3.13 · 2026-06-07
 
 Seamless agent sharing.
