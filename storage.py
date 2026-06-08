@@ -140,6 +140,24 @@ def update_pending_episode(
     path.write_text(json.dumps(record))
 
 
+def delete_episode(data_dir: Path, secret: str, slug: str) -> bool:
+    """Remove an episode's record and audio from the feed.
+
+    Returns True if the episode existed (its .json was present), False
+    otherwise, so the caller can 404 on an unknown slug. Removing the .json
+    is what drops the episode from the feed/RSS (both rebuild from the *.json
+    files on every request); the .mp3 is best-effort (it may be absent on a
+    pending or failed episode).
+    """
+    user_dir = data_dir / secret
+    json_path = user_dir / f"{slug}.json"
+    if not json_path.exists():
+        return False
+    json_path.unlink()
+    (user_dir / f"{slug}.mp3").unlink(missing_ok=True)
+    return True
+
+
 def seed_welcome_episode(
     data_dir: Path, secret: str, *,
     welcome_audio: bytes,

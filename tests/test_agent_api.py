@@ -337,6 +337,67 @@ def test_episode_status_unknown_feed_404(client):
     assert resp.status_code == 404
 
 
+def test_delete_episode_happy_path(client, monkeypatch, fake_http, fake_openai):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/a"},
+    ).json()["slug"]
+
+    resp = client.delete(f"/u/{secret}/episodes/{slug}")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {"slug": slug, "status": "deleted"}
+    assert "set-cookie" not in resp.headers
+    # The episode is gone: a follow-up status poll 404s.
+    assert client.get(f"/u/{secret}/episodes/{slug}").status_code == 404
+
+
+def test_delete_episode_removes_audio_file(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    import app as app_module
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    slug = client.post(
+        f"/u/{secret}/episodes", json={"url": "https://example.com/a"},
+    ).json()["slug"]
+    user_dir = app_module.DATA_DIR / secret
+    assert (user_dir / f"{slug}.mp3").exists()
+    assert (user_dir / f"{slug}.json").exists()
+
+    client.delete(f"/u/{secret}/episodes/{slug}")
+
+    assert not (user_dir / f"{slug}.mp3").exists()
+    assert not (user_dir / f"{slug}.json").exists()
+
+
+def test_delete_episode_idempotent_unknown_slug_404(client):
+    secret = make_feed(client)
+    resp = client.delete(f"/u/{secret}/episodes/zzzzzzzzzzz")
+    assert resp.status_code == 404
+    assert resp.json()["error"] == "not_found"
+
+
+def test_delete_episode_malformed_slug_404(client):
+    secret = make_feed(client)
+    resp = client.delete(f"/u/{secret}/episodes/bad.slug")   # '.' fails SLUG_RE
+    assert resp.status_code == 404
+
+
+def test_delete_episode_unknown_feed_404(client):
+    resp = client.delete("/u/nope/episodes/abc123")
+    assert resp.status_code == 404
+    assert resp.json()["error"] == "not_found"
+
+
 def test_agents_md_served_as_markdown(client):
     resp = client.get("/AGENTS.md")
     assert resp.status_code == 200

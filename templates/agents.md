@@ -10,8 +10,11 @@ user's behalf. Base URL: {base}
 You have a feed URL of the form {base}/u/<secret>. To narrate an article:
 
 1. POST the article URL to {base}/u/<secret>/episodes.
-2. Poll the returned status_url every few seconds until status is "ready".
+2. Poll the returned status_url every 5 seconds until status is "ready"
+   (usually one to two minutes; give up after ~10 minutes, see Poll status).
 3. Tell the user it is in their feed. Done.
+
+Undo a share with DELETE {base}/u/<secret>/episodes/<slug>.
 
     curl -s -X POST {base}/u/<secret>/episodes \
       -H 'Content-Type: application/json' \
@@ -111,9 +114,20 @@ and the URL would be paywalled.
 
 "status" moves from "pending" to "ready" (an "audio_url" field appears) or
 "failed" ("error" holds a human-readable reason: paywalled article, fetch
-error, article too long). Narration usually takes one to a few minutes;
-poll no faster than every few seconds. When an episode fails, report the
-error to the user and do not retry the same URL.
+error, article too long). "ts" is the last-update unix time, not a fixed
+created-at, so do not use it to measure elapsed time; track your own start
+time instead.
+
+Timing and when to give up:
+
+- Narration is usually ready in one to two minutes; a long article takes a
+  bit more. Poll no faster than every five seconds.
+- The server bounds each step, so a healthy episode does not sit pending for
+  long. If "status" is still "pending" after about 10 minutes, treat it as
+  stuck: stop polling, tell the user, and optionally delete it (see below)
+  and try once more. Do not poll indefinitely.
+- When an episode fails, report the error to the user and do not retry the
+  same URL.
 
 ## List the feed
 
@@ -140,6 +154,19 @@ The 20 most recent episodes, newest first, plus the feed's voice and your
 "error" appears only on "failed" ones. Use this to confirm you have the
 right feed (a 404 means the URL is wrong or was rotated, so ask the user)
 and to check your remaining quota before sharing.
+
+## Remove an episode
+
+    DELETE {base}/u/<secret>/episodes/<slug>
+
+    {"slug": "k3kQ9rTzVx0", "status": "deleted"}
+
+Undo a share you created: a wrong link, a duplicate, or a stuck episode you
+are about to retry. It removes the episode from the feed immediately (the RSS
+rebuilds on the next fetch). A 404 means there is no such episode (already
+gone, or wrong slug). Works on an episode in any state: pending, ready, or
+failed. Delete only episodes you added; do not clean up the user's feed
+unless they ask.
 
 ## Read the feed
 
@@ -174,7 +201,10 @@ user instead.
 - Share only what the user asked you to share.
 - Do not retry permanent errors (400, 404).
 - On 429, stop and tell the user.
-- Poll the status URL no faster than every few seconds.
+- Poll the status URL no faster than every five seconds, and stop after about
+  10 minutes: a still-pending episode by then is stuck, not slow.
+- To undo a share you created (wrong link, duplicate), DELETE it. Do not
+  delete episodes you did not add unless the user asks.
 - Send a descriptive User-Agent so your traffic is identifiable.
 
 ## Example: curl
@@ -198,11 +228,20 @@ user instead.
     created.raise_for_status()
     episode = created.json()
 
+    # Poll, but never forever: give up after ~10 minutes and treat as stuck.
+    deadline = time.monotonic() + 600
     status = episode
-    while status["status"] == "pending":
+    while status["status"] == "pending" and time.monotonic() < deadline:
         time.sleep(5)
         polled = httpx.get(episode["status_url"])
         polled.raise_for_status()
         status = polled.json()
 
-    print(status["status"], status.get("audio_url") or status.get("error"))
+    if status["status"] == "ready":
+        print("ready:", status["audio_url"])
+    elif status["status"] == "failed":
+        print("failed:", status["error"])      # report to user; do not retry
+    else:
+        print("stuck: still pending after 10 min; telling the user")
+        # Optional: undo and try once more.
+        # httpx.delete(feed + "/episodes/" + episode["slug"])

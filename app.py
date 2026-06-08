@@ -407,6 +407,22 @@ def episode_status_api(secret: str, slug: str):
     return _agent_error(404, "not_found", "No such episode.")
 
 
+@app.delete("/u/{secret}/episodes/{slug}")
+def delete_episode_api(secret: str, slug: str):
+    """Agent-facing episode delete (documented at /AGENTS.md). Lets an agent
+    undo a share it created (wrong link, duplicate). Path-secret auth, JSON
+    only, no cookies; mirrors the status route's auth and error shape. The
+    delete is idempotent from the agent's side: an already-gone slug is a 404,
+    same as any unknown slug."""
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    if not SLUG_RE.match(slug):
+        return _agent_error(404, "not_found", "No such episode.")
+    if not storage.delete_episode(DATA_DIR, secret, slug):
+        return _agent_error(404, "not_found", "No such episode.")
+    return JSONResponse({"slug": slug, "status": "deleted"})
+
+
 @app.get("/cover.jpg")
 def cover_route():
     return FileResponse(

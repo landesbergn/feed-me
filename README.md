@@ -80,6 +80,7 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}` or `{"text": ..., "title": ...}`); 5/day rolling cap |
 | `GET /u/{secret}/episodes` | Agent API: JSON feed listing (20 most recent) + voice + remaining quota, secret-authed |
 | `GET /u/{secret}/episodes/{slug}` | Agent API: JSON episode status, secret-authed |
+| `DELETE /u/{secret}/episodes/{slug}` | Agent API: delete an episode (undo a share), secret-authed |
 | `GET /AGENTS.md`, `GET /llms.txt` | Agent-facing API docs |
 | `GET /u/{secret}/episodes_partial` | Episode-table fragment, polled every 3s by the settings page |
 | `POST /u/{secret}/voice` | Change the TTS voice (shimmer / alloy / nova / echo) |

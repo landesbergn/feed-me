@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.16 · 2026-06-08
+
+Let an agent undo a share, and tell agents when to stop polling.
+
+- New `DELETE /u/<secret>/episodes/<slug>` on the agent API: undo a share (wrong link, duplicate, a stuck episode you are about to retry). Path-secret auth, JSON only, no cookies, same `{"error", "message"}` shape as the rest of the agent API; returns `{"slug", "status": "deleted"}` on success and 404 for an unknown slug. Removes the episode's `.json` (which drops it from the feed/RSS, both of which rebuild per request) and best-effort its `.mp3`. New `storage.delete_episode()` helper. Closes the create -> poll -> delete lifecycle so neither the agent nor the operator has to hand-edit the volume to remove an episode.
+- `AGENTS.md` now tells agents *when to give up*: poll no faster than every 5s and stop after ~10 min, because a still-pending episode by then is stuck, not slow (the old guidance and the Python example polled `while pending` with no bound, which is exactly how a transient stall reads as a 25-minute hang). Documents the new delete endpoint, clarifies that `ts` is a last-update time (not a fixed created-at, so agents should track their own start time), and the Python example now uses a bounded poll loop with explicit ready / failed / stuck branches.
+
 ## v3.15 · 2026-06-08
 
 Bound a stalled TTS call so an episode can't hang for 10+ minutes.
