@@ -4,6 +4,7 @@ import json
 import time
 
 import analytics
+import ingest
 import storage
 from tests.conftest import FakeResponse
 
@@ -41,8 +42,8 @@ def wire_fake_pipeline(monkeypatch, fake_http, fake_openai):
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
     monkeypatch.setattr(
         app_module, "spawn_ingest",
-        lambda url, secret, data_dir, slug: ingest.process(
-            url, secret, data_dir, slug=slug
+        lambda url, secret, data_dir, slug, *, text=None, title=None: ingest.process(
+            url, secret, data_dir, slug=slug, text=text, title=title
         ),
     )
 
@@ -537,3 +538,139 @@ def test_settings_prompt_tells_agent_to_save_feed(client):
     secret = make_feed(client)
     resp = client.get(f"/u/{secret}")
     assert "Save my feed page so you don't have to ask again" in resp.text
+
+
+# --- text mode -------------------------------------------------------------
+
+def test_text_mode_narrates_without_fetching(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    def boom(*a, **k):
+        raise AssertionError("text mode must not fetch")
+    monkeypatch.setattr(ingest, "fetch_article", boom)
+    monkeypatch.setattr(ingest, "fetch_title", boom)
+
+    resp = client.post(
+        f"/u/{secret}/episodes",
+        json={"text": "The full body of a newsletter, narrated as-is.",
+              "title": "My Newsletter"},
+    )
+
+    assert resp.status_code == 202
+    body = resp.json()
+    assert body["title"] == "My Newsletter"
+    assert body["remaining"] == 4
+    record = json.loads((tmp_path / secret / f"{body['slug']}.json").read_text())
+    assert "pending" not in record and "error" not in record   # ready
+    assert record["title"] == "My Newsletter"
+    assert record["url"] == ""
+    assert (tmp_path / secret / f"{body['slug']}.mp3").exists()
+
+
+def test_text_mode_optional_url_is_source_link_not_fetched(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    def boom(*a, **k):
+        raise AssertionError("must not fetch the source url")
+    monkeypatch.setattr(ingest, "fetch_article", boom)
+    monkeypatch.setattr(ingest, "fetch_title", boom)
+
+    client.post(
+        f"/u/{secret}/episodes",
+        json={"text": "Body to narrate.", "title": "T",
+              "url": "https://paywalled.example/post"},
+    )
+
+    feed = client.get(f"/u/{secret}/feed.xml").text
+    assert "https://paywalled.example/post" in feed
+    assert "Original article" in feed
+
+
+def test_text_mode_no_url_omits_source_link(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+    body = client.post(
+        f"/u/{secret}/episodes",
+        json={"text": "Body to narrate.", "title": "No Source"},
+    ).json()
+
+    # No source url stored, which is what makes rss omit the "Original article"
+    # line (see test_render_feed_omits_original_article_when_url_empty). The
+    # feed itself always has that line from the welcome episode (which has a
+    # url), so assert on this episode's record, not the whole feed.
+    record = json.loads((tmp_path / secret / f"{body['slug']}.json").read_text())
+    assert record["url"] == ""
+    feed = client.get(f"/u/{secret}/feed.xml").text
+    assert "No Source" in feed
+
+
+def test_text_mode_requires_title(client, tmp_path):
+    secret = make_feed(client)
+    for bad in ({"text": "Body only."}, {"text": "Body.", "title": ""},
+                {"text": "Body.", "title": "   "}):
+        resp = client.post(f"/u/{secret}/episodes", json=bad)
+        assert resp.status_code == 400
+        assert resp.json()["error"] == "invalid_request"
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only
+
+
+def test_text_mode_rejects_empty_text(client, tmp_path):
+    secret = make_feed(client)
+    resp = client.post(f"/u/{secret}/episodes", json={"text": "   ", "title": "x"})
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_request"
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only
+
+
+def test_text_mode_rejects_over_max(client, tmp_path):
+    secret = make_feed(client)
+    resp = client.post(
+        f"/u/{secret}/episodes",
+        json={"text": "x" * (ingest.MAX_BODY_CHARS + 1), "title": "Too long"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_request"
+    assert "too long" in resp.json()["message"].lower()
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only
+
+
+def test_text_mode_bad_optional_url(client, tmp_path):
+    secret = make_feed(client)
+    resp = client.post(
+        f"/u/{secret}/episodes",
+        json={"text": "Body.", "title": "T", "url": "ftp://nope/x"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_url"
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only
+
+
+def test_post_neither_url_nor_text_400(client, tmp_path):
+    secret = make_feed(client)
+    resp = client.post(f"/u/{secret}/episodes", json={"foo": "bar"})
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_request"
+    assert "text" in resp.json()["message"]
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only
+
+
+def test_text_share_counts_toward_cap_and_lists(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    post = client.post(
+        f"/u/{secret}/episodes", json={"text": "A body.", "title": "Counted"},
+    )
+    assert post.json()["remaining"] == 4
+
+    listing = client.get(f"/u/{secret}/episodes").json()
+    assert listing["remaining"] == 4
+    assert any(e["title"] == "Counted" for e in listing["episodes"])

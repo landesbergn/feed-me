@@ -65,11 +65,11 @@ def _is_welcome(ep: dict) -> bool:
     return bool(ep.get("welcome")) or ep.get("url") == WELCOME_URL
 
 
-def spawn_ingest(url: str, secret: str, data_dir: Path, slug: str) -> None:
+def spawn_ingest(url: str, secret: str, data_dir: Path, slug: str, *, text=None, title=None) -> None:
     t = threading.Thread(
         target=ingest.process,
         args=(url, secret, data_dir),
-        kwargs={"slug": slug},
+        kwargs={"slug": slug, "text": text, "title": title},
         daemon=True,
     )
     t.start()
@@ -241,11 +241,12 @@ def _agent_episodes_in_window(secret: str, now: int) -> list[dict]:
 async def create_episode_api(request: Request, secret: str):
     """Agent-facing episode creation (documented at /AGENTS.md).
 
-    Authenticates solely by the path secret; the fm_session cookie is
-    deliberately never read and never set (no ambient authority, so no
-    CSRF surface). Parses the body manually: a Pydantic body model would
-    reject malformed JSON with FastAPI's 422 and break the documented
-    400 {"error": "invalid_request"} contract.
+    Two modes. URL mode: {"url": "..."} fetches and narrates the article.
+    Text mode: {"text": "...", "title": "..."} narrates the supplied text
+    directly (no fetch), with an optional {"url": "..."} as the source link.
+    Authenticates solely by the path secret; the fm_session cookie is never
+    read or set. Parses the body manually so malformed JSON is the documented
+    400, not FastAPI's 422.
     """
     if not storage.user_exists(DATA_DIR, secret):
         return _agent_error(404, "not_found", "No feed at this URL.")
@@ -254,20 +255,55 @@ async def create_episode_api(request: Request, secret: str):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return _agent_error(
             400, "invalid_request",
-            'Body must be JSON like {"url": "https://..."}.',
+            'Body must be JSON: {"url": "https://..."} or {"text": "...", "title": "..."}.',
         )
-    url = payload.get("url") if isinstance(payload, dict) else None
-    if not isinstance(url, str) or not url:
+    if not isinstance(payload, dict):
         return _agent_error(
             400, "invalid_request",
-            'Body must include a string "url" field.',
+            'Body must include a string "url" or "text" field.',
         )
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        return _agent_error(
-            400, "invalid_url",
-            f"Invalid URL: {url[:200]!r} (must be http or https).",
-        )
+
+    text = payload.get("text")
+    text_mode = isinstance(text, str) and bool(text.strip())
+
+    if text_mode:
+        title = payload.get("title")
+        if not isinstance(title, str) or not title.strip():
+            return _agent_error(
+                400, "invalid_request", "Text requires a non-empty title.",
+            )
+        if len(text) > ingest.MAX_BODY_CHARS:
+            return _agent_error(
+                400, "invalid_request",
+                f"Text too long: {len(text):,} characters "
+                f"(limit {ingest.MAX_BODY_CHARS:,}).",
+            )
+        url = payload.get("url")
+        if url is not None:
+            parsed = urlparse(url) if isinstance(url, str) else None
+            if parsed is None or parsed.scheme not in ("http", "https") or not parsed.netloc:
+                return _agent_error(
+                    400, "invalid_url",
+                    f"Invalid URL: {str(url)[:200]!r} (must be http or https).",
+                )
+        source_url = url or ""
+        episode_title = title.strip()
+    else:
+        url = payload.get("url")
+        if not isinstance(url, str) or not url:
+            return _agent_error(
+                400, "invalid_request",
+                'Body must include a string "url" or "text" field.',
+            )
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return _agent_error(
+                400, "invalid_url",
+                f"Invalid URL: {url[:200]!r} (must be http or https).",
+            )
+        source_url = url
+        episode_title = None
+
     now = int(_time.time())
     in_window = _agent_episodes_in_window(secret, now)
     if len(in_window) >= AGENT_DAILY_CAP:
@@ -281,19 +317,25 @@ async def create_episode_api(request: Request, secret: str):
             "tell the user.",
             headers={"Retry-After": str(retry_after)},
         )
-    # fetch_title blocks on the network; this route is async (for
-    # request.body()), so run it off the event loop.
-    title = await run_in_threadpool(ingest.fetch_title, url)
+
+    if text_mode:
+        record_title = episode_title
+        spawn_text, spawn_title = text, episode_title
+    else:
+        # fetch_title blocks on the network; run it off the event loop.
+        record_title = await run_in_threadpool(ingest.fetch_title, url)
+        spawn_text, spawn_title = None, None
+
     slug = storage.write_pending_episode(
-        DATA_DIR, secret, source_url=url, title=title, via="agent",
+        DATA_DIR, secret, source_url=source_url, title=record_title, via="agent",
     )
-    spawn_ingest(url, secret, DATA_DIR, slug)
+    spawn_ingest(source_url, secret, DATA_DIR, slug, text=spawn_text, title=spawn_title)
     _track("article_shared", secret=secret, path="agent",
-           props={"url": url, "title": title, "via": "agent"})
+           props={"url": source_url, "title": record_title, "via": "agent"})
     return JSONResponse({
         "slug": slug,
         "status": "pending",
-        "title": title,
+        "title": record_title,
         "status_url": f"{APP_BASE_URL}/u/{secret}/episodes/{slug}",
         "feed_page": f"{APP_BASE_URL}/u/{secret}",
         "remaining": AGENT_DAILY_CAP - len(in_window) - 1,
