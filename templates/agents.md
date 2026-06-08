@@ -70,6 +70,32 @@ Notes:
 - Only http/https article URLs are accepted. Unknown body fields are
   ignored.
 
+## Narrate text directly
+
+If you already hold the full text of an article or email (for example a
+newsletter the user receives in full as a paying subscriber), send the text
+itself instead of a URL. Feed Me narrates it as-is and never fetches anything,
+so it is not subject to the paywall a server-side fetch would hit.
+
+    POST {base}/u/<secret>/episodes
+    Content-Type: application/json
+
+    {
+      "text": "The full article or email body to narrate...",
+      "title": "The Episode Title",
+      "url": "https://example.com/the-source"
+    }
+
+- "text" is the body to narrate (plain text; strip HTML first).
+- "title" is required (there is no page to derive one from).
+- "url" is optional: it becomes the episode's "Original article" link and is
+  never fetched. Omit it when there is no canonical source.
+
+The response is the same 202 shape as a URL share, and the same rate limit
+applies. Over-long text (more than the article limit) and empty text are
+rejected immediately. Prefer text over a URL whenever you have the full body
+and the URL would be paywalled.
+
 ## Poll status
 
     GET {base}/u/<secret>/episodes/<slug>
@@ -126,7 +152,7 @@ URLs.
 
 | Status | error | Meaning | Retry? |
 |--------|-------|---------|--------|
-| 400 | invalid_request | Body is not JSON, or has no string "url" field | No: fix the request |
+| 400 | invalid_request | Body is not JSON, or is missing a valid "url" (or "text" with a "title") | No: fix the request |
 | 400 | invalid_url | URL is not http/https with a host | No: fix the URL |
 | 404 | not_found | No feed at that secret, or no such episode | No: check the feed URL with the user |
 | 429 | rate_limited | Agent cap reached | Not before Retry-After; tell the user |

@@ -674,3 +674,10 @@ def test_text_share_counts_toward_cap_and_lists(
     listing = client.get(f"/u/{secret}/episodes").json()
     assert listing["remaining"] == 4
     assert any(e["title"] == "Counted" for e in listing["episodes"])
+
+
+def test_agents_md_documents_text_mode(client):
+    text = client.get("/AGENTS.md").text
+    assert "Narrate text directly" in text
+    assert '"text":' in text
+    assert "title" in text and "required" in text
