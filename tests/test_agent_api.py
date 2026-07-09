@@ -737,6 +737,105 @@ def test_text_share_counts_toward_cap_and_lists(
     assert any(e["title"] == "Counted" for e in listing["episodes"])
 
 
+def test_max_body_chars_is_100k():
+    """Per-episode cap lowered to bound single-episode TTS cost (~$1.50)."""
+    assert ingest.MAX_BODY_CHARS == 100_000
+
+
+def test_text_episode_records_chars(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """The finalized record carries the synthesized character count, so the
+    per-feed budget can meter cost."""
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    post = client.post(
+        f"/u/{secret}/episodes", json={"text": "abcde", "title": "T"},
+    )
+    slug = post.json()["slug"]
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert record["chars"] == 5
+
+
+def test_url_episode_records_chars(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    secret = make_feed(client)
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    post = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/a"})
+    slug = post.json()["slug"]
+    record = json.loads((tmp_path / secret / f"{slug}.json").read_text())
+    assert record["chars"] > 0
+
+
+def test_text_budget_blocks_when_exceeded(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    """A per-feed rolling character budget blocks further narration with 429
+    budget_exceeded, independent of the episode-count cap."""
+    import app as app_module
+    monkeypatch.setattr(app_module, "AGENT_FEED_CHAR_BUDGET", 50)
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    r1 = client.post(f"/u/{secret}/episodes", json={"text": "x" * 30, "title": "A"})
+    assert r1.status_code == 202
+
+    r2 = client.post(f"/u/{secret}/episodes", json={"text": "y" * 30, "title": "B"})
+    assert r2.status_code == 429
+    assert r2.json()["error"] == "budget_exceeded"
+    assert int(r2.headers["Retry-After"]) > 0
+    # The message must explain the cap and steer the agent away from subverting it.
+    msg = r2.json()["message"].lower()
+    assert "budget" in msg
+    assert "split" in msg          # tells it splitting will not help
+    assert "tell the user" in msg
+
+
+def test_url_budget_blocks_only_when_already_over(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    """URL length is unknown pre-fetch, so URL shares are blocked only once the
+    feed is already at/over budget (not pre-emptively)."""
+    import app as app_module
+    monkeypatch.setattr(app_module, "AGENT_FEED_CHAR_BUDGET", 20)
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    # First push a text episode that exactly consumes the budget.
+    assert client.post(
+        f"/u/{secret}/episodes", json={"text": "z" * 20, "title": "Fill"},
+    ).status_code == 202
+
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    r = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/a"})
+    assert r.status_code == 429
+    assert r.json()["error"] == "budget_exceeded"
+
+
+def test_budget_remaining_chars_reported(
+    client, monkeypatch, fake_http, fake_openai,
+):
+    """Both POST and GET report remaining budget so an agent can self-regulate."""
+    import app as app_module
+    monkeypatch.setattr(app_module, "AGENT_FEED_CHAR_BUDGET", 1000)
+    secret = make_feed(client)
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    post = client.post(f"/u/{secret}/episodes", json={"text": "z" * 100, "title": "T"})
+    assert post.json()["budget_remaining_chars"] == 900
+
+    listing = client.get(f"/u/{secret}/episodes").json()
+    assert listing["budget_remaining_chars"] == 900
+
+
 def test_agents_md_documents_text_mode(client):
     text = client.get("/AGENTS.md").text
     assert "Narrate text directly" in text

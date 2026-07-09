@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.17 · 2026-07-09
+
+Cap agent narration cost: lower the per-episode limit and add a per-feed budget.
+
+- `ingest.MAX_BODY_CHARS` drops from 500,000 to 100,000 (about 50 minutes of `tts-1` audio, ~$1.50 max per episode). Articles longer than that are rejected, same as before, just at a lower threshold. This re-narrows the window widened in v3.14; the tradeoff is that a single very long document (the ~265k-char "encyclical" case) must now be split.
+- New per-feed narration budget on the agent API: `AGENT_FEED_CHAR_BUDGET` (300,000 characters per feed per rolling 24h, ~$4.50/day/feed) alongside the existing 5-episode count cap. Characters map directly to TTS cost, so this bounds spend regardless of how an agent splits its pushes. Over-budget requests get a `429 budget_exceeded` with a `Retry-After` and a message that explains the cap is a per-feed total and that splitting or retrying will not raise it (so an agent throttles instead of trying to route around it). Text mode is metered exactly at request time; URL mode (unknown length until fetch) is blocked only once the feed is already at budget.
+- Episodes now record a `chars` count (`storage.write_*_episode`), which is what the budget meters. Failed text-mode episodes still count so a failing-and-retrying agent cannot narrate for free; failed URL fetches (no confirmed length) do not.
+- Both `POST` and `GET /u/<secret>/episodes` now return `budget_remaining_chars` so an agent can self-regulate. `AGENTS.md` documents the budget, the new error code, and the 100k per-episode limit.
+
 ## v3.16 · 2026-06-08
 
 Let an agent undo a share, and tell agents when to stop polling.

@@ -50,7 +50,7 @@ TTS_MODEL = "tts-1"
 TTS_MAX_PARALLEL = 12  # synthesize() batch size and worker bound; see comment there
 DESCRIPTION_EXCERPT_CHARS = 200
 TITLE_FETCH_TIMEOUT_S = 5.0
-MAX_BODY_CHARS = 500_000  # ~4h10m of TTS audio, ~$7.50 max cost per article
+MAX_BODY_CHARS = 100_000  # ~50m of TTS audio, ~$1.50 max cost per article
 MIN_BODY_CHARS = 600  # below this it's a teaser/paywall shell, not an article
 # On a page that declares itself paywalled, anything under this is a teaser
 # (nytimes.com serves ~1,800 chars without subscriber cookies); above it the
@@ -291,7 +291,7 @@ def process(url, secret, data_dir, slug=None, *, text=None, title=None):
             storage.write_episode(
                 data_dir, secret, slug=slug,
                 title=episode_title, source_url=source_url, audio_path=tmp_audio,
-                description=description,
+                description=description, chars=len(body),
             )
         finally:
             # On success the rename already consumed the tmp; on failure this
@@ -300,7 +300,11 @@ def process(url, secret, data_dir, slug=None, *, text=None, title=None):
             tmp_audio.unlink(missing_ok=True)
     except Exception as e:
         log.exception("ingest failed user=%s url=%s", secret[:6], url)
+        # Text mode vouched for its length up front; count it against the budget
+        # so a failing-and-retrying agent cannot narrate for free. URL mode has
+        # no confirmed length when the fetch itself fails, so leave it unmetered.
         storage.write_failed_episode(
             data_dir, secret, slug=slug,
             source_url=source_url, error=str(e)[:200],
+            chars=len(text) if text is not None else None,
         )

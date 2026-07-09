@@ -553,29 +553,33 @@ def test_process_writes_failure_when_body_exceeds_cap(
     assert "too long" in eps[0]["error"].lower()
 
 
-def test_process_succeeds_at_encyclical_length(
+def test_process_succeeds_at_near_cap_length(
     monkeypatch, fake_http, fake_openai, tmp_path,
 ):
-    """A ~265k-char article (the share that motivated v3.8: over the old
-    100k cap, under the new 500k one) processes to a ready episode."""
+    """A long article just under MAX_BODY_CHARS processes to a ready episode
+    across multiple TTS batches. The cap was lowered from 500k to 100k to bound
+    per-episode cost (see app.AGENT_FEED_CHAR_BUDGET); articles longer than that
+    are now rejected by test_process_writes_failure_when_body_exceeds_cap."""
     monkeypatch.setattr(ingest, "http_client", fake_http)
     monkeypatch.setattr(ingest, "openai_client", fake_openai)
 
-    fake_http.responses["https://example.com/encyclical"] = FakeResponse(
-        status_code=200, text=_huge_html(265_000),
+    fake_http.responses["https://example.com/long"] = FakeResponse(
+        status_code=200, text=_huge_html(55_000),
     )
-    _, body = ingest.fetch_article("https://example.com/encyclical")
-    assert 100_000 < len(body) < ingest.MAX_BODY_CHARS
+    _, body = ingest.fetch_article("https://example.com/long")
+    assert 50_000 < len(body) < ingest.MAX_BODY_CHARS
 
     secret = storage.create_user(tmp_path)
-    ingest.process("https://example.com/encyclical", secret, tmp_path)
+    ingest.process("https://example.com/long", secret, tmp_path)
 
     eps = storage.list_episodes(tmp_path, secret)
     assert len(eps) == 1
     assert eps[0]["status"] == "ready"
     assert eps[0]["has_audio"]
-    # More chunks than the old 25-chunk worst case actually synthesized.
-    assert len(fake_openai.calls) > 25
+    # Spans more than one synthesize batch (TTS_MAX_PARALLEL).
+    assert len(fake_openai.calls) > ingest.TTS_MAX_PARALLEL
+    # The synthesized character count is recorded for the per-feed budget.
+    assert eps[0]["chars"] == len(body)
 
 
 def test_synthesize_preserves_chunk_order_under_parallelism(monkeypatch, tmp_path):

@@ -89,6 +89,10 @@ COOKIE_NAME = "fm_session"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
 
 AGENT_DAILY_CAP = 5            # agent-created episodes per feed, rolling 24h
+# Per-feed character budget over the same rolling window. Characters map to TTS
+# cost (tts-1 is $15 / 1M chars), so this caps narration spend per feed at
+# ~$4.50/day independent of how the episodes are split. Tune this literal.
+AGENT_FEED_CHAR_BUDGET = 300_000
 AGENT_CAP_WINDOW_S = 86400
 
 
@@ -318,6 +322,35 @@ async def create_episode_api(request: Request, secret: str):
             headers={"Retry-After": str(retry_after)},
         )
 
+    # Per-feed character budget (TTS cost). Text mode knows its length up front,
+    # so it is checked exactly; URL mode has no confirmed length until the fetch,
+    # so it is blocked only once the feed is already at/over budget.
+    spent = sum(int(ep.get("chars") or 0) for ep in in_window)
+    remaining_budget = AGENT_FEED_CHAR_BUDGET - spent
+    incoming = len(text) if text_mode else 0
+    over_budget = incoming > remaining_budget if text_mode else remaining_budget <= 0
+    if over_budget:
+        retry_after = max(
+            1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now,
+        ) if in_window else AGENT_CAP_WINDOW_S
+        detail = (
+            f"; this {incoming:,}-character request would exceed the budget."
+            if text_mode else " and is at its budget."
+        )
+        return _agent_error(
+            429, "budget_exceeded",
+            f"Feed narration budget reached: {AGENT_FEED_CHAR_BUDGET:,} "
+            "characters per feed per rolling 24 hours (a total-volume cap that "
+            f"limits narration cost). This feed has narrated {spent:,} of "
+            f"{AGENT_FEED_CHAR_BUDGET:,} characters in the last 24 hours"
+            f"{detail} The budget frees as older episodes age out; do not retry "
+            "before Retry-After elapses. Splitting the text into smaller pieces "
+            "or opening more requests will not raise the cap (it is a per-feed "
+            "total, not per-episode) and will stay blocked. Tell the user their "
+            "feed hit its 24-hour narration budget.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     if text_mode:
         record_title = episode_title
         spawn_text, spawn_title = text, episode_title
@@ -328,6 +361,7 @@ async def create_episode_api(request: Request, secret: str):
 
     slug = storage.write_pending_episode(
         DATA_DIR, secret, source_url=source_url, title=record_title, via="agent",
+        chars=incoming if text_mode else None,
     )
     spawn_ingest(source_url, secret, DATA_DIR, slug, text=spawn_text, title=spawn_title)
     _track("article_shared", secret=secret, path="agent",
@@ -339,6 +373,7 @@ async def create_episode_api(request: Request, secret: str):
         "status_url": f"{APP_BASE_URL}/u/{secret}/episodes/{slug}",
         "feed_page": f"{APP_BASE_URL}/u/{secret}",
         "remaining": AGENT_DAILY_CAP - len(in_window) - 1,
+        "budget_remaining_chars": max(0, remaining_budget - incoming),
     }, status_code=202)
 
 
@@ -355,9 +390,10 @@ def list_episodes_api(secret: str):
     if not storage.user_exists(DATA_DIR, secret):
         return _agent_error(404, "not_found", "No feed at this URL.")
     now = int(_time.time())
-    remaining = max(
-        0, AGENT_DAILY_CAP - len(_agent_episodes_in_window(secret, now)),
-    )
+    in_window = _agent_episodes_in_window(secret, now)
+    remaining = max(0, AGENT_DAILY_CAP - len(in_window))
+    spent = sum(int(ep.get("chars") or 0) for ep in in_window)
+    budget_remaining = max(0, AGENT_FEED_CHAR_BUDGET - spent)
     episodes = []
     for ep in storage.list_episodes(DATA_DIR, secret)[:20]:
         slug = ep["slug"]
@@ -377,6 +413,7 @@ def list_episodes_api(secret: str):
         "feed_url": f"{APP_BASE_URL}/u/{secret}/feed.xml",
         "voice": storage.get_settings(DATA_DIR, secret)["voice"],
         "remaining": remaining,
+        "budget_remaining_chars": budget_remaining,
         "episodes": episodes,
     })
 

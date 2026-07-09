@@ -61,7 +61,8 @@ Response: 202 Accepted
       "title": "The Article Title",
       "status_url": "{base}/u/<secret>/episodes/k3kQ9rTzVx0",
       "feed_page": "{base}/u/<secret>",
-      "remaining": 4
+      "remaining": 4,
+      "budget_remaining_chars": 287500
     }
 
 Notes:
@@ -70,6 +71,9 @@ Notes:
   processes normally.
 - "remaining" is how many agent shares are left in the rolling 24-hour
   window (see Rate limit).
+- "budget_remaining_chars" is how many characters of narration the feed can
+  still request in that window (see Rate limit). Check it before sending long
+  text so you do not get a 429.
 - Only http/https article URLs are accepted. Unknown body fields are
   ignored.
 
@@ -95,9 +99,9 @@ so it is not subject to the paywall a server-side fetch would hit.
   never fetched. Omit it when there is no canonical source.
 
 The response is the same 202 shape as a URL share, and the same rate limit
-applies. Over-long text (more than the article limit) and empty text are
-rejected immediately. Prefer text over a URL whenever you have the full body
-and the URL would be paywalled.
+and narration budget apply. Over-long text (more than the per-episode limit of
+100,000 characters) and empty text are rejected immediately. Prefer text over a
+URL whenever you have the full body and the URL would be paywalled.
 
 ## Poll status
 
@@ -138,6 +142,7 @@ Timing and when to give up:
       "feed_url": "{base}/u/<secret>/feed.xml",
       "voice": "shimmer",
       "remaining": 3,
+      "budget_remaining_chars": 245000,
       "episodes": [
         {
           "slug": "k3kQ9rTzVx0",
@@ -149,11 +154,12 @@ Timing and when to give up:
       ]
     }
 
-The 20 most recent episodes, newest first, plus the feed's voice and your
-"remaining" agent quota. "audio_url" appears only on "ready" episodes;
-"error" appears only on "failed" ones. Use this to confirm you have the
-right feed (a 404 means the URL is wrong or was rotated, so ask the user)
-and to check your remaining quota before sharing.
+The 20 most recent episodes, newest first, plus the feed's voice and both of
+your remaining limits: "remaining" (episode count) and "budget_remaining_chars"
+(narration characters). "audio_url" appears only on "ready" episodes; "error"
+appears only on "failed" ones. Use this to confirm you have the right feed (a
+404 means the URL is wrong or was rotated, so ask the user) and to check both
+limits before sharing.
 
 ## Remove an episode
 
@@ -182,16 +188,25 @@ URLs.
 | 400 | invalid_request | Body is not JSON, or is missing a valid "url" (or "text" with a "title") | No: fix the request |
 | 400 | invalid_url | URL is not http/https with a host | No: fix the URL |
 | 404 | not_found | No feed at that secret, or no such episode | No: check the feed URL with the user |
-| 429 | rate_limited | Agent cap reached | Not before Retry-After; tell the user |
+| 429 | rate_limited | Agent cap reached (episode count) | Not before Retry-After; tell the user |
+| 429 | budget_exceeded | Feed narration character budget reached | Not before Retry-After; tell the user |
 
 Error bodies are JSON: {"error": "<code>", "message": "<human-readable>"}.
 
 ## Rate limit
 
-5 episodes per feed per rolling 24 hours through this API. The user's own
-phone sharing does not count against it. A 429 response includes a
-Retry-After header (seconds). Do not retry before it elapses; tell the
-user instead.
+Two limits apply per feed over a rolling 24-hour window, and the user's own
+phone sharing counts against neither:
+
+1. Episode count: 5 episodes per feed. "remaining" reports what is left.
+2. Narration budget: a character total across all episodes (roughly the TTS
+   cost). "budget_remaining_chars" reports what is left, and each episode is
+   itself capped at 100,000 characters.
+
+Both return 429 with a Retry-After header (seconds); budget_exceeded means the
+feed hit the character total, not the episode count. Splitting text into smaller
+pieces does not raise the budget (it is a per-feed total). Do not retry before
+Retry-After elapses; tell the user instead.
 
 ## Etiquette
 
@@ -225,6 +240,10 @@ user instead.
         feed + "/episodes",
         json={"url": "https://example.com/some-article"},
     )
+    # A 429 here is rate_limited (5-episode cap) or budget_exceeded (character
+    # budget). Both are per-feed and per rolling 24h: do not retry before the
+    # Retry-After header elapses, and do not split the text to route around the
+    # budget (it is a per-feed total). Stop and tell the user instead.
     created.raise_for_status()
     episode = created.json()
 

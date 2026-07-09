@@ -49,11 +49,13 @@ def write_episode(
     audio_path: Path | None = None,
     slug: str | None = None,
     description: str | None = None,
+    chars: int | None = None,
 ) -> str:
     """Audio comes as bytes (audio=) or as a file to rename into place
     (audio_path=, used by ingest so a long synthesis streams to disk and never
     holds the full MP3 in memory; rename is atomic on the same filesystem).
-    Exactly one of the two is required."""
+    Exactly one of the two is required. `chars` is the synthesized character
+    count, recorded so the per-feed narration budget can meter TTS cost."""
     if (audio is None) == (audio_path is None):
         raise ValueError("exactly one of audio / audio_path is required")
     if slug is None:
@@ -73,6 +75,8 @@ def write_episode(
         record["description"] = description
     if via is not None:
         record["via"] = via
+    if chars is not None:
+        record["chars"] = chars
     (user_dir / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
@@ -82,6 +86,7 @@ def write_failed_episode(
     source_url: str, error: str,
     slug: str | None = None,
     description: str | None = None,
+    chars: int | None = None,
 ) -> str:
     if slug is None:
         slug = _new_slug()
@@ -96,6 +101,8 @@ def write_failed_episode(
         record["description"] = description
     if via is not None:
         record["via"] = via
+    if chars is not None:
+        record["chars"] = chars
     (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
@@ -106,6 +113,7 @@ def write_pending_episode(
     title: str | None = None,
     description: str | None = None,
     via: str | None = None,
+    chars: int | None = None,
 ) -> str:
     slug = _new_slug()
     record = {
@@ -118,6 +126,8 @@ def write_pending_episode(
         record["description"] = description
     if via is not None:
         record["via"] = via
+    if chars is not None:
+        record["chars"] = chars
     (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
