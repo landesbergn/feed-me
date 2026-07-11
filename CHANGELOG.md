@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.18 · 2026-07-11
+
+Hard-block a feed from generating new audio.
+
+- New `BLOCKED_FEED_HASHES` set in `app.py`: any feed whose `analytics.feed_hash(secret)` is listed is refused all new TTS. The match is on the one-way feed hash (the same 12-char id shown on `/admin/stats`), so the raw secret never appears in source or logs, and a hash can be pasted straight from the stats page. Seeded with `dd8d9ed021f8`, whose agent pipeline was driving OpenAI cost past what the per-feed budget (v3.17) alone would bound.
+- `POST /u/<secret>/episodes` returns `403 suspended` (`{"error": "suspended", "message": ...}`) for a blocked feed, before parsing the body or spawning any work, so no OpenAI call is made. The message names the reason and points to a contact, per the "clear error so they understand why" call. The `/share` shortcut path shows a matching "Feed suspended" page (defense in depth: the block covers every TTS entry point). Read paths (`GET`/`DELETE` episodes, the feed, RSS, existing audio) stay open, so a block reads as a suspension, not a rotated or deleted secret.
+- Reversible: remove the hash and redeploy. New `app._is_blocked()` helper; new tests cover the agent-API 403 (with an empty fake-OpenAI call log proving no spend), the still-open read path, and the suspended share page.
+
 ## v3.17 · 2026-07-09
 
 Cap agent narration cost: lower the per-episode limit and add a per-feed budget.

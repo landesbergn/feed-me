@@ -188,6 +188,7 @@ URLs.
 | 400 | invalid_request | Body is not JSON, or is missing a valid "url" (or "text" with a "title") | No: fix the request |
 | 400 | invalid_url | URL is not http/https with a host | No: fix the URL |
 | 404 | not_found | No feed at that secret, or no such episode | No: check the feed URL with the user |
+| 403 | suspended | This feed is suspended from new narration | No: tell the user to contact the feed owner |
 | 429 | rate_limited | Agent cap reached (episode count) | Not before Retry-After; tell the user |
 | 429 | budget_exceeded | Feed narration character budget reached | Not before Retry-After; tell the user |
 

@@ -147,6 +147,12 @@
     <p>{{ error }}</p>
     <p class="hint">Try sharing again.</p>
     <a class="back" href="{{ home_url }}">← Back to your feed</a>
+  {% elif state == "blocked" %}
+    <div class="emoji" aria-hidden="true">⏸️</div>
+    <h1>Feed suspended</h1>
+    <p>This feed is suspended due to unusually high usage.</p>
+    <p class="hint">Contact Noah (below) to restore access.</p>
+    <a class="back" href="{{ home_url }}">← Back to your feed</a>
   {% else %}{# connect #}
     <div class="emoji" aria-hidden="true">🔗</div>
     <h1>Link this browser first</h1>

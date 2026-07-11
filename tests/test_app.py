@@ -532,6 +532,34 @@ def test_share_without_cookie_shows_connect(client):
     assert "Link this browser" in response.text
 
 
+def test_share_blocked_feed_shows_suspended(client, monkeypatch, tmp_path):
+    """A blocked feed hitting the shortcut path sees a suspended page and spawns
+    no ingest (defense in depth: the block covers every TTS entry point)."""
+    import analytics
+    import app as app_module
+    import storage
+
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # links this browser (sets fm_session)
+    monkeypatch.setattr(
+        app_module, "BLOCKED_FEED_HASHES",
+        frozenset({analytics.feed_hash(secret)}),
+    )
+
+    calls = []
+    monkeypatch.setattr(
+        app_module, "spawn_ingest",
+        lambda *a, **k: calls.append(a),
+    )
+
+    response = client.get("/share?url=https://example.com/a")
+    assert response.status_code == 200
+    assert "Feed suspended" in response.text
+    assert calls == []                                         # no ingest spawned
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only, no failed row
+
+
 def test_share_bad_url_writes_failed(client, tmp_path):
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]

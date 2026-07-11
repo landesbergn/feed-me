@@ -127,6 +127,47 @@ def test_post_episode_invalid_json_400(client, tmp_path):
     assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only
 
 
+def test_post_episode_blocked_feed_403(
+    client, monkeypatch, fake_http, fake_openai, tmp_path,
+):
+    """A hard-blocked feed_hash gets a 403 'suspended' and generates no audio.
+
+    The match is on feed_hash(secret), so the block never sees the raw secret.
+    The pipeline is wired live: if the guard leaked, this would spend a real
+    TTS call, so the empty fake_openai.calls is the cost-prevention assertion."""
+    import app as app_module
+    secret = make_feed(client)
+    monkeypatch.setattr(
+        app_module, "BLOCKED_FEED_HASHES",
+        frozenset({analytics.feed_hash(secret)}),
+    )
+    fake_http.responses["https://example.com/a"] = FakeResponse(
+        status_code=200, text=ARTICLE_HTML,
+    )
+    wire_fake_pipeline(monkeypatch, fake_http, fake_openai)
+
+    resp = client.post(f"/u/{secret}/episodes", json={"url": "https://example.com/a"})
+
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "suspended"
+    assert fake_openai.calls == []                             # no TTS spend
+    assert len(storage.list_episodes(tmp_path, secret)) == 1   # welcome only, nothing created
+
+
+def test_blocked_feed_can_still_list_episodes(client, monkeypatch):
+    """The block gates new TTS only. Read paths stay open so the owner (and the
+    blocked caller) can still inspect the feed; a 404 would wrongly read as a
+    rotated/deleted secret."""
+    import app as app_module
+    secret = make_feed(client)
+    monkeypatch.setattr(
+        app_module, "BLOCKED_FEED_HASHES",
+        frozenset({analytics.feed_hash(secret)}),
+    )
+    resp = client.get(f"/u/{secret}/episodes")
+    assert resp.status_code == 200
+
+
 def test_post_episode_missing_url_field_400(client, tmp_path):
     secret = make_feed(client)
     resp = client.post(f"/u/{secret}/episodes", json={"link": "https://example.com/a"})

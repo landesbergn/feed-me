@@ -95,6 +95,14 @@ AGENT_DAILY_CAP = 5            # agent-created episodes per feed, rolling 24h
 AGENT_FEED_CHAR_BUDGET = 300_000
 AGENT_CAP_WINDOW_S = 86400
 
+# Feed hashes (analytics.feed_hash of the secret) hard-blocked from generating
+# new audio. Matching on the one-way hash means the raw secret never appears in
+# source or logs. A blocked feed still serves its existing episodes and RSS;
+# only new TTS (agent API + share) is refused, with a 403 so the caller knows
+# the block is deliberate. Reversible: drop the hash and redeploy. Add a feed
+# here after confirming its cost via /admin/stats.
+BLOCKED_FEED_HASHES = frozenset({"dd8d9ed021f8"})
+
 
 def set_session_cookie(response: Response, secret: str) -> None:
     """Link this browser to a feed. The cookie value IS the secret.
@@ -126,6 +134,12 @@ def _track(event, *, secret=None, path=None, props=None):
         analytics.track(_analytics_db(), event, feed_hash_val=fh, path=path, props=props)
     except Exception:
         pass  # analytics must never affect the request
+
+
+def _is_blocked(secret: str) -> bool:
+    """True if this feed is hard-blocked from new TTS (see BLOCKED_FEED_HASHES).
+    Compares the one-way feed hash so the raw secret is never matched here."""
+    return analytics.feed_hash(secret) in BLOCKED_FEED_HASHES
 
 
 def _check_stats_token(token: str) -> None:
@@ -173,6 +187,10 @@ def share_route(request: Request, url: str = ""):
         return templates.TemplateResponse(request, "share.html", {"state": "connect"})
 
     home_url = f"{APP_BASE_URL}/u/{secret}"
+    if _is_blocked(secret):
+        return templates.TemplateResponse(
+            request, "share.html", {"state": "blocked", "home_url": home_url},
+        )
     parsed = urlparse(url)
     if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
         error_msg = (
@@ -254,6 +272,12 @@ async def create_episode_api(request: Request, secret: str):
     """
     if not storage.user_exists(DATA_DIR, secret):
         return _agent_error(404, "not_found", "No feed at this URL.")
+    if _is_blocked(secret):
+        return _agent_error(
+            403, "suspended",
+            "This feed is suspended due to unusually high narration volume. "
+            "Contact Noah at https://noahlandesberg.com to restore access.",
+        )
     try:
         payload = json.loads(await request.body())
     except (json.JSONDecodeError, UnicodeDecodeError):
