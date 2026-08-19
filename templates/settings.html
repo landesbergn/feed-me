@@ -239,6 +239,14 @@
 
   <script>
     var FEED_URL = {{ feed_url | tojson }};
+    var FEED_PAGE_URL = {{ (base_url ~ '/u/' ~ secret) | tojson }};
+    var SHORTCUT_TEXT_URL = {{ shortcut_text_url | tojson }};
+    // The Full Text Shortcut asks for the feed link when it imports; put it on
+    // the clipboard first so answering is a paste, not a hunt.
+    function installTextShortcut() {
+      try { navigator.clipboard.writeText(FEED_PAGE_URL); } catch (e) {}
+      setTimeout(function () { window.location.href = SHORTCUT_TEXT_URL; }, 150);
+    }
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
     }

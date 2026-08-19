@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.26 · 2026-08-19
+
+Make the Full Text Shortcut zero-tap per share.
+
+- Every browser-based route trades one problem for another: Safari carries the session cookie but not a whole article (iOS drops an over-long URL fragment), and the clipboard workaround costs a tap per share. Posting directly to `POST /u/<secret>/share-text` (v3.20) has neither limit, at the cost of the Shortcut knowing the feed. That cost is paid once, at install: the Shortcut stays generic and public, and iOS's import question asks each person for their own link.
+- The settings page's install button now copies the feed page URL to the clipboard before opening the iCloud link, so answering the import question is a paste. New `installTextShortcut()`; the button links the page URL, not the `feed.xml` one.
+- Per share, from Safari: tap share, tap the Shortcut, and the episode appears. No browser navigation, no paste, no size limit, and no Allow Running Scripts toggle.
+
 ## v3.25 · 2026-08-19
 
 Take the article from the clipboard when it won't fit in a URL.

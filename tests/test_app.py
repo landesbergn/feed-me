@@ -969,3 +969,20 @@ def test_settings_hides_full_text_shortcut_until_configured(client, monkeypatch)
     assert "Paywalled sites" in page
     assert "https://www.icloud.com/shortcuts/FULLTEXT" in page
     assert "Safari" in page          # the habit the shortcut depends on
+
+
+def test_settings_precopies_the_feed_link_for_the_install_question(client, monkeypatch):
+    """The Full Text Shortcut asks for the feed link at import; the install
+    button copies it first so answering is a paste, not a hunt."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import app as app_module
+    monkeypatch.setattr(
+        app_module, "SHORTCUT_TEXT_ICLOUD_URL",
+        "https://www.icloud.com/shortcuts/FULLTEXT",
+    )
+    page = client.get(f"/u/{secret}").text
+
+    assert "installTextShortcut()" in page
+    assert f"https://test.local/u/{secret}" in page   # the page URL, not feed.xml
