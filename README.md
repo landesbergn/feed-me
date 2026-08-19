@@ -77,6 +77,7 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `GET /u/{secret}` | Feed home/settings; refreshes the cookie. Leads with the episodes table once a real article has been shared, else with setup instructions |
 | `GET /share?url=` | Capture endpoint hit by the Shortcut; cookie-identified. Renders a live adding/added/failed page |
 | `GET /share/status?slug=` | JSON status for one episode, polled by the `/share` page |
+| `POST /u/{secret}/share-text` | Narrate article text extracted on-device by the Full Text Shortcut (paywalled/bot-blocked sites); path-secret auth, no cookie, 30/day rolling cap |
 | `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}` or `{"text": ..., "title": ...}`); 5/day rolling cap |
 | `GET /u/{secret}/episodes` | Agent API: JSON feed listing (20 most recent) + voice + remaining quota, secret-authed |
 | `GET /u/{secret}/episodes/{slug}` | Agent API: JSON episode status, secret-authed |
@@ -126,6 +127,7 @@ containing `/u/<secret>` is masked the same way before the config call fires.
 | `APP_BASE_URL` | `http://localhost:8000` | Public base URL (used in feed/share URLs and to gate the `Secure` cookie flag) |
 | `OPENAI_API_KEY` | (required) | Text-to-speech |
 | `SHORTCUT_ICLOUD_URL` | placeholder | iCloud link to the generic "Feed Me" Shortcut |
+| `SHORTCUT_TEXT_ICLOUD_URL` | unset | iCloud link to the "Feed Me Full Text" Shortcut; unset hides its row on the settings page |
 | `STATS_TOKEN` | unset | Gates `/admin/*`; unset means those routes 404 |
 
 ### Develop

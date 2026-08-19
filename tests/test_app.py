@@ -950,3 +950,22 @@ def test_share_text_without_link_explains_how_to_fix(client, tmp_path):
     ]
     assert len(failed) == 1
     assert "didn't include a link" in failed[0]["error"]
+
+
+def test_settings_hides_full_text_shortcut_until_configured(client, monkeypatch):
+    """The second Shortcut is optional: no iCloud link, no half-built row."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "SHORTCUT_TEXT_ICLOUD_URL", "")
+    assert "Paywalled sites" not in client.get(f"/u/{secret}").text
+
+    monkeypatch.setattr(
+        app_module, "SHORTCUT_TEXT_ICLOUD_URL",
+        "https://www.icloud.com/shortcuts/FULLTEXT",
+    )
+    page = client.get(f"/u/{secret}").text
+    assert "Paywalled sites" in page
+    assert "https://www.icloud.com/shortcuts/FULLTEXT" in page
+    assert "Safari" in page          # the habit the shortcut depends on

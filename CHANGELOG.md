@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.20 · 2026-08-18
+
+Narrate paywalled articles by extracting them on the phone.
+
+- New `POST /u/<secret>/share-text`: takes article text the iOS Shortcut extracted from the page Safari already rendered (subscriber session included) and narrates it without ever fetching the URL. Path-secret auth like the agent API, no session cookie, `{"error", "message"}` errors, and it accepts a form body as well as JSON because Shortcuts' Get Contents of URL posts a form by default. Episodes record `via: "shortcut"`.
+- This is the only path that works for sites that refuse server fetches outright. Verified 2026-08-18: nytimes.com article pages 403 every non-browser client (Safari UA with full `Sec-Fetch-*` headers, Chrome UA, Googlebot UA, forced HTTP/2), gift links included, while the homepage and `/athletic/` index return 200. Sharing from the NYT *app* still cannot work: iOS hands over only a URL and a headline, and the body never leaves the app.
+- Its own `SHORTCUT_DAILY_CAP` (30/rolling 24h) via the generalized `_episodes_in_window(secret, via, now)`: the agent cap of 5/day is a guard on automation and would cut a person off mid-morning, and neither entry point spends the other's allowance. Both still share the per-feed `AGENT_FEED_CHAR_BUDGET`, which is the actual cost guard, and `MAX_BODY_CHARS` still bounds one episode.
+- An empty title falls back to the first line of the extracted text (Get Details of Article can return an empty name), then the source hostname, so a share never fails on a missing title.
+- New `SHORTCUT_TEXT_ICLOUD_URL` env var and an optional "Paywalled sites" row on the settings page that installs the second Shortcut. Unset (the default) hides the row entirely.
+
 ## v3.19 · 2026-08-18
 
 Survive share sheets that hand over text instead of a link.

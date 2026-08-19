@@ -83,6 +83,11 @@ SHORTCUT_ICLOUD_URL = os.environ.get(
     "SHORTCUT_ICLOUD_URL",
     "https://www.icloud.com/shortcuts/PLACEHOLDER",
 )
+# Second, optional Shortcut: extracts article text on-device (Safari's
+# rendered page, subscriber session included) and posts it to
+# /u/<secret>/share-text. Unset until the Shortcut is published, which hides
+# its row on the settings page.
+SHORTCUT_TEXT_ICLOUD_URL = os.environ.get("SHORTCUT_TEXT_ICLOUD_URL", "")
 STATS_TOKEN = os.environ.get("STATS_TOKEN")
 
 COOKIE_NAME = "fm_session"
@@ -94,6 +99,12 @@ AGENT_DAILY_CAP = 5            # agent-created episodes per feed, rolling 24h
 # ~$4.50/day independent of how the episodes are split. Tune this literal.
 AGENT_FEED_CHAR_BUDGET = 300_000
 AGENT_CAP_WINDOW_S = 86400
+
+# The Shortcut's on-device-extraction path (POST /u/<secret>/share-text) is a
+# person sharing what they read, not an automation, so the agent cap of 5/day
+# would cut them off mid-morning. Same rolling window and same per-feed
+# character budget (the real cost guard); only the episode count differs.
+SHORTCUT_DAILY_CAP = 30
 
 # Feed hashes (analytics.feed_hash of the secret) hard-blocked from generating
 # new audio. Matching on the one-way hash means the raw secret never appears in
@@ -278,12 +289,19 @@ def _agent_error(status: int, code: str, message: str,
     )
 
 
-def _agent_episodes_in_window(secret: str, now: int) -> list[dict]:
-    """Agent-created episodes (any status) inside the rolling cap window."""
+def _episodes_in_window(secret: str, via: str, now: int) -> list[dict]:
+    """Episodes (any status) created through one entry point inside the rolling
+    cap window. Each entry point meters itself: an agent push must not spend a
+    person's allowance, or the reverse."""
     return [
         ep for ep in storage.list_episodes(DATA_DIR, secret)
-        if ep.get("via") == "agent" and ep["ts"] > now - AGENT_CAP_WINDOW_S
+        if ep.get("via") == via and ep["ts"] > now - AGENT_CAP_WINDOW_S
     ]
+
+
+def _agent_episodes_in_window(secret: str, now: int) -> list[dict]:
+    """Agent-created episodes (any status) inside the rolling cap window."""
+    return _episodes_in_window(secret, "agent", now)
 
 
 @app.post("/u/{secret}/episodes")
@@ -425,6 +443,115 @@ async def create_episode_api(request: Request, secret: str):
         "feed_page": f"{APP_BASE_URL}/u/{secret}",
         "remaining": AGENT_DAILY_CAP - len(in_window) - 1,
         "budget_remaining_chars": max(0, remaining_budget - incoming),
+    }, status_code=202)
+
+
+@app.post("/u/{secret}/share-text")
+async def share_text_route(request: Request, secret: str):
+    """Narrate article text extracted on the user's phone.
+
+    The iOS Shortcut runs Get Article from Web Page on the page Safari has
+    already rendered, so a subscriber's session does the unlocking on-device
+    and Feed Me never fetches the URL. This is the only path that works for
+    sites that refuse server fetches outright (verified: nytimes.com article
+    pages 403 every non-browser client, gift links included).
+
+    Authenticates by the path secret alone, like the agent API: never read or
+    set the session cookie here. Accepts JSON or a form body, because
+    Shortcuts' Get Contents of URL posts a form by default. Errors keep the
+    agent API's {"error", "message"} shape.
+    """
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    if _is_blocked(secret):
+        return _agent_error(
+            403, "suspended",
+            "This feed is suspended due to unusually high narration volume. "
+            "Contact Noah at https://noahlandesberg.com to restore access.",
+        )
+
+    body = await request.body()
+    payload: dict = {}
+    try:
+        parsed_json = json.loads(body)
+        if isinstance(parsed_json, dict):
+            payload = parsed_json
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = dict(await request.form())
+
+    text = payload.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return _agent_error(
+            400, "invalid_request",
+            'Body must include a non-empty "text" field (the article text the '
+            "Shortcut extracted).",
+        )
+    if len(text) > ingest.MAX_BODY_CHARS:
+        return _agent_error(
+            400, "invalid_request",
+            f"Text too long: {len(text):,} characters "
+            f"(limit {ingest.MAX_BODY_CHARS:,}).",
+        )
+
+    url = payload.get("url") or ""
+    if url:
+        parsed = urlparse(url) if isinstance(url, str) else None
+        if parsed is None or parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return _agent_error(
+                400, "invalid_url",
+                f"Invalid URL: {str(url)[:200]!r} (must be http or https).",
+            )
+
+    title = payload.get("title")
+    title = title.strip() if isinstance(title, str) else ""
+    if not title:
+        # Get Details of Article can hand back an empty name; the first line of
+        # the extracted text is the headline often enough to beat failing.
+        first_line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+        title = first_line[:120] or hostname(url) or "Shared article"
+
+    now = int(_time.time())
+    in_window = _episodes_in_window(secret, "shortcut", now)
+    if len(in_window) >= SHORTCUT_DAILY_CAP:
+        retry_after = max(
+            1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now,
+        )
+        return _agent_error(
+            429, "rate_limited",
+            f"Daily cap reached: {SHORTCUT_DAILY_CAP} shared articles per feed "
+            "per rolling 24 hours. Older shares age out of the window.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    spent = sum(int(ep.get("chars") or 0) for ep in in_window)
+    remaining_budget = AGENT_FEED_CHAR_BUDGET - spent
+    if len(text) > remaining_budget:
+        retry_after = max(
+            1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now,
+        ) if in_window else AGENT_CAP_WINDOW_S
+        return _agent_error(
+            429, "budget_exceeded",
+            f"Feed narration budget reached: {AGENT_FEED_CHAR_BUDGET:,} "
+            "characters per feed per rolling 24 hours (this caps narration "
+            f"cost). This feed has narrated {spent:,} characters in the last "
+            f"24 hours; this {len(text):,}-character share would exceed it. "
+            "The budget frees as older episodes age out.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    slug = storage.write_pending_episode(
+        DATA_DIR, secret, source_url=url, title=title, via="shortcut",
+        chars=len(text),
+    )
+    spawn_ingest(url, secret, DATA_DIR, slug, text=text, title=title)
+    _track("article_shared", secret=secret, path="share-text",
+           props={"url": url, "title": title, "via": "shortcut"})
+    return JSONResponse({
+        "slug": slug,
+        "status": "pending",
+        "title": title,
+        "feed_page": f"{APP_BASE_URL}/u/{secret}",
+        "remaining": SHORTCUT_DAILY_CAP - len(in_window) - 1,
     }, status_code=202)
 
 
@@ -622,6 +749,7 @@ def settings(request: Request, secret: str):
         "feed_url": feed_url,
         "feed_host_and_path": feed_host_and_path,
         "shortcut_url": SHORTCUT_ICLOUD_URL,
+        "shortcut_text_url": SHORTCUT_TEXT_ICLOUD_URL,
         "setup_done": setup_done,
         "base_url": APP_BASE_URL,
     })
