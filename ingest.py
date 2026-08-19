@@ -82,8 +82,8 @@ def _friendly_http_error(status: int, url: str) -> str:
         return (
             f"{host} blocked the request (HTTP {status}). The site refuses "
             "readers that aren't a browser, or the article needs a "
-            "subscription. Nothing you share will get past this one: on "
-            "nytimes.com even a gift link is refused, so don't spend one."
+            "subscription. If the app offers a gift link, share that instead: "
+            "it opens for anyone, so Feed Me can read it too."
         )
     if status in (404, 410):
         return f"Article not found at {host} (HTTP {status}). The link may be broken."

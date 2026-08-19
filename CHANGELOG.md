@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.24 · 2026-08-19
+
+Correct the 403 copy: a gift link is worth trying after all.
+
+- v3.19 told readers a gift link was futile on a 403 ("don't spend one"). That was wrong, and it was talking people out of the one lever they have. Restored the hint. Measured 2026-08-19 against `ingest.fetch_article`: `nytimes.com/athletic/...` articles extract in full (12,627 characters) **with or without** an `unlocked_article_code`, while main-site `nytimes.com/YYYY/MM/DD/...` articles 403 every non-browser client. Whether a main-site gift link clears that block is untested, so the copy now suggests trying rather than asserting either way.
+- The block is narrower than v3.19 and v3.20 claimed: The Athletic, on the same domain, was never blocked. A share of an Athletic link has worked through the ordinary `/share` route the whole time.
+
 ## v3.23 · 2026-08-18
 
 Record what a rejected text share actually contained.

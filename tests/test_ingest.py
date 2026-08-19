@@ -807,12 +807,14 @@ def test_paywall_error_points_at_gift_link(monkeypatch, fake_http):
     assert "gift link" in str(exc_info.value)
 
 
-def test_subscription_http_error_warns_gift_link_wont_help():
-    """A 403 is a bot block that fires before any unlock logic (verified
-    2026-08-18: nytimes.com 403s article pages for every non-browser client,
-    gift links included), so the copy must not send the reader to spend one."""
+def test_subscription_http_error_points_at_gift_link():
+    """A 403 can be a bot block or a subscription wall, and a gift link is the
+    reader's only lever on either. It is NOT known to be futile: verified
+    2026-08-19, nytimes.com/athletic articles fetch fine with or without a
+    gift code, while main-site article pages 403. Don't tell people not to
+    try it."""
     msg = ingest._friendly_http_error(403, "https://www.nytimes.com/gated")
-    assert "gift link is refused" in msg
+    assert "gift link" in msg
     # Non-subscription failures stay unchanged.
     assert "gift link" not in ingest._friendly_http_error(404, "https://x.example/a")
     assert "gift link" not in ingest._friendly_http_error(500, "https://x.example/a")
