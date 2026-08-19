@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.27 · 2026-08-19
+
+State the paywall limit honestly: nytimes.com articles are out of reach.
+
+- Measured 2026-08-19 on a main-site gift link (`?unlocked_article_code=...`): it returns NYT's 1,713-character preview, not the article, and 403s on repeat requests. The unlock is applied client-side in a real browser session, so no server fetch can use it. Ambika's Athletic link was never about the gift code: `/athletic/` articles fetch identically without one.
+- Both failure messages now say a gift link helps on some sites but not nytimes.com, instead of recommending one. The paywall message also explains *why* a reader's own subscription doesn't help: Feed Me fetches as a logged-out visitor.
+- Closes the question this thread opened with. Sharing a main-site NYT article cannot work: the server can't fetch it (403 to every client, fingerprint and cookies included), and iOS can't extract it either without `Allow Running Scripts`, since every Shortcuts action that takes a "web page" re-fetches the URL in Shortcuts' own logged-out session rather than reading the page on screen. Only `Run JavaScript on Web Page` reads the rendered DOM, and that toggle is too much to ask of a reader.
+
 ## v3.26 · 2026-08-19
 
 Make the Full Text Shortcut zero-tap per share.

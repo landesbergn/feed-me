@@ -82,8 +82,8 @@ def _friendly_http_error(status: int, url: str) -> str:
         return (
             f"{host} blocked the request (HTTP {status}). The site refuses "
             "readers that aren't a browser, or the article needs a "
-            "subscription. If the app offers a gift link, share that instead: "
-            "it opens for anyone, so Feed Me can read it too."
+            "subscription. A gift link is worth trying on most sites, but not "
+            "nytimes.com articles: those are out of reach either way."
         )
     if status in (404, 410):
         return f"Article not found at {host} (HTTP {status}). The link may be broken."
@@ -143,8 +143,9 @@ def fetch_article(url: str) -> tuple[str, str]:
         raise FetchError(
             f"{urlparse(url).netloc} marks this article as subscriber-only "
             f"and served only a preview ({len(body)} characters of text). "
-            "If the app offers a gift link, share that instead: it opens for "
-            "anyone, so Feed Me can read it too."
+            "Feed Me reads pages as a logged-out visitor, so a subscription "
+            "of yours doesn't reach it. A gift link unlocks some sites, "
+            "though not nytimes.com (tested: it serves the same preview)."
         )
     return title, body
 

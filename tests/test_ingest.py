@@ -793,9 +793,10 @@ def test_process_text_over_max_fails(monkeypatch, fake_openai, tmp_path):
     assert "too long" in eps[0]["error"].lower()
 
 
-def test_paywall_error_points_at_gift_link(monkeypatch, fake_http):
-    """The subscriber-only failure names the one thing that does work: a
-    publisher gift link renders in full to an anonymous fetch."""
+def test_paywall_error_explains_the_limit_without_overpromising(monkeypatch, fake_http):
+    """A gift link unlocks some sites but NOT nytimes.com: measured 2026-08-19,
+    a main-site gift link serves the same 1,713-character preview. Say so
+    rather than sending the reader to spend one."""
     fake_http.responses["https://www.nytimes.com/gated"] = FakeResponse(
         status_code=200, text=_paywalled_html(paragraphs=12, marker=JSONLD_PAYWALL),
     )
@@ -804,7 +805,9 @@ def test_paywall_error_points_at_gift_link(monkeypatch, fake_http):
     with pytest.raises(ingest.FetchError) as exc_info:
         ingest.fetch_article("https://www.nytimes.com/gated")
 
-    assert "gift link" in str(exc_info.value)
+    msg = str(exc_info.value)
+    assert "gift link" in msg
+    assert "not nytimes.com" in msg
 
 
 def test_subscription_http_error_points_at_gift_link():
