@@ -791,3 +791,28 @@ def test_process_text_over_max_fails(monkeypatch, fake_openai, tmp_path):
     eps = storage.list_episodes(tmp_path, secret)
     assert eps[0]["status"] == "failed"
     assert "too long" in eps[0]["error"].lower()
+
+
+def test_paywall_error_points_at_gift_link(monkeypatch, fake_http):
+    """The subscriber-only failure names the one thing that does work: a
+    publisher gift link renders in full to an anonymous fetch."""
+    fake_http.responses["https://www.nytimes.com/gated"] = FakeResponse(
+        status_code=200, text=_paywalled_html(paragraphs=12, marker=JSONLD_PAYWALL),
+    )
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    with pytest.raises(ingest.FetchError) as exc_info:
+        ingest.fetch_article("https://www.nytimes.com/gated")
+
+    assert "gift link" in str(exc_info.value)
+
+
+def test_subscription_http_error_warns_gift_link_wont_help():
+    """A 403 is a bot block that fires before any unlock logic (verified
+    2026-08-18: nytimes.com 403s article pages for every non-browser client,
+    gift links included), so the copy must not send the reader to spend one."""
+    msg = ingest._friendly_http_error(403, "https://www.nytimes.com/gated")
+    assert "gift link is refused" in msg
+    # Non-subscription failures stay unchanged.
+    assert "gift link" not in ingest._friendly_http_error(404, "https://x.example/a")
+    assert "gift link" not in ingest._friendly_http_error(500, "https://x.example/a")

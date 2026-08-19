@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.19 · 2026-08-18
+
+Survive share sheets that hand over text instead of a link.
+
+- New `app.extract_shared_url()`: `/share` now pulls the first `http(s)` URL out of whatever the Shortcut passes, so a share like `Headline https://example.com/a` ingests the article instead of failing. Bare URLs behave exactly as before.
+- When the shared text contains no link at all (the NYT / Athletic app can hand over the article dek, which is what a tester hit), the failure now says so and points at the fix ("Open the article in Safari and share from there, or use the app's Copy Link"), instead of the opaque `Invalid URL: '<the whole dek>'`. A wrong-scheme share (`ftp://…`) still reads as `Invalid URL`, and an empty share still reads as "No article added".
+- The failed-episode row stores at most 120 characters of the shared text, so a stray paragraph no longer becomes a giant title in the feed.
+- Paywall failures now name the workaround: the declared-paywall preview error (`ingest.fetch_article`) ends with "If the app offers a gift link, share that instead: it opens for anyone, so Feed Me can read it too." A gift link renders in full to an anonymous fetch, and the audio outlives the link's expiry, so it is the one thing a subscriber can do that works when the site actually served us a teaser.
+- The 401/402/403 error (`_friendly_http_error`) says the opposite, because a 403 is a bot block that fires *before* any unlock logic: "The site refuses readers that aren't a browser, or the article needs a subscription. Nothing you share will get past this one: on nytimes.com even a gift link is refused, so don't spend one." Verified 2026-08-18: nytimes.com article pages 403 a plain client under a Safari UA with full `Sec-Fetch-*` headers, a Chrome UA, a Googlebot UA, and forced HTTP/2, while the homepage and `/athletic/` index return 200, and a real gift link failed the same way in production. Other HTTP failures (404, 5xx) are unchanged.
+- The companion client-side fix (not in this repo): the "Feed Me" Shortcut should run **Get URLs from Input** on Shortcut Input before URL Encode, so iOS hands over the URL attachment when an app offers both text and a link.
+
 ## v3.18 · 2026-07-11
 
 Hard-block a feed from generating new audio.

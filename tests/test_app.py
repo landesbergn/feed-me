@@ -900,3 +900,53 @@ def test_ga_snippet_not_on_admin_stats(client, monkeypatch):
     body = client.get("/admin/stats?token=right").text
     assert "All feeds" in body  # page rendered; guard is not vacuous
     assert "googletagmanager" not in body
+
+
+def test_share_extracts_url_from_shared_text(client, monkeypatch, fake_http, tmp_path):
+    """Some apps hand the Shortcut 'Headline https://link' text, not a bare URL."""
+    from tests.conftest import FakeResponse
+
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser
+
+    fake_http.responses["https://example.com/a?x=1"] = FakeResponse(
+        status_code=200, text="<html><head><title>A</title></head></html>",
+    )
+    import ingest
+    monkeypatch.setattr(ingest, "http_client", fake_http)
+
+    calls = []
+    import app as app_module
+    monkeypatch.setattr(
+        app_module, "spawn_ingest",
+        lambda url, secret_, data_dir, slug: calls.append(url),
+    )
+
+    response = client.get(
+        "/share?url=Cycling%27s%20stakeholders%20https%3A%2F%2Fexample.com%2Fa%3Fx%3D1%20(Shared)",
+    )
+    assert response.status_code == 200
+    assert "Added" in response.text
+    assert calls == ["https://example.com/a?x=1"]
+
+
+def test_share_text_without_link_explains_how_to_fix(client, tmp_path):
+    """NYT/Athletic can share only the article dek: say what happened, not 'Invalid URL'."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")  # link browser
+
+    prose = "By not being afforded the basics of protection in a racing situation"
+    response = client.get("/share", params={"url": prose})
+    assert response.status_code == 200
+    assert "Invalid URL" not in response.text
+    assert "include a link" in response.text        # apostrophe is HTML-escaped
+    assert "Safari" in response.text
+
+    import storage
+    failed = [
+        e for e in storage.list_episodes(tmp_path, secret) if e["status"] == "failed"
+    ]
+    assert len(failed) == 1
+    assert "didn't include a link" in failed[0]["error"]

@@ -180,6 +180,26 @@ def llms_txt_route():
     )
 
 
+# Share sheets are inconsistent: some apps (the NYT / Athletic app among them)
+# hand the Shortcut the article's headline or dek as text instead of the link,
+# sometimes with the link tacked on. Pull the first http(s) URL out of whatever
+# arrives so a text share still works when a link is in there anywhere.
+_URL_IN_TEXT = re.compile(r"https?://[^\s<>\"'`]+")
+
+
+def extract_shared_url(raw: str) -> str:
+    """Return a usable http(s) URL from a share payload, or "" if there is none."""
+    raw = (raw or "").strip()
+    parsed = urlparse(raw)
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        return raw
+    match = _URL_IN_TEXT.search(raw)
+    if not match:
+        return ""
+    candidate = match.group(0).rstrip(".,;:!?)]}")
+    return candidate if urlparse(candidate).netloc else ""
+
+
 @app.get("/share", response_class=HTMLResponse)
 def share_route(request: Request, url: str = ""):
     secret = request.cookies.get(COOKIE_NAME)
@@ -191,16 +211,23 @@ def share_route(request: Request, url: str = ""):
         return templates.TemplateResponse(
             request, "share.html", {"state": "blocked", "home_url": home_url},
         )
-    parsed = urlparse(url)
-    if not url or parsed.scheme not in ("http", "https") or not parsed.netloc:
-        error_msg = (
-            "No article added. Open an article, tap Share, then tap Feed Me."
-            if not url
-            else f"Invalid URL: {url[:200]!r} (must be http or https)."
-        )
+    shared = extract_shared_url(url)
+    if not shared:
+        if not url.strip():
+            error_msg = "No article added. Open an article, tap Share, then tap Feed Me."
+        elif re.match(r"[a-zA-Z][a-zA-Z0-9+.\-]*://", url.strip()):
+            error_msg = f"Invalid URL: {url[:200]!r} (must be http or https)."
+        else:
+            # The app shared text with no link in it at all (v3.19: the NYT app
+            # hands over the article dek). Tell her how to get a link instead.
+            error_msg = (
+                "That share didn't include a link, just text: "
+                f"{url[:100]!r}. Open the article in Safari and share from "
+                "there, or use the app's Copy Link and share the link."
+            )
         storage.write_failed_episode(
             DATA_DIR, secret,
-            source_url=(url or "(empty share)"), error=error_msg,
+            source_url=(url[:120] or "(empty share)"), error=error_msg,
         )
         return templates.TemplateResponse(
             request, "share.html",
@@ -210,17 +237,17 @@ def share_route(request: Request, url: str = ""):
     # Quick title fetch so the confirmation page + pending row show the real
     # title (mirrors the old ingest route). On failure fetch_title returns None
     # and we fall back to the hostname.
-    title = ingest.fetch_title(url)
+    title = ingest.fetch_title(shared)
     slug = storage.write_pending_episode(
-        DATA_DIR, secret, source_url=url, title=title,
+        DATA_DIR, secret, source_url=shared, title=title,
     )
-    spawn_ingest(url, secret, DATA_DIR, slug)
+    spawn_ingest(shared, secret, DATA_DIR, slug)
     _track("page_view", secret=secret, path="share")    # the share confirmation page rendered
     _track("article_shared", secret=secret, path="share",
-           props={"url": url, "title": title, "via": "shortcut"})
+           props={"url": shared, "title": title, "via": "shortcut"})
     return templates.TemplateResponse(
         request, "share.html",
-        {"state": "added", "title": title or hostname(url),
+        {"state": "added", "title": title or hostname(shared),
          "slug": slug, "home_url": home_url},
     )
 

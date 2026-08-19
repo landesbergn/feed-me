@@ -80,8 +80,10 @@ def _friendly_http_error(status: int, url: str) -> str:
     host = urlparse(url).netloc or url
     if status in (401, 402, 403):
         return (
-            f"{host} blocked the request (HTTP {status}). "
-            "The article may need a subscription."
+            f"{host} blocked the request (HTTP {status}). The site refuses "
+            "readers that aren't a browser, or the article needs a "
+            "subscription. Nothing you share will get past this one: on "
+            "nytimes.com even a gift link is refused, so don't spend one."
         )
     if status in (404, 410):
         return f"Article not found at {host} (HTTP {status}). The link may be broken."
@@ -140,7 +142,9 @@ def fetch_article(url: str) -> tuple[str, str]:
     if len(body) < PAYWALL_BODY_MIN_CHARS and _declares_paywall(resp.text):
         raise FetchError(
             f"{urlparse(url).netloc} marks this article as subscriber-only "
-            f"and served only a preview ({len(body)} characters of text)."
+            f"and served only a preview ({len(body)} characters of text). "
+            "If the app offers a gift link, share that instead: it opens for "
+            "anyone, so Feed Me can read it too."
         )
     return title, body
 
