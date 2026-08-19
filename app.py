@@ -263,6 +263,69 @@ def share_route(request: Request, url: str = ""):
     )
 
 
+@app.get("/share/text", response_class=HTMLResponse)
+def share_text_page(request: Request):
+    """Landing page for the Full Text Shortcut.
+
+    The Shortcut opens this URL in Safari with the article text in the
+    fragment (#t=...&title=...&u=...), so the browser's fm_session cookie
+    identifies the feed and the Shortcut stays identical for every user. The
+    fragment is never sent to the server: the page's JS reads it and posts it
+    back here as a form. A share with no fragment (a very long article, where
+    the URL didn't survive) falls back to a paste box.
+    """
+    secret = request.cookies.get(COOKIE_NAME)
+    if not secret or not storage.user_exists(DATA_DIR, secret):
+        return templates.TemplateResponse(request, "share.html", {"state": "connect"})
+    home_url = f"{APP_BASE_URL}/u/{secret}"
+    if _is_blocked(secret):
+        return templates.TemplateResponse(
+            request, "share.html", {"state": "blocked", "home_url": home_url},
+        )
+    return templates.TemplateResponse(
+        request, "share_text.html",
+        {"home_url": home_url, "base_url": APP_BASE_URL},
+    )
+
+
+@app.post("/share/text", response_class=HTMLResponse)
+async def share_text_submit(request: Request):
+    """Cookie-authed twin of POST /u/<secret>/share-text: the form the
+    /share/text page submits with the text it read out of the fragment."""
+    secret = request.cookies.get(COOKIE_NAME)
+    if not secret or not storage.user_exists(DATA_DIR, secret):
+        return templates.TemplateResponse(request, "share.html", {"state": "connect"})
+    home_url = f"{APP_BASE_URL}/u/{secret}"
+    if _is_blocked(secret):
+        return templates.TemplateResponse(
+            request, "share.html", {"state": "blocked", "home_url": home_url},
+        )
+
+    form = await request.form()
+    url = form.get("url") or ""
+    try:
+        slug, title = _create_text_episode(
+            secret, form.get("text"), form.get("title"), url,
+        )
+    except TextShareError as err:
+        storage.write_failed_episode(
+            DATA_DIR, secret, source_url=url or "(shared text)",
+            error=err.message,
+        )
+        return templates.TemplateResponse(
+            request, "share.html",
+            {"state": "error", "error": err.message, "home_url": home_url},
+        )
+
+    _track("page_view", secret=secret, path="share-text")
+    _track("article_shared", secret=secret, path="share-text",
+           props={"url": url, "title": title, "via": "shortcut"})
+    return templates.TemplateResponse(
+        request, "share.html",
+        {"state": "added", "title": title, "slug": slug, "home_url": home_url},
+    )
+
+
 @app.get("/share/status")
 def share_status(request: Request, slug: str = ""):
     """Cookie-authed JSON status for one episode, polled by the /share page."""
@@ -446,6 +509,81 @@ async def create_episode_api(request: Request, secret: str):
     }, status_code=202)
 
 
+class TextShareError(Exception):
+    """A text share that can't become an episode. `code` is the agent API's
+    error code; `message` is user-facing copy (it lands on the share page and
+    in the failed-episode row), so keep it friendly."""
+
+    def __init__(self, code: str, message: str, retry_after: int | None = None):
+        super().__init__(message)
+        self.code, self.message, self.retry_after = code, message, retry_after
+
+
+def _create_text_episode(secret: str, text, title, url) -> tuple[str, str]:
+    """Validate, meter and start narration of text extracted on the user's
+    phone. Shared by the secret-authed API route and the cookie-authed page.
+    Returns (slug, title); raises TextShareError."""
+    if not isinstance(text, str) or not text.strip():
+        raise TextShareError(
+            "invalid_request",
+            "No article text arrived. Open the article in Safari, then share "
+            "it to Feed Me Full Text.",
+        )
+    if len(text) > ingest.MAX_BODY_CHARS:
+        raise TextShareError(
+            "invalid_request",
+            f"That article is too long to narrate: {len(text):,} characters "
+            f"(limit {ingest.MAX_BODY_CHARS:,}).",
+        )
+    url = url or ""
+    if url:
+        parsed = urlparse(url) if isinstance(url, str) else None
+        if parsed is None or parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise TextShareError(
+                "invalid_url",
+                f"Invalid URL: {str(url)[:200]!r} (must be http or https).",
+            )
+    title = title.strip() if isinstance(title, str) else ""
+    if not title:
+        # Get Details of Article can hand back an empty name; the first line of
+        # the extracted text is the headline often enough to beat failing.
+        first_line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+        title = first_line[:120] or hostname(url) or "Shared article"
+
+    now = int(_time.time())
+    in_window = _episodes_in_window(secret, "shortcut", now)
+    oldest_expiry = (
+        max(1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now)
+        if in_window else AGENT_CAP_WINDOW_S
+    )
+    if len(in_window) >= SHORTCUT_DAILY_CAP:
+        raise TextShareError(
+            "rate_limited",
+            f"Daily cap reached: {SHORTCUT_DAILY_CAP} shared articles per feed "
+            "per rolling 24 hours. Older shares age out of the window.",
+            retry_after=oldest_expiry,
+        )
+    spent = sum(int(ep.get("chars") or 0) for ep in in_window)
+    remaining_budget = AGENT_FEED_CHAR_BUDGET - spent
+    if len(text) > remaining_budget:
+        raise TextShareError(
+            "budget_exceeded",
+            f"Feed narration budget reached: {AGENT_FEED_CHAR_BUDGET:,} "
+            "characters per feed per rolling 24 hours (this caps narration "
+            f"cost). This feed has narrated {spent:,} characters in the last "
+            f"24 hours; this {len(text):,}-character share would exceed it. "
+            "The budget frees as older episodes age out.",
+            retry_after=oldest_expiry,
+        )
+
+    slug = storage.write_pending_episode(
+        DATA_DIR, secret, source_url=url, title=title, via="shortcut",
+        chars=len(text),
+    )
+    spawn_ingest(url, secret, DATA_DIR, slug, text=text, title=title)
+    return slug, title
+
+
 @app.post("/u/{secret}/share-text")
 async def share_text_route(request: Request, secret: str):
     """Narrate article text extracted on the user's phone.
@@ -479,79 +617,28 @@ async def share_text_route(request: Request, secret: str):
     except (json.JSONDecodeError, UnicodeDecodeError):
         payload = dict(await request.form())
 
-    text = payload.get("text")
-    if not isinstance(text, str) or not text.strip():
-        return _agent_error(
-            400, "invalid_request",
-            'Body must include a non-empty "text" field (the article text the '
-            "Shortcut extracted).",
+    try:
+        slug, title = _create_text_episode(
+            secret, payload.get("text"), payload.get("title"), payload.get("url"),
         )
-    if len(text) > ingest.MAX_BODY_CHARS:
-        return _agent_error(
-            400, "invalid_request",
-            f"Text too long: {len(text):,} characters "
-            f"(limit {ingest.MAX_BODY_CHARS:,}).",
+    except TextShareError as err:
+        status = {
+            "invalid_request": 400, "invalid_url": 400,
+            "rate_limited": 429, "budget_exceeded": 429,
+        }[err.code]
+        headers = (
+            {"Retry-After": str(err.retry_after)} if err.retry_after else None
         )
+        return _agent_error(status, err.code, err.message, headers=headers)
 
-    url = payload.get("url") or ""
-    if url:
-        parsed = urlparse(url) if isinstance(url, str) else None
-        if parsed is None or parsed.scheme not in ("http", "https") or not parsed.netloc:
-            return _agent_error(
-                400, "invalid_url",
-                f"Invalid URL: {str(url)[:200]!r} (must be http or https).",
-            )
-
-    title = payload.get("title")
-    title = title.strip() if isinstance(title, str) else ""
-    if not title:
-        # Get Details of Article can hand back an empty name; the first line of
-        # the extracted text is the headline often enough to beat failing.
-        first_line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
-        title = first_line[:120] or hostname(url) or "Shared article"
-
-    now = int(_time.time())
-    in_window = _episodes_in_window(secret, "shortcut", now)
-    if len(in_window) >= SHORTCUT_DAILY_CAP:
-        retry_after = max(
-            1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now,
-        )
-        return _agent_error(
-            429, "rate_limited",
-            f"Daily cap reached: {SHORTCUT_DAILY_CAP} shared articles per feed "
-            "per rolling 24 hours. Older shares age out of the window.",
-            headers={"Retry-After": str(retry_after)},
-        )
-
-    spent = sum(int(ep.get("chars") or 0) for ep in in_window)
-    remaining_budget = AGENT_FEED_CHAR_BUDGET - spent
-    if len(text) > remaining_budget:
-        retry_after = max(
-            1, min(ep["ts"] for ep in in_window) + AGENT_CAP_WINDOW_S - now,
-        ) if in_window else AGENT_CAP_WINDOW_S
-        return _agent_error(
-            429, "budget_exceeded",
-            f"Feed narration budget reached: {AGENT_FEED_CHAR_BUDGET:,} "
-            "characters per feed per rolling 24 hours (this caps narration "
-            f"cost). This feed has narrated {spent:,} characters in the last "
-            f"24 hours; this {len(text):,}-character share would exceed it. "
-            "The budget frees as older episodes age out.",
-            headers={"Retry-After": str(retry_after)},
-        )
-
-    slug = storage.write_pending_episode(
-        DATA_DIR, secret, source_url=url, title=title, via="shortcut",
-        chars=len(text),
-    )
-    spawn_ingest(url, secret, DATA_DIR, slug, text=text, title=title)
     _track("article_shared", secret=secret, path="share-text",
-           props={"url": url, "title": title, "via": "shortcut"})
+           props={"url": payload.get("url") or "", "title": title,
+                  "via": "shortcut"})
     return JSONResponse({
         "slug": slug,
         "status": "pending",
         "title": title,
         "feed_page": f"{APP_BASE_URL}/u/{secret}",
-        "remaining": SHORTCUT_DAILY_CAP - len(in_window) - 1,
     }, status_code=202)
 
 

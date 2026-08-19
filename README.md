@@ -77,7 +77,9 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `GET /u/{secret}` | Feed home/settings; refreshes the cookie. Leads with the episodes table once a real article has been shared, else with setup instructions |
 | `GET /share?url=` | Capture endpoint hit by the Shortcut; cookie-identified. Renders a live adding/added/failed page |
 | `GET /share/status?slug=` | JSON status for one episode, polled by the `/share` page |
-| `POST /u/{secret}/share-text` | Narrate article text extracted on-device by the Full Text Shortcut (paywalled/bot-blocked sites); path-secret auth, no cookie, 30/day rolling cap |
+| `GET /share/text` | Landing page for the Full Text Shortcut: reads the article text out of the URL fragment and posts it back. Cookie-identified, so the Shortcut carries no secret |
+| `POST /share/text` | Cookie-authed twin of `/u/<secret>/share-text`; renders the same live adding/added/failed page as `/share` |
+| `POST /u/{secret}/share-text` | Same narration from a secret-authed client (no browser); 30/day rolling cap shared with `/share/text` |
 | `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}` or `{"text": ..., "title": ...}`); 5/day rolling cap |
 | `GET /u/{secret}/episodes` | Agent API: JSON feed listing (20 most recent) + voice + remaining quota, secret-authed |
 | `GET /u/{secret}/episodes/{slug}` | Agent API: JSON episode status, secret-authed |

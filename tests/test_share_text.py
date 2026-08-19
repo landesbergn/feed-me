@@ -230,3 +230,106 @@ def test_share_text_records_analytics_as_shortcut(client, monkeypatch, tmp_path)
     # Attributed by one-way feed hash; the raw secret never reaches analytics.
     assert analytics.feed_hash(secret) in json.dumps(events[0])
     assert secret not in json.dumps(events[0])
+
+
+# --- The generic (secret-free) path: /share/text -----------------------------
+# The Shortcut opens this page in Safari with the article text in the URL
+# fragment. Safari sends fm_session exactly as it does for /share, so the
+# Shortcut itself carries no identity and is byte-identical for every user.
+# The fragment never reaches the server (browsers don't send it), so the
+# article text stays out of the request logs.
+
+def link_browser(client) -> str:
+    """Create a feed and give this client the cookie, as visiting it in Safari does."""
+    create = client.post("/create", follow_redirects=False)
+    secret = create.headers["location"].split("/u/")[1]
+    client.get(f"/u/{secret}")
+    return secret
+
+
+def test_share_text_page_needs_a_linked_browser(client):
+    assert "Link this browser" in client.get("/share/text").text
+
+
+def test_share_text_page_posts_back_to_itself(client):
+    link_browser(client)
+    page = client.get("/share/text").text
+    assert 'action="/share/text"' in page
+    assert 'method="post"' in page
+
+
+def test_share_text_page_masks_its_url_from_analytics(client):
+    """The fragment holds the article text, and gtag reports location.href
+    verbatim, so the reported location must be the bare path."""
+    link_browser(client)
+    page = client.get("/share/text").text
+    assert '"https://test.local/share/text"' in page
+    assert "page_path" in page
+
+
+def test_share_text_page_submit_creates_the_episode(client, monkeypatch, tmp_path):
+    secret = link_browser(client)
+    calls = wire_spawn(monkeypatch)
+
+    resp = client.post("/share/text", data={
+        "text": ARTICLE_TEXT, "title": "On Time",
+        "url": "https://www.nytimes.com/a.html",
+    })
+
+    assert resp.status_code == 200
+    assert "Added" in resp.text
+    assert "On Time" in resp.text
+    assert calls[0]["text"] == ARTICLE_TEXT
+    ep = [e for e in storage.list_episodes(tmp_path, secret) if e.get("via") == "shortcut"]
+    assert len(ep) == 1
+    assert ep[0]["chars"] == len(ARTICLE_TEXT)
+
+
+def test_share_text_page_submit_without_cookie_shows_connect(client, monkeypatch):
+    calls = wire_spawn(monkeypatch)
+    resp = client.post("/share/text", data={"text": ARTICLE_TEXT, "title": "T"})
+    assert "Link this browser" in resp.text
+    assert calls == []
+
+
+def test_share_text_page_submit_blocked_feed_shows_suspended(client, monkeypatch):
+    import analytics
+    import app as app_module
+    secret = link_browser(client)
+    monkeypatch.setattr(
+        app_module, "BLOCKED_FEED_HASHES", {analytics.feed_hash(secret)},
+    )
+    calls = wire_spawn(monkeypatch)
+
+    resp = client.post("/share/text", data={"text": ARTICLE_TEXT, "title": "T"})
+
+    assert "Feed suspended" in resp.text
+    assert calls == []
+
+
+def test_share_text_page_submit_with_no_text_explains(client, monkeypatch, tmp_path):
+    secret = link_browser(client)
+    calls = wire_spawn(monkeypatch)
+
+    resp = client.post("/share/text", data={"text": "  ", "title": "T"})
+
+    assert "Couldn't add" in resp.text
+    assert calls == []
+    failed = [
+        e for e in storage.list_episodes(tmp_path, secret) if e["status"] == "failed"
+    ]
+    assert len(failed) == 1      # visible in the feed, like a failed /share
+
+
+def test_share_text_page_submit_over_the_length_limit_explains(client, monkeypatch):
+    import ingest
+    link_browser(client)
+    calls = wire_spawn(monkeypatch)
+
+    resp = client.post("/share/text", data={
+        "text": "x" * (ingest.MAX_BODY_CHARS + 1), "title": "T",
+    })
+
+    assert "Couldn't add" in resp.text
+    assert "too long" in resp.text.lower()
+    assert calls == []

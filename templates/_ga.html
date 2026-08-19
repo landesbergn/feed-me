@@ -14,6 +14,10 @@
   {% if ga_mask_location %}
   gaCfg.page_location = {{ (base_url ~ '/u/_') | tojson }};
   gaCfg.page_path = '/u/_';
+  {% elif ga_path_override %}
+  // The URL fragment can carry article text (share/text); report the bare path.
+  gaCfg.page_location = {{ (base_url ~ ga_path_override) | tojson }};
+  gaCfg.page_path = {{ ga_path_override | tojson }};
   {% endif %}
   gtag('config', 'G-MQ15LHLSBF', gaCfg);
 </script>

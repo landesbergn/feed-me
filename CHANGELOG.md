@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.21 · 2026-08-18
+
+Keep the Full Text Shortcut generic: identify by cookie, not by a pasted secret.
+
+- New `GET /share/text` + `POST /share/text`. The Shortcut opens `https://feed-me.xyz/share/text#t=<article text>&title=...&u=...` in Safari, which carries `fm_session` exactly as `/share` does, so one Shortcut works for everyone and carries no secret and no install question. The page's JS reads the fragment and posts it back as a form; browsers never send a fragment, so the article text stays out of the request logs.
+- Both text entry points now share `_create_text_episode()` (validation, title fallback, the 30/day cap, the per-feed character budget, `MAX_BODY_CHARS`), raising `TextShareError` that the API route renders as `{"error", "message"}` and the page renders as the same "Couldn't add that" screen `/share` uses. Success renders `share.html`'s "added" state, so the progress bar and status polling are unchanged.
+- No fragment (a very long article whose URL didn't survive iOS) falls back to a paste box on the same page instead of failing.
+- `_ga.html` gained `ga_path_override`, and `/share/text` sets it: gtag reports `location.href` verbatim, and this page's fragment holds article text, so the reported location is the bare path. Same rule as the `/u/<secret>` mask, different reason.
+- The fragment is parsed by hand rather than with `URLSearchParams`, which decodes `+` as a space and would corrupt any article containing one.
+
 ## v3.20 · 2026-08-18
 
 Narrate paywalled articles by extracting them on the phone.

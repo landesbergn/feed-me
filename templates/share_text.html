@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% set ga_path_override = '/share/text' %}
+  {% include "_ga.html" %}
+  <title>Feed Me</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <style>
+    :root {
+      --ink: #2a1f18; --accent: #b04a00; --muted: #8a6f5e;
+      --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      --sans: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--sans); max-width: 480px; margin: 72px auto; padding: 0 24px;
+      line-height: 1.5; color: var(--ink); background: #FFF8F2; text-align: center;
+      -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-family: var(--round); font-size: 11px; color: var(--accent);
+      text-transform: uppercase; letter-spacing: .1em; font-weight: 800; margin-bottom: 26px;
+    }
+    .emoji { font-size: 46px; line-height: 1; margin-bottom: 14px; }
+    h1 { font-family: var(--round); font-size: 23px; font-weight: 800; letter-spacing: -.01em; margin: 0 0 8px; }
+    p { font-size: 14px; color: #5c4636; margin: 8px 0; }
+    .hint { font-size: 12.5px; color: var(--muted); margin-top: 20px; }
+    textarea {
+      width: 100%; min-height: 180px; margin-top: 14px; padding: 12px;
+      font: inherit; font-size: 13px; color: var(--ink);
+      background: #fff; border: 1px solid #E7D3BF; border-radius: 12px;
+    }
+    button {
+      font-family: var(--round); font-weight: 800; font-size: 15px;
+      margin-top: 12px; padding: 12px 22px; color: #fff; background: var(--accent);
+      border: 0; border-radius: 999px;
+    }
+    .back { display: inline-block; margin-top: 26px; font-size: 13px; color: var(--muted); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="brand">🎧 Feed Me</div>
+
+  <div id="working">
+    <div class="emoji" aria-hidden="true">📄</div>
+    <h1>Reading the article…</h1>
+    <p>Sending the text your phone extracted.</p>
+  </div>
+
+  <div id="fallback" hidden>
+    <div class="emoji" aria-hidden="true">📋</div>
+    <h1>Paste the article</h1>
+    <p>The article was too long to travel in the link. Long-press the box,
+    tap Paste, then narrate it.</p>
+  </div>
+
+  <form id="f" action="/share/text" method="post">
+    <input type="hidden" name="title" id="title-field">
+    <input type="hidden" name="url" id="url-field">
+    <div id="paste-box" hidden>
+      <textarea name="text" id="text-field" placeholder="Paste the article text here"></textarea>
+      <button type="submit">Narrate it</button>
+    </div>
+    <input type="hidden" name="text" id="text-hidden">
+  </form>
+
+  <a class="back" href="{{ home_url }}">← Back to your feed</a>
+
+  <script>
+    (function () {
+      // Parse the fragment by hand: URLSearchParams turns "+" into a space,
+      // which would corrupt article text that contains one.
+      function fragment() {
+        var out = {}, raw = location.hash.replace(/^#/, "");
+        if (!raw) return out;
+        raw.split("&").forEach(function (pair) {
+          var i = pair.indexOf("=");
+          if (i < 0) return;
+          try {
+            out[pair.slice(0, i)] = decodeURIComponent(pair.slice(i + 1));
+          } catch (e) {}
+        });
+        return out;
+      }
+      var f = fragment();
+      var form = document.getElementById("f");
+      document.getElementById("title-field").value = f.title || "";
+      document.getElementById("url-field").value = f.u || "";
+      if (f.t && f.t.trim()) {
+        document.getElementById("text-hidden").value = f.t;
+        form.submit();
+        return;
+      }
+      // No text in the link: offer the clipboard fallback instead of failing.
+      document.getElementById("text-hidden").disabled = true;
+      document.getElementById("working").hidden = true;
+      document.getElementById("fallback").hidden = false;
+      document.getElementById("paste-box").hidden = false;
+    })();
+  </script>
+</body>
+</html>
