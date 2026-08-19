@@ -364,3 +364,19 @@ def test_share_text_added_page_reports_the_length(client, monkeypatch):
     resp = client.post("/share/text", data={"text": ARTICLE_TEXT, "title": "On Time"})
 
     assert f"{len(ARTICLE_TEXT):,} characters" in resp.text
+
+
+def test_share_text_failure_records_what_arrived(client, monkeypatch, tmp_path):
+    """A too-short share is only diagnosable if the payload is kept: the
+    difference between a link preview and a truncated article is what it says,
+    not how long it is."""
+    secret = link_browser(client)
+    wire_spawn(monkeypatch)
+
+    client.post("/share/text", data={"text": "￼Cycling's stakeholders", "title": ""})
+
+    failed = [
+        e for e in storage.list_episodes(tmp_path, secret) if e["status"] == "failed"
+    ][0]
+    assert "Shortcut sent:" in failed["description"]
+    assert "Cycling's stakeholders" in failed["description"]

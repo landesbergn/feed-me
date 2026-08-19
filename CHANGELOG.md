@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.23 · 2026-08-18
+
+Record what a rejected text share actually contained.
+
+- A `/share/text` failure now stores the first 160 characters of what arrived as the episode's description ("Shortcut sent: ..."). A link preview and a truncated article weigh the same; only the content distinguishes them, and without it a repeat failure is undiagnosable from the server side.
+
 ## v3.22 · 2026-08-18
 
 Don't narrate a share that lost its article in transit.

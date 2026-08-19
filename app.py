@@ -303,14 +303,21 @@ async def share_text_submit(request: Request):
 
     form = await request.form()
     url = form.get("url") or ""
+    text = form.get("text")
     try:
         slug, title, chars = _create_text_episode(
-            secret, form.get("text"), form.get("title"), url,
+            secret, text, form.get("title"), url,
         )
     except TextShareError as err:
+        # Keep what actually arrived. A link preview and a truncated article
+        # are the same length; only the content tells them apart.
+        received = (
+            f"Shortcut sent: {str(text)[:160]}" if isinstance(text, str) and text.strip()
+            else None
+        )
         storage.write_failed_episode(
             DATA_DIR, secret, source_url=url or "(shared text)",
-            error=err.message,
+            error=err.message, description=received,
         )
         return templates.TemplateResponse(
             request, "share.html",
