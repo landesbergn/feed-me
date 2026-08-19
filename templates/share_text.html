@@ -53,9 +53,10 @@
 
   <div id="fallback" hidden>
     <div class="emoji" aria-hidden="true">📋</div>
-    <h1>Paste the article</h1>
-    <p>The article was too long to travel in the link. Long-press the box,
-    tap Paste, then narrate it.</p>
+    <h1>Add the article</h1>
+    <p>The Shortcut copied the article. Tap below to add it.</p>
+    <button type="button" id="paste-btn">Paste article</button>
+    <p class="hint" id="paste-note">iOS will ask you to confirm the paste.</p>
   </div>
 
   <form id="f" action="/share/text" method="post">
@@ -95,11 +96,36 @@
         form.submit();
         return;
       }
-      // No text in the link: offer the clipboard fallback instead of failing.
-      document.getElementById("text-hidden").disabled = true;
+      // No text in the link (too long for a URL, or a bare open): take it
+      // from the clipboard, which has no size limit.
+      var hidden = document.getElementById("text-hidden");
+      var area = document.getElementById("text-field");
+      hidden.disabled = true;
       document.getElementById("working").hidden = true;
       document.getElementById("fallback").hidden = false;
-      document.getElementById("paste-box").hidden = false;
+
+      function manual(note) {
+        document.getElementById("paste-box").hidden = false;
+        document.getElementById("paste-note").textContent = note;
+      }
+      var btn = document.getElementById("paste-btn");
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        btn.hidden = true;
+        manual("Long-press the box, tap Paste, then narrate it.");
+        return;
+      }
+      btn.addEventListener("click", function () {
+        navigator.clipboard.readText().then(function (t) {
+          if (t && t.trim()) {
+            area.value = t;
+            form.submit();
+            return;
+          }
+          manual("The clipboard was empty. Paste the article here instead.");
+        }).catch(function () {
+          manual("Couldn't read the clipboard. Paste the article here instead.");
+        });
+      });
     })();
   </script>
 </body>

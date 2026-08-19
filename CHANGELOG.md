@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.25 · 2026-08-19
+
+Take the article from the clipboard when it won't fit in a URL.
+
+- A full article (more so a PDF-derived one, which carries the page furniture) overruns iOS's URL length and the fragment is silently dropped. `/share/text` now offers a **Paste article** button that reads `navigator.clipboard.readText()` on a tap and submits, which has no size limit. iOS shows its own paste confirmation, so this needs no settings toggle, unlike Run JavaScript on Web Page.
+- The manual textarea stays as the fallback when the clipboard read is refused, unavailable, or empty, each with its own message. The fragment path is unchanged and still zero-tap for anything short enough to survive the URL.
+
 ## v3.24 · 2026-08-19
 
 Correct the 403 copy: a gift link is worth trying after all.

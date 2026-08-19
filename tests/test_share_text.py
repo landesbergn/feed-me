@@ -380,3 +380,16 @@ def test_share_text_failure_records_what_arrived(client, monkeypatch, tmp_path):
     ][0]
     assert "Shortcut sent:" in failed["description"]
     assert "Cycling's stakeholders" in failed["description"]
+
+
+def test_share_text_page_offers_a_clipboard_paste_button(client):
+    """Text too big for a URL arrives via the clipboard instead: iOS allows
+    navigator.clipboard.readText() on a tap (with its own confirmation), so
+    the whole article lands in one tap and no size limit applies."""
+    link_browser(client)
+    page = client.get("/share/text").text
+
+    assert "clipboard.readText" in page
+    assert "Paste article" in page
+    # The manual textarea stays as the fallback when the read is refused.
+    assert 'name="text"' in page
