@@ -70,6 +70,7 @@
     <div id="fm-loading">
       <h1>Adding to your feed…</h1>
       <p class="title">{{ title }}</p>
+      {% if chars %}<p class="hint">{{ "{:,}".format(chars) }} characters of text.</p>{% endif %}
       <div class="bar indeterminate" id="fm-bar" aria-hidden="true"><div class="fill" id="fm-fill"></div></div>
       <p class="pct" id="fm-pct">Preparing…</p>
       <p class="hint">Generating the audio. You can close this tab. It'll be in your podcast app when it's ready.</p>
@@ -79,6 +80,7 @@
       <h1>Added to your feed</h1>
       <p class="title">{{ title }}</p>
       <p>It's in your podcast app now.</p>
+      {% if chars %}<p class="hint">Narrated {{ "{:,}".format(chars) }} characters.</p>{% endif %}
       <p class="hint">You can close this tab.</p>
     </div>
     <div id="fm-failed" hidden>

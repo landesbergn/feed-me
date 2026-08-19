@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.22 · 2026-08-18
+
+Don't narrate a share that lost its article in transit.
+
+- `_create_text_episode()` now refuses text below `ingest.MIN_BODY_CHARS`, the same threshold the fetch path uses to spot a teaser, and names both the length that arrived and the likely cause ("check that Open URLs uses the URL Encoded Text variable, not the raw article text"). Unencoded text in a URL fragment breaks at the first space, which silently produced an 8-second episode of the headline instead of the article.
+- The share page reports the length on both the adding and added states, so a short extraction is visible at a glance rather than only by ear.
+
 ## v3.21 · 2026-08-18
 
 Keep the Full Text Shortcut generic: identify by cookie, not by a pasted secret.

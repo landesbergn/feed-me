@@ -333,3 +333,34 @@ def test_share_text_page_submit_over_the_length_limit_explains(client, monkeypat
     assert "Couldn't add" in resp.text
     assert "too long" in resp.text.lower()
     assert calls == []
+
+
+def test_share_text_rejects_a_truncated_stub(client, monkeypatch, tmp_path):
+    """A URL that lost most of the article (unencoded text breaks at the first
+    space) used to become an 8-second episode. Below ingest's teaser threshold,
+    say so instead of narrating the stub."""
+    secret = link_browser(client)
+    calls = wire_spawn(monkeypatch)
+
+    resp = client.post("/share/text", data={
+        "text": "Cycling's stakeholders must reflect on a teenager's death.",
+        "title": "",
+    })
+
+    assert "Couldn't add" in resp.text
+    assert "58 characters" in resp.text        # names what actually arrived
+    assert calls == []
+    failed = [
+        e for e in storage.list_episodes(tmp_path, secret) if e["status"] == "failed"
+    ]
+    assert len(failed) == 1
+
+
+def test_share_text_added_page_reports_the_length(client, monkeypatch):
+    """So a short extraction is visible at a glance, not only by ear."""
+    link_browser(client)
+    wire_spawn(monkeypatch)
+
+    resp = client.post("/share/text", data={"text": ARTICLE_TEXT, "title": "On Time"})
+
+    assert f"{len(ARTICLE_TEXT):,} characters" in resp.text

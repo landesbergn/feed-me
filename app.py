@@ -304,7 +304,7 @@ async def share_text_submit(request: Request):
     form = await request.form()
     url = form.get("url") or ""
     try:
-        slug, title = _create_text_episode(
+        slug, title, chars = _create_text_episode(
             secret, form.get("text"), form.get("title"), url,
         )
     except TextShareError as err:
@@ -322,7 +322,8 @@ async def share_text_submit(request: Request):
            props={"url": url, "title": title, "via": "shortcut"})
     return templates.TemplateResponse(
         request, "share.html",
-        {"state": "added", "title": title, "slug": slug, "home_url": home_url},
+        {"state": "added", "title": title, "slug": slug, "home_url": home_url,
+         "chars": chars},
     )
 
 
@@ -519,10 +520,10 @@ class TextShareError(Exception):
         self.code, self.message, self.retry_after = code, message, retry_after
 
 
-def _create_text_episode(secret: str, text, title, url) -> tuple[str, str]:
+def _create_text_episode(secret: str, text, title, url) -> tuple[str, str, int]:
     """Validate, meter and start narration of text extracted on the user's
     phone. Shared by the secret-authed API route and the cookie-authed page.
-    Returns (slug, title); raises TextShareError."""
+    Returns (slug, title, chars); raises TextShareError."""
     if not isinstance(text, str) or not text.strip():
         raise TextShareError(
             "invalid_request",
@@ -534,6 +535,17 @@ def _create_text_episode(secret: str, text, title, url) -> tuple[str, str]:
             "invalid_request",
             f"That article is too long to narrate: {len(text):,} characters "
             f"(limit {ingest.MAX_BODY_CHARS:,}).",
+        )
+    if len(text.strip()) < ingest.MIN_BODY_CHARS:
+        # Same threshold the fetch path uses to spot a teaser. Here it catches
+        # a share that lost its article in transit (unencoded text in the URL
+        # fragment breaks at the first space), which otherwise becomes an
+        # 8-second episode of the headline.
+        raise TextShareError(
+            "invalid_request",
+            f"Only {len(text.strip()):,} characters of text arrived, too "
+            "little to be the article. In the Shortcut, check that Open URLs "
+            "uses the URL Encoded Text variable, not the raw article text.",
         )
     url = url or ""
     if url:
@@ -581,7 +593,7 @@ def _create_text_episode(secret: str, text, title, url) -> tuple[str, str]:
         chars=len(text),
     )
     spawn_ingest(url, secret, DATA_DIR, slug, text=text, title=title)
-    return slug, title
+    return slug, title, len(text)
 
 
 @app.post("/u/{secret}/share-text")
@@ -618,7 +630,7 @@ async def share_text_route(request: Request, secret: str):
         payload = dict(await request.form())
 
     try:
-        slug, title = _create_text_episode(
+        slug, title, _chars = _create_text_episode(
             secret, payload.get("text"), payload.get("title"), payload.get("url"),
         )
     except TextShareError as err:
