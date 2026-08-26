@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.35 · 2026-08-26
+
+Episode list copy and link fixes.
+
+- "Recent episodes" is now "Your episodes".
+- The article URL under each episode title is a real link (new tab, `rel="noopener"`), styled quietly with an accent hover.
+
 ## v3.34 · 2026-08-26
 
 One page: the feed page is the whole experience.

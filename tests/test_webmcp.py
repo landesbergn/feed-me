@@ -138,7 +138,7 @@ def test_fresh_feed_leads_with_the_listen_card(client):
     secret = make_feed(client)
     body = client.get(f"/u/{secret}").text
     assert 'id="listen-card"' in body
-    assert body.index("Put your feed in your podcast app") < body.index("Recent episodes")
+    assert body.index("Put your feed in your podcast app") < body.index("Your episodes")
     assert "Overcast" in body
     assert "Pocket Casts" in body
     # iOS setup is always folded now, even on a fresh feed.
@@ -153,7 +153,7 @@ def test_shared_feed_leads_with_episodes(client, tmp_path):
         source_url="https://example.com/a", audio=b"MP3", description="x",
     )
     body = client.get(f"/u/{secret}").text
-    assert body.index("Recent episodes") < body.index("Put your feed in your podcast app")
+    assert body.index("Your episodes") < body.index("Put your feed in your podcast app")
 
 
 def test_feed_page_has_no_agent_chrome(client):
@@ -201,3 +201,14 @@ def test_agents_md_lists_example_prompts(client):
 
 def test_llms_txt_mentions_webmcp(client):
     assert "WebMCP" in client.get("/llms.txt").text
+
+
+def test_episode_article_links_are_clickable(client, tmp_path):
+    secret = make_feed(client)
+    import storage
+    storage.write_episode(
+        tmp_path, secret, slug="real1", title="A Real Article",
+        source_url="https://example.com/a", audio=b"MP3", description="x",
+    )
+    body = client.get(f"/u/{secret}").text
+    assert '<a class="src" href="https://example.com/a" target="_blank" rel="noopener">' in body

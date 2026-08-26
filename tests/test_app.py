@@ -99,7 +99,7 @@ def test_settings_fresh_feed_shows_listen_card_before_episodes(client):
     body = client.get(f"/u/{secret}").text
     assert "Set up" in body
     assert "Setup &amp; sharing" in body  # always folded now
-    assert body.index("Put your feed in your podcast app") < body.index("Recent episodes")
+    assert body.index("Put your feed in your podcast app") < body.index("Your episodes")
 
 
 def test_settings_prioritizes_episodes_once_real_article_shared(client, tmp_path):
@@ -116,9 +116,9 @@ def test_settings_prioritizes_episodes_once_real_article_shared(client, tmp_path
 
     body = client.get(f"/u/{secret}").text
     assert "Setup &amp; sharing" in body  # instructions are folded
-    assert body.index("Recent episodes") < body.index("Put your feed in your podcast app")
+    assert body.index("Your episodes") < body.index("Put your feed in your podcast app")
     # Episodes table also comes before the folded setup instructions.
-    assert body.index("Recent episodes") < body.index("Install the iOS Shortcut")
+    assert body.index("Your episodes") < body.index("Install the iOS Shortcut")
 
 
 def test_icon_routes_serve(client):
@@ -147,7 +147,7 @@ def test_settings_renders_for_known_user(client):
     assert "Share an article" in response.text
     assert "Feed Me" in response.text
     # Episode table headers
-    assert "Recent episodes" in response.text
+    assert "Your episodes" in response.text
     # Settings drawer
     assert "Settings" in response.text
     # v3.0: no more paste flow — the ingest URL must NOT leak into the page
@@ -347,7 +347,7 @@ def test_episodes_partial_returns_html(client):
     # Welcome was seeded on /create, so partial shows it
     assert "Welcome to Feed Me" in response.text
     # Outer section structure (h2 header + table or empty state)
-    assert "Recent episodes" in response.text
+    assert "Your episodes" in response.text
 
 
 def test_episodes_partial_404_for_unknown_user(client):

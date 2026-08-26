@@ -1,4 +1,4 @@
-<h2>Recent episodes</h2>
+<h2>Your episodes</h2>
 {% if episodes %}
   <table class="ep-table">
     <thead>
@@ -13,7 +13,7 @@
         <tr>
           <td class="col-title">
             {% if ep.title %}{{ ep.title }}{% elif ep.status == "pending" %}Loading from {{ ep.url | hostname }}…{% else %}{{ ep.url | hostname }}{% endif %}
-            <span class="src">{{ ep.url }}</span>
+            {% if ep.url %}<a class="src" href="{{ ep.url }}" target="_blank" rel="noopener">{{ ep.url }}</a>{% endif %}
             {% if ep.status == "failed" and ep.error %}<span class="ep-err">{{ ep.error }}</span>{% endif %}
           </td>
           <td class="col-time">{{ ep.when }}</td>
