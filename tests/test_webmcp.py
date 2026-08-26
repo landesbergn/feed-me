@@ -79,3 +79,16 @@ def test_agent_panel_mentions_webmcp(client):
     secret = make_feed(client)
     resp = client.get(f"/u/{secret}")
     assert "WebMCP browser" in resp.text
+
+
+# --- docs --------------------------------------------------------------------
+
+def test_agents_md_documents_webmcp(client):
+    text = client.get("/AGENTS.md").text
+    assert "## In a browser (WebMCP)" in text
+    for name in TOOL_NAMES:
+        assert name in text
+
+
+def test_llms_txt_mentions_webmcp(client):
+    assert "WebMCP" in client.get("/llms.txt").text

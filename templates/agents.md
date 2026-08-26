@@ -181,6 +181,16 @@ unless they ask.
 The podcast RSS feed: every episode with titles, descriptions, and audio
 URLs.
 
+## In a browser (WebMCP)
+
+If you are browsing with WebMCP support (ChatGPT's browser, or Chrome with
+WebMCP enabled), you do not need this API by hand. Open the user's feed page
+{base}/u/<secret> and the page registers tools: add_article,
+add_article_text, list_episodes, get_episode_status, delete_episode,
+set_voice, and get_feed_info. A user with no feed yet can start at {base}/
+where a create_feed tool registers. The HTTP API on this page is the same
+capability set and works everywhere else.
+
 ## Errors
 
 | Status | error | Meaning | Retry? |

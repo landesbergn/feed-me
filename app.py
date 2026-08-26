@@ -188,6 +188,8 @@ def llms_txt_route():
         "Feed Me turns shared articles into narrated episodes in a private "
         "podcast feed.\n"
         f"API documentation for agents: {APP_BASE_URL}/AGENTS.md\n"
+        "Browsing with WebMCP? The landing page and feed pages register "
+        "their own tools; see the 'In a browser' section of AGENTS.md.\n"
     )
 
 
