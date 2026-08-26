@@ -140,3 +140,45 @@ def test_webmcp_js_drives_the_page(client):
     assert "scrollIntoView" in body          # reactions bring the change on screen
     assert "fmAgentCreated" in body          # agent mode survives the create_feed hop
     assert "your agent created this feed" in body
+
+
+# --- collab: the agent-session page ------------------------------------------
+
+def test_collab_page_serves_the_agent_session_view(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}/collab")
+    assert resp.status_code == 200
+    text = resp.text
+    assert "You + your agent" in text
+    assert 'id="agent-status-text"' in text
+    assert 'id="agent-log"' in text
+    assert 'id="episodes-section"' in text
+    assert '<script src="/webmcp.js" defer></script>' in text
+    assert "Things to say to your agent" in text
+    assert f'href="/u/{secret}"' in text          # exit back to the classic page
+    assert "—" not in text
+
+
+def test_collab_page_sets_session_cookie(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}/collab")
+    assert "fm_session" in resp.headers.get("set-cookie", "")
+
+
+def test_collab_page_unknown_secret_404(client):
+    assert client.get("/u/nope/collab").status_code == 404
+
+
+def test_collab_page_masks_ga_location(client):
+    secret = make_feed(client)
+    text = client.get(f"/u/{secret}/collab").text
+    assert 'gaCfg.page_location = "https://test.local/u/_"' in text
+    assert "gaCfg.page_path = '/u/_'" in text
+
+
+def test_webmcp_js_runs_the_collab_session(client):
+    body = client.get("/webmcp.js").text
+    assert "/collab" in body
+    assert "agent-log" in body
+    assert "fmAgentLog" in body
+    assert "agent-status-text" in body

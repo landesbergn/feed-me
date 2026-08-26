@@ -77,6 +77,7 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `GET /` | Landing page |
 | `POST /create` | Mint a feed, seed the welcome episode, set the session cookie, redirect to `/u/<secret>` |
 | `GET /u/{secret}` | Feed home/settings; refreshes the cookie. Leads with the episodes table once a real article has been shared, else with setup instructions |
+| `GET /u/{secret}/collab` | Agent-session view: live activity log + episodes; webmcp.js lands people here once an agent starts calling tools |
 | `GET /share?url=` | Capture endpoint hit by the Shortcut; cookie-identified. Renders a live adding/added/failed page |
 | `GET /share/status?slug=` | JSON status for one episode, polled by the `/share` page |
 | `GET /share/text` | Landing page for the Full Text Shortcut: reads the article text out of the URL fragment and posts it back. Cookie-identified, so the Shortcut carries no secret |

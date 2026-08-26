@@ -17,8 +17,9 @@
     (typeof document !== "undefined" && document.modelContext);
   if (!mc) return;
 
-  var match = location.pathname.match(/^\/u\/([A-Za-z0-9_-]+)\/?$/);
+  var match = location.pathname.match(/^\/u\/([A-Za-z0-9_-]+)(\/collab)?\/?$/);
   var secret = match ? match[1] : null;
+  var onCollab = !!(match && match[2]);
 
   function result(text) {
     return { content: [{ type: "text", text: text }] };
@@ -184,10 +185,10 @@
         if (!resp.ok) return result("Error " + resp.status + ".");
         var page = resp.url;
         try { sessionStorage.setItem("fmAgentCreated", "1"); } catch (e) {}
-        setTimeout(function () { location.assign(page); }, 500);
+        setTimeout(function () { location.assign(page + "/collab"); }, 500);
         return result(
           "Feed created. Its private page is " + page + " (treat it as a secret; it is the user's whole account). " +
-          "Navigating there now; the article tools register on that page."
+          "Navigating to its agent session view now; the article tools register on that page."
         );
       }
     });
@@ -211,7 +212,61 @@
   };
   var bannerText = null;
 
-  function agentMode(message) {
+  /* The activity log: a persisted play-by-play of what the agent did,
+     rendered natively on the /collab page and carried across navigations
+     (create_feed's hop, the classic page's first-call hop) in
+     sessionStorage. Entries are this script's own fixed strings only,
+     never tool inputs, so nothing injected can enter the DOM here. */
+  var LOG_KEY = "fmAgentLog";
+
+  function readLog() {
+    try { return JSON.parse(sessionStorage.getItem(LOG_KEY)) || []; }
+    catch (e) { return []; }
+  }
+
+  function renderLog() {
+    try {
+      var ol = document.getElementById("agent-log");
+      if (!ol) return;
+      var entries = readLog();
+      ol.innerHTML = "";
+      for (var i = entries.length - 1; i >= 0; i--) {
+        var li = document.createElement("li");
+        var when = document.createElement("span");
+        when.className = "log-time";
+        when.textContent = new Date(entries[i].t).toLocaleTimeString();
+        var what = document.createElement("span");
+        what.textContent = entries[i].m;
+        li.appendChild(when);
+        li.appendChild(what);
+        ol.appendChild(li);
+      }
+      var empty = document.getElementById("log-empty");
+      if (empty) empty.hidden = entries.length > 0;
+    } catch (e) { /* flourish */ }
+  }
+
+  function logActivity(message) {
+    try {
+      var entries = readLog();
+      if (entries.length && entries[entries.length - 1].m === message) return;
+      entries.push({ t: Date.now(), m: message });
+      sessionStorage.setItem(LOG_KEY, JSON.stringify(entries.slice(-50)));
+    } catch (e) { /* sessionStorage can be unavailable; the strip still works */ }
+    renderLog();
+  }
+
+  function agentMode(message, quiet) {
+    var status = document.getElementById("agent-status-text");
+    if (status) {
+      try { status.textContent = message; } catch (e) { /* flourish */ }
+    } else {
+      injectedBanner(message);
+    }
+    if (!quiet) logActivity(message);
+  }
+
+  function injectedBanner(message) {
     try {
       if (!bannerText) {
         var banner = document.createElement("div");
@@ -265,7 +320,7 @@
     try {
       var target = document.getElementById("episodes-section");
       if (!target) return null;
-      var resp = await fetch(location.pathname + "/episodes_partial", { cache: "no-store" });
+      var resp = await fetch("/u/" + secret + "/episodes_partial", { cache: "no-store" });
       if (resp.ok) target.innerHTML = await resp.text();
       return target;
     } catch (e) { return null; }
@@ -295,16 +350,29 @@
     }
   };
 
+  var hopped = false;
+
   tools = tools.map(function (tool) {
     var inner = tool.execute;
     tool.execute = async function (params) {
       var activity = ACTIVITY[tool.name] || "working";
-      agentMode("your agent is " + activity + "...");
+      /* Status polling repeats: keep it off the timeline. */
+      var quiet = tool.name === "get_episode_status";
+      agentMode("your agent is " + activity + "...", quiet);
       try {
         var out = await inner.apply(this, arguments);
-        agentMode("your agent finished " + activity);
+        agentMode("your agent finished " + activity, quiet);
         var react = REACT[tool.name];
         if (react) { try { await react(params); } catch (e) { /* flourish */ } }
+        /* First completed call on the classic feed page: move the person to
+           the agent-session view. Only between calls, never mid-call; the
+           tools re-register there. */
+        if (secret && !onCollab && !hopped) {
+          hopped = true;
+          setTimeout(function () {
+            location.assign("/u/" + secret + "/collab");
+          }, 700);
+        }
         return out;
       } catch (e) {
         agentMode("the last request failed");
@@ -314,9 +382,11 @@
     return tool;
   });
 
-  /* Arriving from create_feed: greet the person in agent mode right away,
-     instead of a page that looks untouched until the next tool call. */
+  /* On arrival: restore the carried activity log, and if the agent just
+     created this feed, greet the person in agent mode right away instead of
+     a page that looks untouched until the next tool call. */
   if (secret) {
+    renderLog();
     try {
       if (sessionStorage.getItem("fmAgentCreated")) {
         sessionStorage.removeItem("fmAgentCreated");

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · Agent session page</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.31</div>
+  <h1>Agent session page</h1>
+  <div class="meta">Feed Me · 2026-08-25 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  When an agent starts driving a feed through WebMCP, take the person to a
+  page built for watching that happen: a live activity log beside the
+  episodes table, a status strip narrating the agent's current move, and
+  prompt chips for steering it. The settings page stays the human-first
+  home; <code>/u/&lt;secret&gt;/collab</code> becomes the human-plus-agent
+  one. This is the "the site feels agent-driven" request, thought bigger
+  than banners and flashes.
+</p>
+
+<h2>1 · Why</h2>
+<p>
+  v3.29/v3.30 made tool calls visible (banner, flashes, live table), but the
+  page being driven is still the settings page: a layout built around iOS
+  setup instructions, with agent activity bolted on. Watching an agent work
+  there feels like background automation. A dedicated view flips the frame:
+  the person sees a running record of what their agent did, what it is doing
+  now, and what to ask next, side by side with the episodes appearing. It is
+  also the natural demo stage for the WebMCP Challenge's "human-agent
+  experience" axis.
+</p>
+
+<h2>2 · What we're building</h2>
+<ol>
+  <li><strong>New route <code>GET /u/{secret}/collab</code></strong> rendering
+    <code>templates/collab.html</code>: 404 on unknown secret, session cookie
+    set (like settings), tracked as <code>page_view</code> with
+    <code>path="collab"</code>, GA included with
+    <code>ga_mask_location</code> (the URL carries the secret).</li>
+  <li><strong>The page:</strong> header "You + your agent" with a live status
+    pill (<code>#agent-status-text</code>); an <strong>Agent activity</strong>
+    card (<code>#agent-log</code>, newest first, with an empty-state line); the
+    <strong>episodes card</strong> reusing <code>_episodes_section.html</code>
+    inside <code>#episodes-section</code> with the same 3s partial polling and
+    pending-percent ticker as settings; a <strong>"Things to say to your
+    agent"</strong> card of click-to-copy prompt chips (the v3.29 list); a
+    <strong>Listen</strong> card (Apple Podcasts link + copy RSS); an exit link
+    back to <code>/u/&lt;secret&gt;</code>. Two-column on wide screens,
+    stacked on narrow. Loads <code>/webmcp.js</code> with <code>defer</code>.</li>
+  <li><strong><code>webmcp.js</code>:</strong>
+    <ul>
+      <li>Path match extended to <code>/u/&lt;secret&gt;/collab</code>; the full
+        feed toolset registers there too. <code>refreshEpisodes</code> builds
+        its URL from the secret, not <code>location.pathname</code>.</li>
+      <li><strong>Native agent mode:</strong> when <code>#agent-status-text</code>
+        exists, status updates go there and to a persisted activity log
+        (sessionStorage <code>fmAgentLog</code>, capped at 50, consecutive
+        duplicates skipped) rendered into <code>#agent-log</code>. Without
+        those elements the injected banner from v3.29 still applies, and
+        activity still logs, so the record survives the hop.
+        <code>get_episode_status</code> updates the status strip but is
+        <em>quiet</em> in the log (polling must not spam the timeline).</li>
+      <li><strong>Transitions:</strong> <code>create_feed</code> navigates to
+        the new feed's <code>/collab</code> page. On the classic feed page,
+        the first <em>completed</em> tool call hops to <code>/collab</code>
+        after a short delay (never mid-call), once per page.</li>
+    </ul></li>
+</ol>
+
+<h2>3 · Constraints and security</h2>
+<ul>
+  <li>The collab URL carries the secret: GA must mask
+    (<code>ga_mask_location</code>), the raw secret never reaches analytics
+    values (<code>_track</code> attributes by hash), and the page adds no new
+    endpoints or caps. Log entries are the script's own fixed strings, never
+    tool inputs, so no injected content can enter the DOM through the log.</li>
+  <li>Navigation only ever happens between a resolved tool call and the next
+    one; tools re-register on the destination page (the create_feed hop
+    already proved agents follow this).</li>
+  <li>No em-dashes in any new copy; middot allowed.</li>
+</ul>
+
+<h2>4 · Testing</h2>
+<ul>
+  <li>Route: 200 with the session markup (status pill, log, episodes section,
+    prompt chips, exit link, webmcp include), cookie set, 404 JSON-free on a
+    bad secret, GA location masked to <code>/u/_</code>, no em-dash.</li>
+  <li>Script contract: recognizes <code>/collab</code>, names
+    <code>agent-log</code> / <code>agent-status-text</code> /
+    <code>fmAgentLog</code>, keeps all prior pins (toolset, banner,
+    reactions).</li>
+  <li>Manual (owner): create a feed via agent and land on collab; drive every
+    tool from the classic page and confirm the hop carries the log.</li>
+</ul>
+
+<h2>5 · Out of scope</h2>
+<ul>
+  <li>Voice controls or rotate on the collab page (the exit link reaches
+    them); logging tool inputs or results into the timeline; multi-session
+    log persistence (sessionStorage only); any backend change beyond the one
+    route; the hackathon submission materials.</li>
+</ul>
+
+<h2>6 · Acceptance criteria</h2>
+<ul>
+  <li><code>GET /u/&lt;secret&gt;/collab</code> serves the session view with
+    live episodes, activity log, prompts, subscribe, and exit; 404 on unknown
+    secret; GA masked.</li>
+  <li>An agent creating a feed lands the user on collab; the first tool call
+    on the classic page moves them there with the activity log intact.</li>
+  <li>Status polling never floods the log. Full suite green; CHANGELOG v3.31
+    and tag.</li>
+</ul>
+
+</div>
+</body>
+</html>

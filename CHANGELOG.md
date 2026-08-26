@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.31 · 2026-08-25
+
+The agent session page: a home for human + agent collaboration.
+
+- New `GET /u/<secret>/collab`, a view built for watching an agent drive the feed: a live status pill ("your agent is adding an article..."), an **Agent activity** timeline, the live episodes table (same 3-second partial poll and pending ticker as the feed page), click-to-copy "Things to say to your agent" chips, subscribe buttons, and an exit link back to the classic page. Session cookie and 404 behavior mirror the settings page; GA reports `/u/_` (the URL carries the secret).
+- `webmcp.js` registers the full toolset on the collab page too, and moves people there automatically: `create_feed` now lands on the new feed's collab page, and on the classic feed page the first *completed* tool call hops over (never mid-call; the tools re-register on arrival).
+- The activity timeline is persisted in sessionStorage (capped at 50 entries, consecutive duplicates skipped), so actions taken before a hop survive it. On the collab page agent mode renders natively in the page instead of the injected banner; status polling (`get_episode_status`) updates the pill but stays off the timeline so polling cannot flood it. Log entries are the script's own fixed strings, never tool inputs.
+
 ## v3.30 · 2026-08-25
 
 The agent visibly drives the page.

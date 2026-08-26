@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% set ga_mask_location = true %}
+  {% include "_ga.html" %}
+  <title>Your feed · Agent session</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #FFF8F2; --ink: #2a1f18; --accent: #b04a00;
+      --muted: #8a6f5e; --faint: #b89a84; --card: #ffffff;
+      --hair: #EFE2D6; --hi: #FCE3C8;
+      --round: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      --sans: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--sans);
+      max-width: 860px; margin: 44px auto; padding: 0 22px 64px;
+      line-height: 1.5; color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-family: var(--round); font-size: 12px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--accent);
+      margin-bottom: 18px;
+    }
+    .session-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 0 0 6px; }
+    h1 {
+      font-family: var(--round); font-size: 28px; font-weight: 800;
+      letter-spacing: -.01em; line-height: 1.12; margin: 0;
+    }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--ink); color: var(--bg);
+      border-radius: 999px; padding: 6px 14px;
+      font-size: 12px; font-weight: 600; max-width: 100%;
+    }
+    .live-pill .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #7ddb8a;
+      flex: none; animation: fm-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes fm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+    .sub { color: var(--muted); font-size: 13.5px; margin: 6px 0 24px; }
+
+    .cols { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 720px) { .cols { grid-template-columns: 5fr 6fr; align-items: start; } }
+    .card {
+      background: var(--card); border-radius: 16px; padding: 16px 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 0 #F3E6D9, 0 6px 16px rgba(176, 74, 0, .05);
+    }
+    .cols .card { margin-bottom: 0; }
+    .card-title {
+      font-family: var(--round); font-size: 13px; font-weight: 800;
+      color: #7a5f4e; margin: 0 0 10px;
+    }
+
+    .agent-log { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+    .agent-log li {
+      display: flex; gap: 10px; align-items: baseline;
+      padding: 7px 0; border-bottom: 1px solid #F4E9DD;
+    }
+    .agent-log li:last-child { border-bottom: none; }
+    .agent-log .log-time {
+      flex: none; color: var(--faint); font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .log-empty { color: var(--muted); font-size: 12.5px; font-style: italic; margin: 4px 0; }
+
+    .say-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .say-chip {
+      padding: 7px 13px; border: 1.5px solid #E9C9AC; background: #fff; color: var(--ink);
+      border-radius: 999px; font-size: 12px; cursor: pointer; font-family: var(--sans);
+      font-weight: 600; text-align: left;
+    }
+    .say-chip:hover { background: var(--hi); }
+    .say-note { font-size: 11.5px; color: var(--faint); margin: 10px 0 0; }
+
+    .btn-primary, .btn-secondary {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: var(--sans); font-size: 13px; font-weight: 700;
+      padding: 10px 18px; border-radius: 999px; text-decoration: none; cursor: pointer;
+      border: none; margin-top: 12px; line-height: 1.2;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: #fff; color: var(--accent); border: 1.5px solid #E9C9AC; }
+    .btn-pair { display: flex; gap: 8px; flex-wrap: wrap; }
+    .listen-note { font-size: 12.5px; color: var(--muted); margin: 0; }
+
+    .ep-table { margin-top: 10px; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+    .ep-table thead th {
+      font-family: var(--round); font-size: 11px; color: var(--faint); font-weight: 800;
+      text-align: left; padding: 6px 0; border-bottom: 1px solid var(--hair);
+    }
+    .ep-table th.col-time { width: 58px; }
+    .ep-table th.col-status { width: 74px; text-align: right; }
+    .ep-table tbody td { padding: 11px 8px 11px 0; border-bottom: 1px solid #F4E9DD; vertical-align: top; }
+    .ep-table td.col-title { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+    .ep-table td.col-time, .ep-table td.col-status { padding-right: 0; }
+    .ep-table td.col-title .src {
+      display: block; font-family: var(--sans); font-size: 11px; color: var(--faint);
+      margin-top: 2px; word-break: break-word; font-weight: 400;
+    }
+    .ep-table td.col-title .ep-err {
+      display: block; font-size: 11px; color: var(--accent);
+      margin-top: 4px; line-height: 1.4; word-break: break-word;
+    }
+    .ep-table td.col-time { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .ep-table td.col-status { text-align: right; }
+    .status-chip {
+      display: inline-block; padding: 3px 9px; font-family: var(--round);
+      font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+      border-radius: 999px;
+    }
+    .status-chip.ready { background: #E6F0E5; color: #2f7a3d; }
+    .status-chip.failed { background: #F6E0D6; color: #b04a00; }
+    .status-chip.pending { background: #F3EADF; color: #8a6f5e; }
+    .status-chip.pending + .pending-progress {
+      display: block; font-size: 10px; color: var(--muted); margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ep-empty { color: var(--muted); font-size: 12.5px; font-style: italic; padding: 14px 0; }
+    #episodes-section h2 {
+      font-family: var(--round); font-size: 13px; font-weight: 800;
+      color: #7a5f4e; margin: 0;
+    }
+
+    .exit { font-size: 12.5px; color: var(--muted); margin-top: 26px; }
+    .exit a { color: var(--accent); font-weight: 700; text-decoration: none; }
+    .exit a:hover { text-decoration: underline; }
+    .site-footer {
+      margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--hair);
+      font-size: 12.5px; color: var(--muted);
+    }
+    .site-footer a { color: var(--accent); text-decoration: none; font-weight: 700; }
+    .site-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="brand">🎧 Feed Me</div>
+  <div class="session-head">
+    <h1>You + your agent</h1>
+    <div class="live-pill">
+      <span class="dot" aria-hidden="true"></span>
+      <span id="agent-status-text" role="status" aria-live="polite">waiting for your agent's next move</span>
+    </div>
+  </div>
+  <p class="sub">Your agent drives this page through WebMCP tools. Everything it does shows up here as it happens; you steer it by talking to it.</p>
+
+  <div class="cols">
+    <section class="card">
+      <div class="card-title">Agent activity</div>
+      <ol id="agent-log" class="agent-log"></ol>
+      <p class="log-empty" id="log-empty">Nothing yet. Ask your agent for something below and watch it happen.</p>
+    </section>
+
+    <section class="card">
+      <div id="episodes-section">
+        {% include "_episodes_section.html" %}
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-title">Things to say to your agent</div>
+    <div class="say-chips">
+      <button class="say-chip" data-say="Send this article to my feed." onclick="sayChip(this)">"Send this article to my feed."</button>
+      <button class="say-chip" data-say="Narrate your summary of this thread into my feed." onclick="sayChip(this)">"Narrate your summary of this thread into my feed."</button>
+      <button class="say-chip" data-say="What's in my listening queue?" onclick="sayChip(this)">"What's in my listening queue?"</button>
+      <button class="say-chip" data-say="Is my episode ready yet?" onclick="sayChip(this)">"Is my episode ready yet?"</button>
+      <button class="say-chip" data-say="Remove that last episode." onclick="sayChip(this)">"Remove that last episode."</button>
+      <button class="say-chip" data-say="Switch my feed's voice to nova." onclick="sayChip(this)">"Switch my feed's voice to nova."</button>
+      <button class="say-chip" data-say="What's my feed's RSS link?" onclick="sayChip(this)">"What's my feed's RSS link?"</button>
+    </div>
+    <p class="say-note">Tap one to copy it, then paste it to your agent.</p>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Listen</div>
+    <p class="listen-note">Subscribe once and every narrated article lands in your podcast app.</p>
+    <div class="btn-pair">
+      <a class="btn-primary" href="podcast://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
+      <button class="btn-secondary" id="copy-rss" onclick="copyFeedUrl()">Copy RSS link</button>
+    </div>
+  </section>
+
+  <p class="exit">Done collaborating? <a href="/u/{{ secret }}">Back to your feed page</a> for setup, voices, and settings.</p>
+
+  <footer class="site-footer">
+    Built by <a href="https://noahlandesberg.com" target="_blank" rel="noopener">Noah Landesberg</a>
+  </footer>
+
+  <script>
+    var FEED_URL = {{ feed_url | tojson }};
+    function copyFeedUrl() {
+      try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
+      var btn = document.getElementById("copy-rss");
+      btn.textContent = "copied!";
+      setTimeout(function () { btn.textContent = "Copy RSS link"; }, 1400);
+    }
+    function sayChip(btn) {
+      try { navigator.clipboard.writeText(btn.dataset.say); } catch (e) {}
+      var old = btn.textContent;
+      btn.textContent = "copied!";
+      setTimeout(function () { btn.textContent = old; }, 1200);
+    }
+  </script>
+
+  <script>
+    // Live updates: poll the episodes partial every 3s (same as the feed page,
+    // with the URL built from the feed path since this page lives at /collab).
+    (function () {
+      var POLL_MS = 3000;
+      var target = document.getElementById("episodes-section");
+      if (!target) return;
+      var url = {{ ("/u/" ~ secret ~ "/episodes_partial") | tojson }};
+
+      function refresh() {
+        if (document.hidden) return;
+        fetch(url, { cache: "no-store" })
+          .then(function (resp) {
+            if (!resp.ok) return null;
+            return resp.text();
+          })
+          .then(function (html) {
+            if (html != null) target.innerHTML = html;
+          })
+          .catch(function () { /* silent: page still works */ });
+      }
+
+      setInterval(refresh, POLL_MS);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) refresh();
+      });
+    })();
+  </script>
+
+  <script>
+    // Tick a smooth % under each Pending chip every 1s (same as the feed page).
+    (function () {
+      var SECONDS_PER_CHUNK = 5;
+      var MIN_EXPECTED_SECONDS = 30;
+      var MAX_DISPLAY_PERCENT = 95;
+
+      function tick() {
+        var nowTs = Math.floor(Date.now() / 1000);
+        var nodes = document.querySelectorAll(".pending-progress");
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          var startTs = parseInt(el.dataset.ts, 10);
+          var totalChunks = parseInt(el.dataset.chunks, 10);
+          if (!startTs) continue;
+          if (!totalChunks || totalChunks < 1) {
+            el.textContent = "";
+            continue;
+          }
+          var elapsed = nowTs - startTs;
+          var expected = Math.max(MIN_EXPECTED_SECONDS, totalChunks * SECONDS_PER_CHUNK);
+          var pct = Math.min(MAX_DISPLAY_PERCENT, Math.max(0, Math.round((elapsed / expected) * 100)));
+          el.textContent = pct + "%";
+        }
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+
+  <script src="/webmcp.js" defer></script>
+</body>
+</html>
