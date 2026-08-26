@@ -128,3 +128,15 @@ def test_agents_md_lists_example_prompts(client):
     assert "Example prompts" in text
     for name in TOOL_NAMES:
         assert f"- {name}" in text
+
+
+# --- the agent drives the page -----------------------------------------------
+
+def test_webmcp_js_drives_the_page(client):
+    body = client.get("/webmcp.js").text
+    # Tool calls drive the same UI a person would use, visibly.
+    assert "episodes_partial" in body        # episode tools refresh the live table
+    assert "voice-chip" in body              # set_voice moves the picker's active chip
+    assert "scrollIntoView" in body          # reactions bring the change on screen
+    assert "fmAgentCreated" in body          # agent mode survives the create_feed hop
+    assert "your agent created this feed" in body

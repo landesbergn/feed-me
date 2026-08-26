@@ -171,9 +171,19 @@
       description: "Create a new private Feed Me podcast feed for this user, then go to its feed page, where the tools for adding articles register. One feed per person is plenty: do not call this if the user already has a feed.",
       inputSchema: { type: "object", properties: {} },
       execute: async function () {
+        /* Press the page's own button, visibly, before doing its work. */
+        try {
+          var cta = document.querySelector("button.cta");
+          if (cta) {
+            cta.scrollIntoView({ behavior: "smooth", block: "center" });
+            cta.style.transition = "box-shadow .3s ease";
+            cta.style.boxShadow = "0 0 0 3px #b04a00, 0 0 18px rgba(176,74,0,.35)";
+          }
+        } catch (e) { /* flourish */ }
         var resp = await fetch("/create", { method: "POST" });
         if (!resp.ok) return result("Error " + resp.status + ".");
         var page = resp.url;
+        try { sessionStorage.setItem("fmAgentCreated", "1"); } catch (e) {}
         setTimeout(function () { location.assign(page); }, 500);
         return result(
           "Feed created. Its private page is " + page + " (treat it as a secret; it is the user's whole account). " +
@@ -237,14 +247,64 @@
     } catch (e) { /* never break a tool call over a banner */ }
   }
 
+  /* Page reactions: each tool call drives the same UI a person would use,
+     so watching the page shows the collaboration, not just the end result.
+     All flourish: a reaction failure never breaks the tool call. */
+  function flash(el) {
+    try {
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.style.transition = "box-shadow .3s ease";
+      el.style.borderRadius = el.style.borderRadius || "10px";
+      el.style.boxShadow = "0 0 0 3px #b04a00, 0 0 18px rgba(176,74,0,.35)";
+      setTimeout(function () { el.style.boxShadow = ""; }, 1600);
+    } catch (e) { /* flourish */ }
+  }
+
+  async function refreshEpisodes() {
+    try {
+      var target = document.getElementById("episodes-section");
+      if (!target) return null;
+      var resp = await fetch(location.pathname + "/episodes_partial", { cache: "no-store" });
+      if (resp.ok) target.innerHTML = await resp.text();
+      return target;
+    } catch (e) { return null; }
+  }
+
+  var REACT = {
+    add_article: async function () { flash(await refreshEpisodes()); },
+    add_article_text: async function () { flash(await refreshEpisodes()); },
+    delete_episode: async function () { flash(await refreshEpisodes()); },
+    list_episodes: function () { flash(document.getElementById("episodes-section")); },
+    /* Status checks repeat while polling: keep the table fresh, no scrolling. */
+    get_episode_status: async function () { await refreshEpisodes(); },
+    set_voice: function (params) {
+      var settings = document.querySelector("details.settings");
+      if (settings) settings.open = true;
+      var chips = document.querySelectorAll(".voice-chip");
+      for (var i = 0; i < chips.length; i++) {
+        chips[i].classList.toggle(
+          "active", chips[i].textContent.trim() === params.voice);
+      }
+      flash(document.querySelector(".voices"));
+    },
+    get_feed_info: function () {
+      var fold = document.querySelector("details.setup-fold");
+      if (fold) fold.open = true;
+      flash(document.querySelector("a.btn-primary"));
+    }
+  };
+
   tools = tools.map(function (tool) {
     var inner = tool.execute;
-    tool.execute = async function () {
+    tool.execute = async function (params) {
       var activity = ACTIVITY[tool.name] || "working";
       agentMode("your agent is " + activity + "...");
       try {
         var out = await inner.apply(this, arguments);
         agentMode("your agent finished " + activity);
+        var react = REACT[tool.name];
+        if (react) { try { await react(params); } catch (e) { /* flourish */ } }
         return out;
       } catch (e) {
         agentMode("the last request failed");
@@ -253,6 +313,18 @@
     };
     return tool;
   });
+
+  /* Arriving from create_feed: greet the person in agent mode right away,
+     instead of a page that looks untouched until the next tool call. */
+  if (secret) {
+    try {
+      if (sessionStorage.getItem("fmAgentCreated")) {
+        sessionStorage.removeItem("fmAgentCreated");
+        agentMode("your agent created this feed");
+        flash(document.getElementById("episodes-section"));
+      }
+    } catch (e) { /* sessionStorage can be unavailable; fine */ }
+  }
 
   try {
     if (typeof mc.registerTool === "function") {

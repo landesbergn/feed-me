@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.30 · 2026-08-25
+
+The agent visibly drives the page.
+
+- WebMCP tool calls now react in the page's own UI, so a person watching sees the collaboration, not just the end result. `add_article`, `add_article_text`, and `delete_episode` refresh the live episodes table immediately (no waiting for the 3-second poll), scroll it on screen, and flash it; `list_episodes` scrolls and flashes the table; `get_episode_status` keeps the table fresh without scroll-strobing while an agent polls; `set_voice` opens Settings, moves the active voice chip, and flashes the picker; `get_feed_info` opens the setup fold and flashes the subscribe button.
+- `create_feed` visibly presses the landing page's own "Get my feed" button, and agent mode survives the hop: the new feed page arrives with the banner already up ("your agent created this feed") and the episodes table highlighted, instead of looking untouched. Carried by a one-shot sessionStorage flag.
+- Every reaction is flourish by construction: wrapped so a DOM problem can never break the tool call itself.
+
 ## v3.29 · 2026-08-25
 
 Agent mode you can see, and example prompts for every tool.
