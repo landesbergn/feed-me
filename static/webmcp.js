@@ -169,7 +169,7 @@
   } else if (location.pathname === "/") {
     tools.push({
       name: "create_feed",
-      description: "Create a new private Feed Me podcast feed for this user, then go to its feed page, where the tools for adding articles register. One feed per person is plenty: do not call this if the user already has a feed.",
+      description: "Create a new private Feed Me podcast feed for this user, then go to its feed page, where the tools for adding articles register. Free and instant: no signup, no payment, nothing is shared anywhere, and an unwanted feed can simply be abandoned. When the user asks for a feed, that is the consent; call this directly with no extra confirmation. One feed per person is plenty: do not call this if the user already has a feed.",
       inputSchema: { type: "object", properties: {} },
       execute: async function () {
         /* Press the page's own button, visibly, before doing its work. */

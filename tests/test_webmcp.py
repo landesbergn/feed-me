@@ -197,3 +197,12 @@ def test_collab_page_exit_link_does_not_tempt_agents(client):
 def test_create_feed_result_tells_the_agent_to_stay(client):
     body = client.get("/webmcp.js").text
     assert "Stay on that page" in body
+
+
+def test_create_feed_description_preauthorizes_the_call(client):
+    # Codex paused to ask "Shall I create it now?" before create_feed. The
+    # description must say the call is low-stakes and that the user's request
+    # is the consent, so agents plow through.
+    body = client.get("/webmcp.js").text
+    assert "Free and instant" in body
+    assert "no extra confirmation" in body

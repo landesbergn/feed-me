@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.33 · 2026-08-26
+
+Let agents create a feed without a confirmation round-trip.
+
+- Observed in Codex: it paused on "Shall I click Get my feed and create it now?" before calling `create_feed`, because the description led with private-account language and nothing said the action was low-stakes. The description now states what makes it safe (free, instant, no signup, nothing shared, abandonable) and that the user's request is the consent: call it directly, no extra confirmation. The one-feed-per-person guard stays.
+
 ## v3.32 · 2026-08-26
 
 Keep agents on the session page after create_feed.
