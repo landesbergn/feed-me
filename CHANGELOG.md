@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.28 · 2026-08-25
+
+WebMCP tools: the pages register their own agent tools.
+
+- New `static/webmcp.js`, served at `GET /webmcp.js` and loaded (with `defer`) by the landing and feed pages. In a WebMCP-capable agent browser (ChatGPT's browser, or Chrome with WebMCP enabled) the landing page registers `create_feed`, and the feed page registers `add_article`, `add_article_text`, `list_episodes`, `get_episode_status`, `delete_episode`, `set_voice`, and `get_feed_info`. Every tool is a thin same-origin fetch over the existing agent API, so the caps, character budget, and error messages apply unchanged, and the secret never leaves the page's origin. In browsers without WebMCP the script is a silent no-op.
+- The script detects both API homes (`navigator.modelContext` and `document.modelContext`) and both registration calls (`registerTool`, `provideContext({tools})`), and a registration failure can never break the page: the API is an origin trial and has moved between drafts.
+- `AGENTS.md` gains an "In a browser (WebMCP)" section, `llms.txt` points browser agents at the pages, and the For-your-agent panel notes that a WebMCP browser needs no pasted prompt.
+
 ## v3.27 · 2026-08-19
 
 State the paywall limit honestly: nytimes.com articles are out of reach.

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · WebMCP tools</title>
+<style>
+  :root {
+    --ink: #1a1a1a; --ink-soft: #4a4a4a; --ink-mute: #6a6a6a;
+    --rule: #e5e5e5; --bg: #fafaf7; --paper: #ffffff;
+    --accent: #b04a00; --good: #2f7a3d; --warn: #8a6500;
+    --code-bg: #f3f1ec;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Source Serif Pro", Georgia, serif;
+    font-size: 17px; line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 56px 28px 96px; }
+  header.title { border-bottom: 1px solid var(--rule); padding-bottom: 22px; margin-bottom: 36px; }
+  header.title .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.14em; font-size: 12px;
+    color: var(--ink-mute); font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  header.title h1 { font-size: 38px; line-height: 1.1; margin: 8px 0; letter-spacing: -0.01em; }
+  header.title .meta { font-size: 14px; color: var(--ink-mute); font-family: -apple-system, sans-serif; }
+  h2 {
+    font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule); padding-bottom: 6px;
+  }
+  h3 { font-size: 16px; margin: 26px 0 8px; font-family: -apple-system, sans-serif; font-weight: 700; }
+  p { margin: 12px 0; }
+  ul, ol { margin: 12px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code, pre { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-family: -apple-system, sans-serif; font-size: 14px; }
+  th, td { border-bottom: 1px solid var(--rule); padding: 9px 10px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--ink-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .toc { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 16px 20px; margin: 16px 0 36px; font-family: -apple-system, sans-serif; font-size: 14px; }
+  .toc strong { text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; color: var(--ink-mute); font-weight: 600; display: block; margin-bottom: 8px; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .pill { display: inline-block; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; background: var(--code-bg); color: var(--ink-soft); font-weight: 600; }
+  .small { font-size: 13.5px; color: var(--ink-soft); }
+  .callout { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; padding: 14px 18px; margin: 18px 0; font-family: -apple-system, sans-serif; font-size: 14.5px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 44px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.28</div>
+  <h1>WebMCP tools</h1>
+  <div class="meta">Feed Me · 2026-08-25 · <span class="pill">spec</span></div>
+</header>
+
+<p>
+  Let an agent that lives in the browser (ChatGPT's browser, or Chrome with
+  WebMCP enabled) drive Feed Me without reading <code>AGENTS.md</code> at all:
+  when such an agent opens the landing page or a feed page, the page itself
+  registers tools for creating a feed, narrating an article, checking
+  progress, and managing episodes. One new static script, one new route, and
+  a few lines of copy. No backend behavior changes.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#why">Why</a></li>
+    <li><a href="#what">What we're building</a></li>
+    <li><a href="#tools">The tools</a></li>
+    <li><a href="#script">The script and how it loads</a></li>
+    <li><a href="#copy">Copy and docs changes</a></li>
+    <li><a href="#security">Security notes</a></li>
+    <li><a href="#tests">Testing</a></li>
+    <li><a href="#scope">Out of scope</a></li>
+    <li><a href="#accept">Acceptance criteria</a></li>
+  </ol>
+</div>
+
+<h2 id="why">1 · Why</h2>
+<p>
+  Feed Me already meets agents where they are twice over: <code>AGENTS.md</code>
+  plus the secret-authed JSON API for agents in terminals, and the pasted
+  prompt on the feed page for chat agents. WebMCP is the third surface, and
+  the one browsers are converging on: a page calls
+  <code>modelContext.registerTool(...)</code> and an agent browsing that page
+  discovers typed tools instead of guessing its way through the UI.
+</p>
+<p>
+  For Feed Me the fit is unusually clean:
+</p>
+<ul>
+  <li><strong>The capabilities already exist.</strong> Every tool below maps to
+    a shipped endpoint (<code>POST/GET/DELETE /u/&lt;secret&gt;/episodes*</code>,
+    <code>/voice</code>, <code>POST /create</code>). The WebMCP layer is a thin
+    same-origin <code>fetch</code> wrapper.</li>
+  <li><strong>The auth model gets better, not worse.</strong> The page already
+    knows the secret (it is the URL); the tools call same-origin endpoints; the
+    agent never has to be handed the credential out of band or persist it. The
+    "Step 0 · Remember this feed" dance (v3.12) becomes unnecessary in a WebMCP
+    browser: being on the page is the credential.</li>
+  <li><strong>Immediate occasion:</strong> the OpenAI WebMCP Challenge
+    (submissions close Sep 3, 2026), which wants exactly this: a live site
+    whose existing product becomes agent-drivable. The repo work here stands on
+    its own; the hackathon submission itself is out of scope (§8).</li>
+</ul>
+
+<h2 id="what">2 · What we're building</h2>
+<ol>
+  <li><strong>A new committed static asset <code>static/webmcp.js</code></strong>
+    that feature-detects the WebMCP API and registers tools: the full set on the
+    feed page (<code>/u/&lt;secret&gt;</code>), <code>create_feed</code> alone on
+    the landing page (<code>/</code>). No-op everywhere the API is absent, so
+    ordinary browsers are untouched.</li>
+  <li><strong>A new route <code>GET /webmcp.js</code></strong> serving that file
+    as <code>text/javascript</code> (static assets are served by explicit
+    routes in this app; there is no <code>StaticFiles</code> mount).</li>
+  <li><strong>Script includes</strong> (<code>&lt;script src="/webmcp.js"
+    defer&gt;</code>) on <code>landing.html</code> and
+    <code>settings.html</code> only.</li>
+  <li><strong>Copy:</strong> one sentence in the "For your agent" panel, a short
+    "In a browser (WebMCP)" section in <code>AGENTS.md</code>, a line in
+    <code>llms.txt</code>, README route row and mention, CHANGELOG v3.28.</li>
+</ol>
+<p>
+  No change to any endpoint, the rate limiter (WebMCP shares flow through the
+  existing agent API and its 5/day cap and character budget), storage, RSS, or
+  GA masking.
+</p>
+
+<h2 id="tools">3 · The tools</h2>
+
+<h3>Feed page (/u/&lt;secret&gt;)</h3>
+<table>
+  <tr><th>Tool</th><th>Input</th><th>Backed by</th><th>Notes</th></tr>
+  <tr><td><code>add_article</code></td><td><code>{url}</code></td>
+    <td><code>POST /u/&lt;s&gt;/episodes</code> (URL mode)</td>
+    <td>Returns the 202 body (slug, status, remaining) plus a reminder to poll.</td></tr>
+  <tr><td><code>add_article_text</code></td><td><code>{text, title, url?}</code></td>
+    <td><code>POST /u/&lt;s&gt;/episodes</code> (text mode)</td>
+    <td>The killer path for browser agents: text the agent already has
+      (its own research, a page a server fetch cannot reach) becomes an
+      episode with no fetch.</td></tr>
+  <tr><td><code>list_episodes</code></td><td>none</td>
+    <td><code>GET /u/&lt;s&gt;/episodes</code></td>
+    <td>Returns the JSON body verbatim (20 most recent, voice, remaining, budget).</td></tr>
+  <tr><td><code>get_episode_status</code></td><td><code>{slug}</code></td>
+    <td><code>GET /u/&lt;s&gt;/episodes/&lt;slug&gt;</code></td>
+    <td>Description tells the agent to poll no faster than every few seconds.</td></tr>
+  <tr><td><code>delete_episode</code></td><td><code>{slug}</code></td>
+    <td><code>DELETE /u/&lt;s&gt;/episodes/&lt;slug&gt;</code></td>
+    <td>Description says it is irreversible and to confirm with the user
+      before deleting anything they did not just ask to remove.</td></tr>
+  <tr><td><code>set_voice</code></td><td><code>{voice}</code> (enum: alloy, echo, nova, shimmer)</td>
+    <td><code>POST /u/&lt;s&gt;/voice</code> (form)</td>
+    <td>Success is the status code; the tool answers "Voice set to X".</td></tr>
+  <tr><td><code>get_feed_info</code></td><td>none</td>
+    <td>none (built from <code>location</code>)</td>
+    <td>Feed page URL, private RSS URL, docs URL. Description says to treat
+      both URLs as secrets.</td></tr>
+</table>
+
+<h3>Landing page (/)</h3>
+<table>
+  <tr><th>Tool</th><th>Input</th><th>Backed by</th><th>Notes</th></tr>
+  <tr><td><code>create_feed</code></td><td>none</td>
+    <td><code>POST /create</code></td>
+    <td>The fetch follows the 303 to the new feed page (setting the session
+      cookie); the tool reports the new page URL, then navigates there after a
+      short delay so the result reaches the agent before the page unloads. On
+      the feed page the full toolset registers. Description warns not to call
+      it for a user who already has a feed.</td></tr>
+</table>
+
+<h3>Result and error shape</h3>
+<ul>
+  <li>Every <code>execute</code> resolves to the MCP-style
+    <code>{content: [{type: "text", text: ...}]}</code> object (the shape in
+    the W3C proposal and the WebMCP examples).</li>
+  <li>JSON endpoint bodies pass through verbatim, so the agent sees the same
+    fields <code>AGENTS.md</code> documents. Non-2xx responses become
+    <code>"Error &lt;status&gt; (&lt;code&gt;): &lt;message&gt;"</code> from the
+    endpoint's own <code>{"error","message"}</code> body, falling back to
+    <code>"Error &lt;status&gt;."</code> when the body is not that shape (e.g.
+    the voice route's FastAPI 400). The API's existing rate-limit and budget
+    messages are already agent-directed prose; they pass through untouched.</li>
+</ul>
+
+<h2 id="script">4 · The script and how it loads</h2>
+<ul>
+  <li><strong>Feature detection, both API homes:</strong> the W3C proposal puts
+    the API at <code>navigator.modelContext</code>; current Chrome docs put it
+    at <code>document.modelContext</code>. The script tries both
+    (<code>navigator</code> first, matching the proposal) and returns silently
+    when neither exists. It prefers per-tool <code>registerTool</code> and
+    falls back to <code>provideContext({tools})</code>. The whole registration
+    is wrapped in try/catch: an API-shape drift must never break the page.</li>
+  <li><strong>Page detection:</strong> the secret comes from
+    <code>location.pathname</code> matching <code>/u/&lt;secret&gt;</code>
+    exactly (the same <code>[A-Za-z0-9_-]+</code> alphabet as the slugs); the
+    landing page is <code>pathname === "/"</code>. Any other page registers
+    nothing, so the script is inert if it is ever included elsewhere.</li>
+  <li><strong>Loading:</strong> <code>&lt;script src="/webmcp.js" defer&gt;</code>
+    just before <code>&lt;/body&gt;</code> in <code>landing.html</code> and
+    <code>settings.html</code>. Not on the share pages (transient, no toolset
+    worth offering) and not on the admin page.</li>
+  <li><strong>Serving:</strong> a <code>GET /webmcp.js</code> route returning
+    <code>FileResponse(STATIC_DIR / "webmcp.js",
+    media_type="text/javascript")</code>, following the <code>_icon</code>
+    pattern. The file is committed, not generated; no
+    <code>scripts/gen_*</code> involvement.</li>
+</ul>
+<div class="callout">
+  <strong>API-drift risk, named:</strong> WebMCP is an origin trial; the return
+  shape and the API home have both moved between drafts. That is why the
+  script (a) detects both homes, (b) supports both registration calls, and
+  (c) never lets a registration failure escape. Before any public submission
+  the owner should verify once against a real WebMCP browser; every likely
+  drift is a one-line fix in <code>static/webmcp.js</code>.
+</div>
+
+<h2 id="copy">5 · Copy and docs changes</h2>
+<ul>
+  <li><strong>"For your agent" panel</strong>
+    (<code>templates/_setup_instructions.html</code>): after the API-docs link,
+    add one line: <em>"Browsing with an agent? In a WebMCP browser this page
+    registers its own tools, so your agent can add articles with no prompt at
+    all."</em></li>
+  <li><strong><code>AGENTS.md</code></strong> (<code>templates/agents.md</code>):
+    a short "In a browser (WebMCP)" section after "Read the feed" naming the
+    tools on the feed page and <code>create_feed</code> on the landing page,
+    and noting the HTTP API on the rest of the page works everywhere else.
+    Keeps the literal <code>{base}</code> token convention (plain
+    <code>.replace</code>, not Jinja, not <code>str.format</code>).</li>
+  <li><strong><code>llms.txt</code></strong>: one added line pointing browser
+    agents at the pages themselves.</li>
+  <li><strong>README</strong>: a route-table row for <code>GET /webmcp.js</code>
+    and a clause in the "Agents welcome" bullet.</li>
+  <li><strong>CHANGELOG</strong>: v3.28 entry; tag <code>v3.28</code>.</li>
+  <li>No em-dashes anywhere in the new copy, including inside the JS string
+    literals (tool descriptions are agent-facing copy; the repo rule applies).</li>
+</ul>
+
+<h2 id="security">6 · Security notes</h2>
+<ul>
+  <li><strong>No new exposure of the secret.</strong> Tools run in the page at
+    <code>/u/&lt;secret&gt;</code>; a browser agent on that page can already
+    read the address bar. All fetches are same-origin; the secret is sent
+    nowhere new. <code>get_feed_info</code> returns the secret-bearing URLs on
+    purpose (subscribing is the product) with a treat-as-secret warning in the
+    description, mirroring the Auth section of <code>AGENTS.md</code>.</li>
+  <li><strong>Caps unchanged.</strong> WebMCP shares hit
+    <code>POST /u/&lt;s&gt;/episodes</code> and count against the existing
+    agent cap (5/day) and per-feed character budget; the suspended-feed check
+    applies. No new spend surface.</li>
+  <li><strong>Analytics:</strong> the script makes no analytics calls and GA
+    masking is untouched. Server-side tracking of the underlying endpoints
+    stays exactly as it is (the agent API attributes by
+    <code>feed_hash</code>, never the raw secret).</li>
+  <li><strong>Prompt-injection surface:</strong> tool inputs go into JSON
+    bodies or a form field, never into HTML; the page renders nothing from
+    tool calls. Episode titles from agents were already possible via the
+    agent API and are already escaped where shown.</li>
+</ul>
+
+<h2 id="tests">7 · Testing</h2>
+<p>
+  TDD, no network, existing <code>client</code> fixture. The JS cannot execute
+  under pytest, so the JS logic stays simple and the tests pin the contract:
+  the file is served correctly, the right pages load it, and the toolset and
+  copy stay what this spec says. New file <code>tests/test_webmcp.py</code>:
+</p>
+<ul>
+  <li><strong>Served:</strong> <code>GET /webmcp.js</code> → 200,
+    <code>content-type</code> starts with <code>text/javascript</code>, body
+    mentions <code>modelContext</code>, <code>registerTool</code>, and
+    <code>provideContext</code>.</li>
+  <li><strong>Toolset pinned:</strong> the body contains each tool name
+    (<code>add_article</code>, <code>add_article_text</code>,
+    <code>list_episodes</code>, <code>get_episode_status</code>,
+    <code>delete_episode</code>, <code>set_voice</code>,
+    <code>get_feed_info</code>, <code>create_feed</code>).</li>
+  <li><strong>Included where it should be:</strong> the landing page and a feed
+    page each contain <code>src="/webmcp.js"</code>; the share page does
+    not.</li>
+  <li><strong>Copy guards:</strong> no em-dash in <code>webmcp.js</code>; the
+    agent panel contains the new WebMCP line; <code>AGENTS.md</code> contains
+    "In a browser (WebMCP)" and the tool names, still substitutes
+    <code>{base}</code>, still no em-dash (existing test already guards);
+    <code>llms.txt</code> mentions WebMCP.</li>
+  <li><strong>Inert elsewhere:</strong> static assertion that the script guards
+    on pathname (the regex and the <code>"/"</code> check are present), the
+    honest limit of DOM-less testing.</li>
+</ul>
+<p class="small">
+  Manual verification (owner, once, before any submission): open the deployed
+  landing page in a WebMCP-enabled browser, have the agent create a feed, add
+  an article by URL and by text, poll to ready, list, set voice, delete.
+</p>
+
+<h2 id="scope">8 · Out of scope</h2>
+<ul>
+  <li><strong>The hackathon submission itself:</strong> the Devpost entry,
+    demo video, and write-up; a Chrome origin-trial token for feed-me.xyz
+    (owner registration; judges can also enable the flag); any temporary cap
+    raise for judging week. All owner decisions, separate from this
+    change.</li>
+  <li>Tools on the share pages or admin page.</li>
+  <li>Cookie-authed tools for a returning visitor on the landing page (the
+    cookie is HttpOnly and the flows are HTML-shaped; <code>create_feed</code>
+    plus navigation covers the demo path).</li>
+  <li>Cross-origin tool exposure (<code>exposedTo</code> /
+    <code>fromOrigins</code>), <code>toolchange</code> events, dynamic
+    re-registration when episodes change.</li>
+  <li>A JS test runner for the repo; the script stays simple enough that
+    contract tests plus one manual pass carry it.</li>
+</ul>
+
+<h2 id="accept">9 · Acceptance criteria</h2>
+<ul>
+  <li><code>GET /webmcp.js</code> serves the committed script as
+    <code>text/javascript</code>; landing and feed pages include it with
+    <code>defer</code>; share pages do not.</li>
+  <li>The script registers exactly the eight tools in §3, on the right pages,
+    with agent-facing descriptions, MCP-shaped results, pass-through JSON
+    bodies, and the documented error strings; it is a silent no-op in a
+    browser without WebMCP and cannot throw out of registration.</li>
+  <li><code>AGENTS.md</code>, the agent panel, <code>llms.txt</code>, and the
+    README say WebMCP exists and where; no em-dash anywhere new.</li>
+  <li>Full suite green (<code>uv run pytest</code>); CHANGELOG v3.28 entry and
+    <code>v3.28</code> tag.</li>
+  <li><strong>End-to-end (manual, owner):</strong> in a WebMCP browser, a
+    fresh visitor's agent can create a feed, narrate an article by URL and by
+    pasted text, watch it go ready, and read back the RSS URL, without ever
+    being pasted a prompt or shown <code>AGENTS.md</code>.</li>
+</ul>
+
+</div>
+</body>
+</html>
