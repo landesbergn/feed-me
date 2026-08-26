@@ -182,3 +182,18 @@ def test_webmcp_js_runs_the_collab_session(client):
     assert "agent-log" in body
     assert "fmAgentLog" in body
     assert "agent-status-text" in body
+
+
+def test_collab_page_exit_link_does_not_tempt_agents(client):
+    # Codex clicked "Back to your feed page" after create_feed, treating the
+    # classic page as the real deliverable. The exit link must describe the
+    # destination as settings, not as the feed's home.
+    secret = make_feed(client)
+    text = client.get(f"/u/{secret}/collab").text
+    assert "Back to your feed page" not in text
+    assert "Open setup &amp; settings" in text
+
+
+def test_create_feed_result_tells_the_agent_to_stay(client):
+    body = client.get("/webmcp.js").text
+    assert "Stay on that page" in body

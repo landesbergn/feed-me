@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.32 · 2026-08-26
+
+Keep agents on the session page after create_feed.
+
+- Observed in Codex: after `create_feed` landed on the agent-session view, the agent clicked "Back to your feed page" and delivered the classic settings page instead, because the exit link named that page as the feed's home. The link now reads "Open setup & settings" (accurate for humans, uninteresting to an agent mid-task), and the `create_feed` tool result explicitly says to stay on the session page and not navigate elsewhere unless the user asks.
+
 ## v3.31 · 2026-08-25
 
 The agent session page: a home for human + agent collaboration.

@@ -188,7 +188,8 @@
         setTimeout(function () { location.assign(page + "/collab"); }, 500);
         return result(
           "Feed created. Its private page is " + page + " (treat it as a secret; it is the user's whole account). " +
-          "Navigating to its agent session view now; the article tools register on that page."
+          "Navigating to its agent session view now. Stay on that page: it is where the article tools register " +
+          "and where the user watches you work. Do not navigate elsewhere or open the settings page unless the user asks."
         );
       }
     });
