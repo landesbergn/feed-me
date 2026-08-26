@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.29 · 2026-08-25
+
+Agent mode you can see, and example prompts for every tool.
+
+- The first WebMCP tool call now flips the page into a visible agent state: a pinned "Agent mode" banner with a pulsing dot and a live activity line ("your agent is adding an article...", "your agent finished reading the episode list"), updated per call and on failure. Injected and styled entirely from `static/webmcp.js`, wrapped so a banner problem can never break a tool call; browsers without WebMCP never see it.
+- The For-your-agent panel gains a "Things to say to your agent" list, one example prompt per feed-page tool. `AGENTS.md` gets the same list (plus create_feed's landing-page prompt) in the "In a browser (WebMCP)" section.
+
 ## v3.28 · 2026-08-25
 
 WebMCP tools: the pages register their own agent tools.

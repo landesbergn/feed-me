@@ -92,3 +92,39 @@ def test_agents_md_documents_webmcp(client):
 
 def test_llms_txt_mentions_webmcp(client):
     assert "WebMCP" in client.get("/llms.txt").text
+
+
+# --- agent-mode banner -------------------------------------------------------
+
+def test_webmcp_js_shows_agent_mode_banner(client):
+    body = client.get("/webmcp.js").text
+    assert "fm-agent-banner" in body
+    assert "Agent mode" in body
+    # Every tool gets a human-readable activity line for the banner.
+    for activity in (
+        "adding an article",
+        "narrating supplied text",
+        "reading the episode list",
+        "checking narration progress",
+        "deleting an episode",
+        "changing the voice",
+        "reading the feed links",
+        "creating your feed",
+    ):
+        assert activity in body
+
+
+# --- example prompts ---------------------------------------------------------
+
+def test_agent_panel_lists_example_prompts(client):
+    secret = make_feed(client)
+    text = client.get(f"/u/{secret}").text
+    assert "Things to say to your agent" in text
+    assert "Send this article to my feed" in text
+
+
+def test_agents_md_lists_example_prompts(client):
+    text = client.get("/AGENTS.md").text
+    assert "Example prompts" in text
+    for name in TOOL_NAMES:
+        assert f"- {name}" in text

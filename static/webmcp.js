@@ -184,6 +184,76 @@
   }
 
   if (!tools.length) return;
+
+  /* Agent mode: the first tool call flips the page into a visible agent
+     state (a pinned banner with a live activity line), so the person
+     watching knows their agent is driving. Pure flourish: a failure here
+     must never break the tool call itself. */
+  var ACTIVITY = {
+    add_article: "adding an article",
+    add_article_text: "narrating supplied text",
+    list_episodes: "reading the episode list",
+    get_episode_status: "checking narration progress",
+    delete_episode: "deleting an episode",
+    set_voice: "changing the voice",
+    get_feed_info: "reading the feed links",
+    create_feed: "creating your feed"
+  };
+  var bannerText = null;
+
+  function agentMode(message) {
+    try {
+      if (!bannerText) {
+        var banner = document.createElement("div");
+        banner.id = "fm-agent-banner";
+        banner.setAttribute("role", "status");
+        banner.setAttribute("aria-live", "polite");
+        banner.style.cssText =
+          "position:fixed;top:0;left:0;right:0;z-index:9999;" +
+          "display:flex;align-items:center;justify-content:center;gap:8px;" +
+          "padding:9px 16px;background:#2a1f18;color:#FFF8F2;" +
+          "font:600 13px/1.4 -apple-system,'Helvetica Neue',system-ui,sans-serif;" +
+          "box-shadow:0 2px 10px rgba(42,31,24,.25);";
+        var pulse = document.createElement("style");
+        pulse.textContent =
+          "@keyframes fm-agent-pulse{0%,100%{opacity:1}50%{opacity:.3}}";
+        var dot = document.createElement("span");
+        dot.style.cssText =
+          "width:8px;height:8px;border-radius:50%;background:#7ddb8a;" +
+          "flex:none;animation:fm-agent-pulse 1.6s ease-in-out infinite;";
+        var label = document.createElement("span");
+        label.textContent = "Agent mode";
+        bannerText = document.createElement("span");
+        bannerText.style.cssText = "font-weight:400;opacity:.9;";
+        banner.appendChild(pulse);
+        banner.appendChild(dot);
+        banner.appendChild(label);
+        banner.appendChild(bannerText);
+        document.body.appendChild(banner);
+        document.body.style.marginTop =
+          ((parseFloat(getComputedStyle(document.body).marginTop) || 0) + 38) + "px";
+      }
+      bannerText.textContent = "· " + message;
+    } catch (e) { /* never break a tool call over a banner */ }
+  }
+
+  tools = tools.map(function (tool) {
+    var inner = tool.execute;
+    tool.execute = async function () {
+      var activity = ACTIVITY[tool.name] || "working";
+      agentMode("your agent is " + activity + "...");
+      try {
+        var out = await inner.apply(this, arguments);
+        agentMode("your agent finished " + activity);
+        return out;
+      } catch (e) {
+        agentMode("the last request failed");
+        throw e;
+      }
+    };
+    return tool;
+  });
+
   try {
     if (typeof mc.registerTool === "function") {
       for (var i = 0; i < tools.length; i++) mc.registerTool(tools[i]);

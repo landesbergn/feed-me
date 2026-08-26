@@ -191,6 +191,17 @@ set_voice, and get_feed_info. A user with no feed yet can start at {base}/
 where a create_feed tool registers. The HTTP API on this page is the same
 capability set and works everywhere else.
 
+Example prompts a user might give you, one per tool:
+
+- create_feed (on the landing page): "Set me up a Feed Me podcast feed."
+- add_article: "Send this article to my feed."
+- add_article_text: "Narrate your summary of this thread into my feed."
+- list_episodes: "What's in my listening queue?"
+- get_episode_status: "Is my episode ready yet?"
+- delete_episode: "Remove that last episode."
+- set_voice: "Switch my feed's voice to nova."
+- get_feed_info: "What's my feed's RSS link so I can subscribe?"
+
 ## Errors
 
 | Status | error | Meaning | Retry? |
