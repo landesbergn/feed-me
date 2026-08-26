@@ -17,9 +17,8 @@
     (typeof document !== "undefined" && document.modelContext);
   if (!mc) return;
 
-  var match = location.pathname.match(/^\/u\/([A-Za-z0-9_-]+)(\/collab)?\/?$/);
+  var match = location.pathname.match(/^\/u\/([A-Za-z0-9_-]+)\/?$/);
   var secret = match ? match[1] : null;
-  var onCollab = !!(match && match[2]);
 
   function result(text) {
     return { content: [{ type: "text", text: text }] };
@@ -155,6 +154,34 @@
     });
 
     tools.push({
+      name: "help_subscribe",
+      description: "Help the user put this feed in their podcast app. Call this right after create_feed, or whenever the user wants to subscribe. It highlights the subscribe buttons on the page and copies the private RSS link to the user's clipboard when the browser allows. Relay the returned instructions to the user.",
+      inputSchema: { type: "object", properties: {} },
+      execute: async function () {
+        var rss = location.origin + base + "/feed.xml";
+        flash(document.getElementById("listen-card"));
+        var copied = false;
+        try {
+          await navigator.clipboard.writeText(rss);
+          copied = true;
+          var note = document.getElementById("agent-copied");
+          if (note) note.hidden = false;
+        } catch (e) { /* clipboard needs focus or a gesture; the page has a Copy button */ }
+        return result(
+          "The page is highlighting the subscribe buttons. " +
+          (copied
+            ? "The RSS link is on the user's clipboard. "
+            : "The clipboard was not available here, so the link was not copied. ") +
+          "Tell the user: tap Add to Apple Podcasts on the page (Overcast and Pocket Casts buttons are there too)" +
+          (copied
+            ? ", or paste the copied link into any other podcast app."
+            : ", or use the Copy RSS link button for any other podcast app. The RSS link is " + rss) +
+          " Subscribing once is enough; every future episode arrives automatically."
+        );
+      }
+    });
+
+    tools.push({
       name: "get_feed_info",
       description: "Get this feed's page URL and its private RSS URL for subscribing in a podcast app. Both URLs are this user's whole account: treat them as secrets and share them only with the user.",
       inputSchema: { type: "object", properties: {} },
@@ -185,11 +212,12 @@
         if (!resp.ok) return result("Error " + resp.status + ".");
         var page = resp.url;
         try { sessionStorage.setItem("fmAgentCreated", "1"); } catch (e) {}
-        setTimeout(function () { location.assign(page + "/collab"); }, 500);
+        setTimeout(function () { location.assign(page); }, 500);
         return result(
           "Feed created. Its private page is " + page + " (treat it as a secret; it is the user's whole account). " +
-          "Navigating to its agent session view now. Stay on that page: it is where the article tools register " +
-          "and where the user watches you work. Do not navigate elsewhere or open the settings page unless the user asks."
+          "Navigating there now; the feed tools register on that page. " +
+          "Next step: call help_subscribe to help the user put the feed in their podcast app. " +
+          "Stay on that page; do not navigate elsewhere unless the user asks."
         );
       }
     });
@@ -209,6 +237,7 @@
     delete_episode: "deleting an episode",
     set_voice: "changing the voice",
     get_feed_info: "reading the feed links",
+    help_subscribe: "helping you subscribe",
     create_feed: "creating your feed"
   };
   var bannerText = null;
@@ -258,9 +287,13 @@
   }
 
   function agentMode(message, quiet) {
-    var status = document.getElementById("agent-status-text");
-    if (status) {
-      try { status.textContent = message; } catch (e) { /* flourish */ }
+    var trace = document.getElementById("agent-trace");
+    var traceText = document.getElementById("agent-trace-text");
+    if (trace && traceText) {
+      try {
+        trace.hidden = false;
+        traceText.textContent = message;
+      } catch (e) { /* flourish */ }
     } else {
       injectedBanner(message);
     }
@@ -345,13 +378,9 @@
       flash(document.querySelector(".voices"));
     },
     get_feed_info: function () {
-      var fold = document.querySelector("details.setup-fold");
-      if (fold) fold.open = true;
-      flash(document.querySelector("a.btn-primary"));
+      flash(document.getElementById("listen-card") || document.querySelector("a.btn-primary"));
     }
   };
-
-  var hopped = false;
 
   tools = tools.map(function (tool) {
     var inner = tool.execute;
@@ -365,15 +394,6 @@
         agentMode("your agent finished " + activity, quiet);
         var react = REACT[tool.name];
         if (react) { try { await react(params); } catch (e) { /* flourish */ } }
-        /* First completed call on the classic feed page: move the person to
-           the agent-session view. Only between calls, never mid-call; the
-           tools re-register there. */
-        if (secret && !onCollab && !hopped) {
-          hopped = true;
-          setTimeout(function () {
-            location.assign("/u/" + secret + "/collab");
-          }, 700);
-        }
         return out;
       } catch (e) {
         agentMode("the last request failed");
@@ -383,16 +403,23 @@
     return tool;
   });
 
-  /* On arrival: restore the carried activity log, and if the agent just
-     created this feed, greet the person in agent mode right away instead of
-     a page that looks untouched until the next tool call. */
+  /* On arrival: restore the carried activity log, wire the history toggle,
+     and if the agent just created this feed, greet the person in agent mode
+     right away instead of a page that looks untouched until the next call. */
   if (secret) {
     renderLog();
+    var historyBtn = document.getElementById("agent-history-btn");
+    if (historyBtn) {
+      historyBtn.addEventListener("click", function () {
+        var log = document.getElementById("agent-log");
+        if (log) log.hidden = !log.hidden;
+      });
+    }
     try {
       if (sessionStorage.getItem("fmAgentCreated")) {
         sessionStorage.removeItem("fmAgentCreated");
         agentMode("your agent created this feed");
-        flash(document.getElementById("episodes-section"));
+        flash(document.getElementById("listen-card"));
       }
     } catch (e) { /* sessionStorage can be unavailable; fine */ }
   }

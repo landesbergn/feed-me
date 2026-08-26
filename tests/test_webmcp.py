@@ -2,7 +2,8 @@
 
 The JS cannot execute under pytest, so these pin the contract instead: the
 script is served correctly, the right pages include it, and the toolset,
-page guards, and copy stay what the spec says.
+page guards, and copy stay what the specs say (v3.28 WebMCP tools, and the
+2026-08-26 session-page-directions decision: one page, subscribe-first).
 """
 
 TOOL_NAMES = [
@@ -13,6 +14,7 @@ TOOL_NAMES = [
     "delete_episode",
     "set_voice",
     "get_feed_info",
+    "help_subscribe",
     "create_feed",
 ]
 
@@ -75,10 +77,110 @@ def test_share_page_does_not_load_webmcp_script(client):
     assert "webmcp.js" not in resp.text
 
 
-def test_agent_panel_mentions_webmcp(client):
+# --- agent activity: trace + log ---------------------------------------------
+
+def test_webmcp_js_narrates_every_tool(client):
+    body = client.get("/webmcp.js").text
+    for activity in (
+        "adding an article",
+        "narrating supplied text",
+        "reading the episode list",
+        "checking narration progress",
+        "deleting an episode",
+        "changing the voice",
+        "reading the feed links",
+        "helping you subscribe",
+        "creating your feed",
+    ):
+        assert activity in body
+
+
+def test_webmcp_js_uses_the_native_trace(client):
+    # Agent mode renders into the feed page's own trace elements; the
+    # injected banner survives only for the landing page.
+    body = client.get("/webmcp.js").text
+    assert "agent-trace-text" in body
+    assert "agent-log" in body
+    assert "fmAgentLog" in body
+    assert "fm-agent-banner" in body
+
+
+def test_feed_page_has_the_trace_markup(client):
     secret = make_feed(client)
-    resp = client.get(f"/u/{secret}")
-    assert "WebMCP browser" in resp.text
+    text = client.get(f"/u/{secret}").text
+    assert 'id="agent-trace"' in text
+    assert 'id="agent-trace-text"' in text
+    assert 'id="agent-history-btn"' in text
+    assert 'id="agent-log"' in text
+
+
+def test_webmcp_js_drives_the_page(client):
+    body = client.get("/webmcp.js").text
+    assert "episodes_partial" in body        # episode tools refresh the live table
+    assert "voice-chip" in body              # set_voice moves the picker's active chip
+    assert "scrollIntoView" in body          # reactions bring the change on screen
+    assert "fmAgentCreated" in body          # agent mode survives the create_feed hop
+    assert "your agent created this feed" in body
+
+
+# --- one page: /collab redirects home ----------------------------------------
+
+def test_collab_redirects_to_the_feed_page(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}/collab", follow_redirects=False)
+    assert resp.status_code == 301
+    assert resp.headers["location"] == f"/u/{secret}"
+
+
+# --- the feed page: subscribe-first, quiet after -----------------------------
+
+def test_fresh_feed_leads_with_the_listen_card(client):
+    secret = make_feed(client)
+    body = client.get(f"/u/{secret}").text
+    assert 'id="listen-card"' in body
+    assert body.index("Put your feed in your podcast app") < body.index("Recent episodes")
+    assert "Overcast" in body
+    assert "Pocket Casts" in body
+    # iOS setup is always folded now, even on a fresh feed.
+    assert "Setup &amp; sharing" in body
+
+
+def test_shared_feed_leads_with_episodes(client, tmp_path):
+    secret = make_feed(client)
+    import storage
+    storage.write_episode(
+        tmp_path, secret, slug="real1", title="A Real Article",
+        source_url="https://example.com/a", audio=b"MP3", description="x",
+    )
+    body = client.get(f"/u/{secret}").text
+    assert body.index("Recent episodes") < body.index("Put your feed in your podcast app")
+
+
+def test_feed_page_has_no_agent_chrome(client):
+    secret = make_feed(client)
+    body = client.get(f"/u/{secret}").text
+    assert "Things to say to your agent" not in body
+    assert "You + your agent" not in body
+
+
+# --- help_subscribe ----------------------------------------------------------
+
+def test_help_subscribe_is_honest_about_the_clipboard(client):
+    # The "your agent copied it" line renders only on a successful copy: the
+    # page carries it hidden, and only the JS reveals it.
+    secret = make_feed(client)
+    page = client.get(f"/u/{secret}").text
+    assert 'id="agent-copied" hidden' in page
+    body = client.get("/webmcp.js").text
+    assert "agent-copied" in body
+    assert "clipboard" in body
+
+
+def test_create_feed_result_names_help_subscribe(client):
+    body = client.get("/webmcp.js").text
+    assert "call help_subscribe" in body
+    assert "Free and instant" in body
+    assert "no extra confirmation" in body
 
 
 # --- docs --------------------------------------------------------------------
@@ -90,39 +192,6 @@ def test_agents_md_documents_webmcp(client):
         assert name in text
 
 
-def test_llms_txt_mentions_webmcp(client):
-    assert "WebMCP" in client.get("/llms.txt").text
-
-
-# --- agent-mode banner -------------------------------------------------------
-
-def test_webmcp_js_shows_agent_mode_banner(client):
-    body = client.get("/webmcp.js").text
-    assert "fm-agent-banner" in body
-    assert "Agent mode" in body
-    # Every tool gets a human-readable activity line for the banner.
-    for activity in (
-        "adding an article",
-        "narrating supplied text",
-        "reading the episode list",
-        "checking narration progress",
-        "deleting an episode",
-        "changing the voice",
-        "reading the feed links",
-        "creating your feed",
-    ):
-        assert activity in body
-
-
-# --- example prompts ---------------------------------------------------------
-
-def test_agent_panel_lists_example_prompts(client):
-    secret = make_feed(client)
-    text = client.get(f"/u/{secret}").text
-    assert "Things to say to your agent" in text
-    assert "Send this article to my feed" in text
-
-
 def test_agents_md_lists_example_prompts(client):
     text = client.get("/AGENTS.md").text
     assert "Example prompts" in text
@@ -130,79 +199,5 @@ def test_agents_md_lists_example_prompts(client):
         assert f"- {name}" in text
 
 
-# --- the agent drives the page -----------------------------------------------
-
-def test_webmcp_js_drives_the_page(client):
-    body = client.get("/webmcp.js").text
-    # Tool calls drive the same UI a person would use, visibly.
-    assert "episodes_partial" in body        # episode tools refresh the live table
-    assert "voice-chip" in body              # set_voice moves the picker's active chip
-    assert "scrollIntoView" in body          # reactions bring the change on screen
-    assert "fmAgentCreated" in body          # agent mode survives the create_feed hop
-    assert "your agent created this feed" in body
-
-
-# --- collab: the agent-session page ------------------------------------------
-
-def test_collab_page_serves_the_agent_session_view(client):
-    secret = make_feed(client)
-    resp = client.get(f"/u/{secret}/collab")
-    assert resp.status_code == 200
-    text = resp.text
-    assert "You + your agent" in text
-    assert 'id="agent-status-text"' in text
-    assert 'id="agent-log"' in text
-    assert 'id="episodes-section"' in text
-    assert '<script src="/webmcp.js" defer></script>' in text
-    assert "Things to say to your agent" in text
-    assert f'href="/u/{secret}"' in text          # exit back to the classic page
-    assert "—" not in text
-
-
-def test_collab_page_sets_session_cookie(client):
-    secret = make_feed(client)
-    resp = client.get(f"/u/{secret}/collab")
-    assert "fm_session" in resp.headers.get("set-cookie", "")
-
-
-def test_collab_page_unknown_secret_404(client):
-    assert client.get("/u/nope/collab").status_code == 404
-
-
-def test_collab_page_masks_ga_location(client):
-    secret = make_feed(client)
-    text = client.get(f"/u/{secret}/collab").text
-    assert 'gaCfg.page_location = "https://test.local/u/_"' in text
-    assert "gaCfg.page_path = '/u/_'" in text
-
-
-def test_webmcp_js_runs_the_collab_session(client):
-    body = client.get("/webmcp.js").text
-    assert "/collab" in body
-    assert "agent-log" in body
-    assert "fmAgentLog" in body
-    assert "agent-status-text" in body
-
-
-def test_collab_page_exit_link_does_not_tempt_agents(client):
-    # Codex clicked "Back to your feed page" after create_feed, treating the
-    # classic page as the real deliverable. The exit link must describe the
-    # destination as settings, not as the feed's home.
-    secret = make_feed(client)
-    text = client.get(f"/u/{secret}/collab").text
-    assert "Back to your feed page" not in text
-    assert "Open setup &amp; settings" in text
-
-
-def test_create_feed_result_tells_the_agent_to_stay(client):
-    body = client.get("/webmcp.js").text
-    assert "Stay on that page" in body
-
-
-def test_create_feed_description_preauthorizes_the_call(client):
-    # Codex paused to ask "Shall I create it now?" before create_feed. The
-    # description must say the call is low-stakes and that the user's request
-    # is the consent, so agents plow through.
-    body = client.get("/webmcp.js").text
-    assert "Free and instant" in body
-    assert "no extra confirmation" in body
+def test_llms_txt_mentions_webmcp(client):
+    assert "WebMCP" in client.get("/llms.txt").text

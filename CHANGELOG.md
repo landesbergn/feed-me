@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.34 · 2026-08-26
+
+One page: the feed page is the whole experience.
+
+- Implements the decided design package (spec: `docs/superpowers/specs/2026-08-26-session-page-directions.html`, "C + O1 with O2 floor, one page"). The separate `/collab` agent-session page (v3.31) is gone; `GET /u/<secret>/collab` 301s to the feed page.
+- The feed page leads with a subscribe-first **Listen card** on a fresh feed (Apple Podcasts, Overcast, Pocket Casts, Copy RSS), and with episodes once a real article has been shared; iOS setup is always folded under "Setup & sharing". Header is simply "Your feed" with an episode/voice subline. The agent chrome is gone: no pill, no WebMCP explainer, no prompt-chip card (the example prompts live on in `AGENTS.md`).
+- Agent activity renders as a quiet one-line **trace** above the footer (latest action + a history toggle for the persisted log), hidden until an agent acts. The injected banner survives only on the landing page.
+- New **`help_subscribe`** tool: highlights the Listen card, best-effort copies the RSS link to the clipboard (the "your agent copied it" line renders only when the copy succeeded; the Copy button is the fallback), and returns per-app instructions for the agent to relay. `create_feed`'s result names it as the next step and lands on the feed page directly.
+
 ## v3.33 · 2026-08-26
 
 Let agents create a feed without a confirmation round-trip.

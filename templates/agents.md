@@ -187,13 +187,16 @@ If you are browsing with WebMCP support (ChatGPT's browser, or Chrome with
 WebMCP enabled), you do not need this API by hand. Open the user's feed page
 {base}/u/<secret> and the page registers tools: add_article,
 add_article_text, list_episodes, get_episode_status, delete_episode,
-set_voice, and get_feed_info. A user with no feed yet can start at {base}/
-where a create_feed tool registers. The HTTP API on this page is the same
+set_voice, get_feed_info, and help_subscribe. A user with no feed yet can
+start at {base}/ where a create_feed tool registers. After creating a
+feed, call help_subscribe: getting the feed into the user's podcast app is
+the one setup step that matters. The HTTP API on this page is the same
 capability set and works everywhere else.
 
 Example prompts a user might give you, one per tool:
 
 - create_feed (on the landing page): "Set me up a Feed Me podcast feed."
+- help_subscribe: "Help me get this feed into my podcast app."
 - add_article: "Send this article to my feed."
 - add_article_text: "Narrate your summary of this thread into my feed."
 - list_episodes: "What's in my listening queue?"

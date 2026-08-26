@@ -163,9 +163,30 @@
     .agent-api-link { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
     .agent-api-link a { color: var(--accent); font-weight: 700; text-decoration: none; }
     .agent-api-link a:hover { text-decoration: underline; }
-    .agent-examples { font-size: 12px; color: var(--muted); margin: 6px 0 0; padding-left: 18px; }
-    .agent-examples li { margin: 3px 0; }
-    .agent-examples li::marker { color: var(--faint); }
+    .feed-sub { font-size: 12.5px; color: var(--muted); margin: -20px 0 22px; }
+    .listen-card {
+      background: var(--card); border-radius: 16px; padding: 15px 16px; margin: 14px 0;
+      box-shadow: 0 1px 0 #F3E6D9, 0 6px 16px rgba(176, 74, 0, .05);
+    }
+    .listen-title {
+      font-family: var(--round); font-size: 15px; font-weight: 800; color: var(--ink);
+    }
+    .listen-note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+    #agent-trace {
+      display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+      border-top: 1px solid var(--hair); margin-top: 28px; padding: 12px 2px 0;
+    }
+    #agent-trace .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #2f7a3d; flex: none;
+    }
+    #agent-history-btn {
+      margin-left: auto; background: none; border: none; padding: 0; cursor: pointer;
+      color: var(--accent); font-weight: 700; font-size: 12px; font-family: var(--sans);
+    }
+    #agent-log { list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; color: var(--muted); }
+    #agent-log li { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #F4E9DD; }
+    #agent-log li:last-child { border-bottom: none; }
+    #agent-log .log-time { flex: none; color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
     .voices { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
     .voice-chip {
       padding: 6px 13px; border: 1.5px solid #E9C9AC; background: #fff; color: var(--ink);
@@ -194,26 +215,41 @@
   </svg>
 
   <div class="brand">🎧 Feed Me</div>
-  <h1>Your feed is ready.</h1>
+  <h1>Your feed</h1>
+  <p class="feed-sub">{{ episodes | length }} episode{{ '' if episodes | length == 1 else 's' }} · voice: {{ current_voice }}</p>
+
+  {% set listen_card %}
+  <section class="listen-card" id="listen-card">
+    <div class="listen-title">Put your feed in your podcast app</div>
+    <p class="listen-note">Subscribe once; every narrated article lands there automatically.</p>
+    <div class="btn-pair">
+      <a class="btn-primary" href="podcast://{{ feed_host_and_path }}">Add to Apple Podcasts</a>
+      <a class="btn-secondary" href="overcast://x-callback-url/add?url={{ feed_url | urlencode }}">Overcast</a>
+      <a class="btn-secondary" href="pktc://subscribe/{{ feed_host_and_path }}">Pocket Casts</a>
+      <button class="btn-secondary" id="copy-rss" onclick="copyRssLink()" type="button">Copy RSS link</button>
+    </div>
+    <p class="listen-note" id="agent-copied" hidden>Your agent copied the RSS link to your clipboard. If your app asks for a URL, just paste.</p>
+  </section>
+  {% endset %}
 
   {% if setup_done %}
     <div id="episodes-section">
       {% include "_episodes_section.html" %}
     </div>
-
-    <details class="setup-fold">
-      <summary>Setup &amp; sharing</summary>
-      <div class="body">
-        {% include "_setup_instructions.html" %}
-      </div>
-    </details>
+    {{ listen_card }}
   {% else %}
-    {% include "_setup_instructions.html" %}
-
+    {{ listen_card }}
     <div id="episodes-section">
       {% include "_episodes_section.html" %}
     </div>
   {% endif %}
+
+  <details class="setup-fold">
+    <summary>Setup &amp; sharing</summary>
+    <div class="body">
+      {% include "_setup_instructions.html" %}
+    </div>
+  </details>
 
   <details class="settings">
     <summary>Settings</summary>
@@ -252,6 +288,12 @@
     }
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
+    }
+    function copyRssLink() {
+      try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
+      var btn = document.getElementById("copy-rss");
+      btn.textContent = "copied!";
+      setTimeout(function () { btn.textContent = "Copy RSS link"; }, 1400);
     }
     function showSharePanel(which) {
       var ids = { you: "share-you", agent: "share-agent" };
@@ -338,6 +380,13 @@
       setInterval(tick, 1000);
     })();
   </script>
+
+  <div id="agent-trace" hidden>
+    <span class="dot" aria-hidden="true"></span>
+    <span id="agent-trace-text" role="status" aria-live="polite"></span>
+    <button id="agent-history-btn" type="button">history</button>
+  </div>
+  <ol id="agent-log" hidden></ol>
 
   <footer class="site-footer">
     Built by <a href="https://noahlandesberg.com" target="_blank" rel="noopener">Noah Landesberg</a>

@@ -1,0 +1,414 @@
+<title>Session Page Directions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #EFF1F0;
+    --surface: #FAFBFA;
+    --surface-2: #E4E8E7;
+    --ink: #1C2422;
+    --ink-soft: #46534F;
+    --ink-mute: #6E7B77;
+    --hair: #D5DBD9;
+    --accent: #0F6B62;
+    --accent-soft: #DCEAE7;
+    --warn: #8a6500;
+    --mock-shadow: 0 10px 30px rgba(28, 36, 34, .10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131817;
+      --surface: #1B2120;
+      --surface-2: #232B29;
+      --ink: #E6EBE9;
+      --ink-soft: #B4BFBB;
+      --ink-mute: #82908B;
+      --hair: #2E3835;
+      --accent: #55B8A9;
+      --accent-soft: #1D3330;
+      --warn: #d8b45a;
+      --mock-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131817;
+    --surface: #1B2120;
+    --surface-2: #232B29;
+    --ink: #E6EBE9;
+    --ink-soft: #B4BFBB;
+    --ink-mute: #82908B;
+    --hair: #2E3835;
+    --accent: #55B8A9;
+    --accent-soft: #1D3330;
+    --warn: #d8b45a;
+    --mock-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Archivo", -apple-system, "Helvetica Neue", sans-serif;
+    font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 52px 28px 110px; }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, input:focus-visible + label {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 12px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  h1 {
+    font-size: 44px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05;
+    margin: 10px 0 14px; text-wrap: balance;
+  }
+  .lede { font-size: 18px; color: var(--ink-soft); max-width: 62ch; margin: 0 0 8px; }
+  .meta { font-family: "IBM Plex Mono", Menlo, monospace; font-size: 12px; color: var(--ink-mute); }
+
+  h2 {
+    font-size: 15px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    margin: 72px 0 8px; color: var(--ink);
+    display: flex; align-items: center; gap: 12px;
+  }
+  h2 .tag {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; color: var(--accent); background: var(--accent-soft);
+    padding: 3px 8px; border-radius: 4px;
+  }
+  h3 { font-size: 17px; font-weight: 700; margin: 30px 0 6px; }
+  p { margin: 10px 0; max-width: 68ch; }
+  .quiet { color: var(--ink-soft); }
+  .mono { font-family: "IBM Plex Mono", Menlo, monospace; font-size: .88em; }
+  code {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 13px;
+    background: var(--surface-2); padding: 1px 5px; border-radius: 4px;
+  }
+
+  .principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 22px 0 6px; }
+  .principle {
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .principle .k {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .1em; color: var(--accent); text-transform: uppercase; display: block; margin-bottom: 8px;
+  }
+  .principle .t { font-weight: 700; font-size: 15.5px; line-height: 1.35; display: block; margin-bottom: 6px; }
+  .principle .d { font-size: 14px; color: var(--ink-soft); line-height: 1.5; }
+
+  .direction { margin: 34px 0 46px; }
+  .direction-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .direction-head h3 { margin: 0; font-size: 20px; }
+  .pick {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); border: 1px solid var(--accent); padding: 3px 8px; border-radius: 999px;
+  }
+  .tradeoffs { display: flex; gap: 26px; flex-wrap: wrap; margin: 10px 0 18px; }
+  .tradeoffs div { flex: 1 1 240px; font-size: 14px; color: var(--ink-soft); }
+  .tradeoffs b { color: var(--ink); font-weight: 700; display: block; margin-bottom: 3px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+  .tradeoffs ul { margin: 4px 0 0; padding-left: 18px; }
+  .tradeoffs li { margin: 3px 0; }
+
+  /* ---- Mockups: specimens of the real site, deliberately fixed warm-light ---- */
+  .mock {
+    background: #E9E4DC; border-radius: 14px; padding: 26px;
+    box-shadow: var(--mock-shadow); border: 1px solid var(--hair);
+    overflow-x: auto;
+  }
+  .frame {
+    width: 560px; max-width: 100%; margin: 0 auto; background: #FFF8F2;
+    border-radius: 10px; overflow: hidden; position: relative;
+    box-shadow: 0 6px 24px rgba(60, 35, 10, .18);
+    font-family: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+    color: #2a1f18;
+  }
+  .chrome {
+    background: #F0E6DB; padding: 8px 12px; display: flex; align-items: center; gap: 6px;
+    font-size: 10px; color: #8a6f5e;
+  }
+  .chrome i { width: 8px; height: 8px; border-radius: 50%; background: #D8C6B2; display: inline-block; }
+  .chrome .url {
+    background: #FBF3EA; border-radius: 6px; padding: 2px 10px; margin-left: 8px;
+    font-size: 9.5px; letter-spacing: .01em;
+  }
+  .page { padding: 20px 22px 18px; }
+  .fm-brand { font-size: 9px; font-weight: 800; letter-spacing: .09em; color: #b04a00; margin-bottom: 8px; }
+  .fm-h { font-size: 19px; font-weight: 800; line-height: 1.15; margin: 0 0 2px; font-family: ui-rounded, -apple-system, system-ui, sans-serif; }
+  .fm-sub { font-size: 10.5px; color: #8a6f5e; margin: 2px 0 12px; }
+  .fm-card {
+    background: #fff; border-radius: 12px; padding: 12px 14px; margin: 10px 0;
+    box-shadow: 0 1px 0 #F3E6D9, 0 5px 12px rgba(176, 74, 0, .05);
+  }
+  .fm-label { font-size: 9.5px; font-weight: 800; color: #7a5f4e; margin-bottom: 8px; font-family: ui-rounded, -apple-system, system-ui, sans-serif; }
+  .ep { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #F4E9DD; font-size: 11px; }
+  .ep:last-child { border-bottom: none; }
+  .ep .t { font-weight: 600; }
+  .ep .s { font-size: 8px; font-weight: 800; letter-spacing: .04em; padding: 2.5px 8px; border-radius: 999px; flex: none; }
+  .s.ready { background: #E6F0E5; color: #2f7a3d; }
+  .s.pending { background: #F3EADF; color: #8a6f5e; }
+  .fm-btn {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 7px 13px;
+    border-radius: 999px; background: #b04a00; color: #fff; margin-right: 6px;
+  }
+  .fm-btn.ghost { background: #fff; color: #b04a00; border: 1px solid #E9C9AC; }
+  .trace {
+    display: flex; align-items: center; gap: 7px; font-size: 9.5px; color: #8a6f5e;
+    padding: 9px 4px 2px; border-top: 1px solid #EFE2D6; margin-top: 12px;
+  }
+  .trace .dot { width: 6px; height: 6px; border-radius: 50%; background: #2f7a3d; flex: none; }
+  .trace .hist { margin-left: auto; color: #b04a00; font-weight: 700; }
+  .ticker {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: #2a1f18; color: #FFF8F2; display: flex; align-items: center; gap: 7px;
+    padding: 7px 14px; font-size: 9.5px; font-weight: 600;
+  }
+  .ticker .dot { width: 6px; height: 6px; border-radius: 50%; background: #7ddb8a; flex: none; }
+  .ticker .hist { margin-left: auto; color: #FCE3C8; font-weight: 700; }
+  .callout-inline {
+    font-size: 9.5px; color: #8a6f5e; background: #FCE3C8; border-radius: 8px;
+    padding: 7px 10px; margin-top: 8px; line-height: 1.45;
+  }
+
+  /* State toggle for Direction C */
+  .statepick { display: flex; gap: 0; margin: 0 0 14px; border: 1px solid var(--hair); border-radius: 8px; overflow: hidden; width: max-content; }
+  .statepick input { position: absolute; opacity: 0; pointer-events: none; }
+  .statepick label {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 12px; padding: 7px 14px;
+    cursor: pointer; color: var(--ink-soft); background: var(--surface);
+  }
+  #c-state-2:checked ~ .statepick label[for="c-state-2"],
+  #c-state-1:checked ~ .statepick label[for="c-state-1"] { background: var(--accent); color: var(--surface); }
+  #c-state-1:checked ~ .mock .c-after { display: none; }
+  #c-state-2:checked ~ .mock .c-before { display: none; }
+
+  table.plain { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  table.plain th {
+    text-align: left; font-family: "IBM Plex Mono", Menlo, monospace; font-size: 11px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-mute);
+    padding: 8px 12px 8px 0; border-bottom: 1px solid var(--hair);
+  }
+  table.plain td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--hair); vertical-align: top; color: var(--ink-soft); }
+  table.plain td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+  .risk {
+    border-left: 3px solid var(--warn); background: var(--surface); border-radius: 0 8px 8px 0;
+    padding: 12px 16px; margin: 16px 0; font-size: 14px; color: var(--ink-soft);
+  }
+  .rec {
+    background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px;
+    padding: 18px 22px; margin: 24px 0;
+  }
+  .rec .k {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 6px;
+  }
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 14px 0; max-width: 68ch; }
+  .steps li { counter-increment: step; display: flex; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--hair); font-size: 14.5px; }
+  .steps li::before {
+    content: counter(step); flex: none; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--surface-2); color: var(--ink); font-weight: 700; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .steps b { color: var(--ink); }
+  .steps .who {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-size: 10px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-mute); display: block; margin-bottom: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+
+<div class="eyebrow">Feed Me · design review · after v3.33</div>
+<h1>Session Page Directions</h1>
+<p class="lede">The current page showcases the agent. Your feedback says it should showcase the feed, and let the agent be felt through what changes, not what's labeled. Three layout directions and three subscribe choreographies to decide between.</p>
+<p class="meta">2026-08-26 · decisions marked <span class="pick" style="font-size:10px">recommended</span> are my leaning, not a default</p>
+
+<h2>The critique, distilled <span class="tag">principles</span></h2>
+<div class="principles">
+  <div class="principle">
+    <span class="k">P1</span>
+    <span class="t">The feed is the product. The agent is choreography.</span>
+    <span class="d">"You + your agent", the explainer sentence, the prompt chips: all of it is UI about the mechanism. The episodes and the listening experience are the content. Everything meta earns its pixels or goes.</span>
+  </div>
+  <div class="principle">
+    <span class="k">P2</span>
+    <span class="t">Trust comes from watching content change.</span>
+    <span class="d">A row appearing with a ticking percentage is more convincing than any "agent mode" banner. Keep one small, honest trace of agent activity; delete the rest of the chrome.</span>
+  </div>
+  <div class="principle">
+    <span class="k">P3</span>
+    <span class="t">The first-run job is subscribing.</span>
+    <span class="d">A created feed nobody subscribes to is a dead end. The page's first state, and the agent's next move after create_feed, should both point at one thing: get this feed into a podcast app.</span>
+  </div>
+</div>
+
+<h2>Decision 1 · Page hierarchy <span class="tag">pick one</span></h2>
+
+<div class="direction">
+  <div class="direction-head"><h3>A · The Quiet Feed</h3></div>
+  <p class="quiet">One page, one hierarchy: episodes are the hero, subscribe sits beside the title, and the only agent presence is a single-line trace at the bottom (latest action + a history link). No pill, no explainer, no chips.</p>
+  <div class="mock">
+    <div class="frame">
+      <div class="chrome"><i></i><i></i><i></i><span class="url">feed-me.xyz/u/…/collab</span></div>
+      <div class="page">
+        <div class="fm-brand">🎧 FEED ME</div>
+        <div class="fm-h">Your feed</div>
+        <div class="fm-sub">3 episodes · voice: shimmer</div>
+        <div class="fm-card">
+          <div class="ep"><span class="t">The Case for Slow Reading</span><span class="s pending">Pending · 42%</span></div>
+          <div class="ep"><span class="t">Hiking-sandal realness</span><span class="s ready">Ready</span></div>
+          <div class="ep"><span class="t">Welcome to Feed Me</span><span class="s ready">Ready</span></div>
+        </div>
+        <span class="fm-btn">Add to Apple Podcasts</span><span class="fm-btn ghost">Copy RSS link</span>
+        <div class="trace"><span class="dot"></span>10:21 · agent added "The Case for Slow Reading"<span class="hist">history</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="tradeoffs">
+    <div><b>For</b><ul><li>Calmest read; nothing competes with episodes</li><li>Smallest diff from what exists</li><li>Works identically with or without an agent</li></ul></div>
+    <div><b>Against</b><ul><li>On video, the agent's presence is easy to miss</li><li>The trace line can be overlooked entirely</li></ul></div>
+  </div>
+</div>
+
+<div class="direction">
+  <div class="direction-head"><h3>B · Feed + Ticker</h3></div>
+  <p class="quiet">Same quiet page as A, but the agent trace is a slim pinned ticker: dark strip, pulsing dot, one line of "what's happening now". Present while the agent works, ignorable when it isn't. Tapping it reveals the full history.</p>
+  <div class="mock">
+    <div class="frame">
+      <div class="chrome"><i></i><i></i><i></i><span class="url">feed-me.xyz/u/…/collab</span></div>
+      <div class="page" style="padding-bottom:36px">
+        <div class="fm-brand">🎧 FEED ME</div>
+        <div class="fm-h">Your feed</div>
+        <div class="fm-sub">3 episodes · voice: shimmer</div>
+        <div class="fm-card">
+          <div class="ep"><span class="t">The Case for Slow Reading</span><span class="s pending">Pending · 42%</span></div>
+          <div class="ep"><span class="t">Hiking-sandal realness</span><span class="s ready">Ready</span></div>
+          <div class="ep"><span class="t">Welcome to Feed Me</span><span class="s ready">Ready</span></div>
+        </div>
+        <span class="fm-btn">Add to Apple Podcasts</span><span class="fm-btn ghost">Copy RSS link</span>
+      </div>
+      <div class="ticker"><span class="dot"></span>your agent is adding an article…<span class="hist">history</span></div>
+    </div>
+  </div>
+  <div class="tradeoffs">
+    <div><b>For</b><ul><li>Live agent presence that reads on video from across the room</li><li>Still zero agent chrome inside the content area</li><li>Ticker disappears cleanly when idle (or after N seconds)</li></ul></div>
+    <div><b>Against</b><ul><li>A pinned bar is one more layer of UI on mobile</li><li>The dark strip is the loudest element on an otherwise warm page</li></ul></div>
+  </div>
+</div>
+
+<div class="direction">
+  <div class="direction-head"><h3>C · Guided First-Run</h3><span class="pick">recommended</span></div>
+  <p class="quiet">The page has two states. Before you've subscribed, the hero is one job: get this feed into your podcast app, with per-app buttons and the RSS link ready to paste. After that (or once dismissed), it becomes the quiet feed from A. Toggle the mock:</p>
+  <input type="radio" name="cstate" id="c-state-1" checked>
+  <input type="radio" name="cstate" id="c-state-2">
+  <div class="statepick">
+    <label for="c-state-1">state 1 · just created</label>
+    <label for="c-state-2">state 2 · subscribed</label>
+  </div>
+  <div class="mock">
+    <div class="frame">
+      <div class="chrome"><i></i><i></i><i></i><span class="url">feed-me.xyz/u/…/collab</span></div>
+      <div class="page c-before">
+        <div class="fm-brand">🎧 FEED ME</div>
+        <div class="fm-h">Your feed is live. Now put it in your podcast app.</div>
+        <div class="fm-sub">Subscribe once; every article your agent narrates lands there automatically.</div>
+        <div class="fm-card">
+          <div class="fm-label">LISTEN IN…</div>
+          <span class="fm-btn">Apple Podcasts</span><span class="fm-btn ghost">Overcast</span><span class="fm-btn ghost">Pocket Casts</span><span class="fm-btn ghost">Copy RSS link</span>
+          <div class="callout-inline">Your agent copied the RSS link to your clipboard. If your app asks for a URL, just paste.</div>
+        </div>
+        <div class="fm-card">
+          <div class="fm-label">EPISODES</div>
+          <div class="ep"><span class="t">Welcome to Feed Me</span><span class="s ready">Ready</span></div>
+        </div>
+        <div class="trace"><span class="dot"></span>10:20 · agent created this feed<span class="hist">history</span></div>
+      </div>
+      <div class="page c-after">
+        <div class="fm-brand">🎧 FEED ME</div>
+        <div class="fm-h">Your feed</div>
+        <div class="fm-sub">3 episodes · voice: shimmer · subscribed ✓</div>
+        <div class="fm-card">
+          <div class="ep"><span class="t">The Case for Slow Reading</span><span class="s pending">Pending · 42%</span></div>
+          <div class="ep"><span class="t">Hiking-sandal realness</span><span class="s ready">Ready</span></div>
+          <div class="ep"><span class="t">Welcome to Feed Me</span><span class="s ready">Ready</span></div>
+        </div>
+        <div class="trace"><span class="dot"></span>10:29 · agent added "The Case for Slow Reading"<span class="hist">history</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="tradeoffs">
+    <div><b>For</b><ul><li>Encodes P3 directly: the page's first state <i>is</i> the next step</li><li>Pairs perfectly with agent choreography (Decision 2)</li><li>After first-run it converges to A, so no lasting complexity</li></ul></div>
+    <div><b>Against</b><ul><li>Needs a "subscribed" signal: honest options are a dismissal tap or first RSS fetch seen server-side; both are approximations</li><li>Two states to build and test</li></ul></div>
+  </div>
+</div>
+
+<h2>Decision 2 · The subscribe moment <span class="tag">pick one</span></h2>
+<p>How the agent helps the user actually subscribe, right after <code>create_feed</code>. The sequence I'd aim for:</p>
+<ol class="steps">
+  <li><div><span class="who">agent</span><b>create_feed</b> → lands on the session page (state 1).</div></li>
+  <li><div><span class="who">site</span>Tool result tells the agent: "Next, help the user subscribe. Call <b>help_subscribe</b>."</div></li>
+  <li><div><span class="who">agent</span><b>help_subscribe</b> → the page highlights the subscribe card and tries to copy the RSS link to the clipboard; the tool returns the per-app links and a short instruction to relay.</div></li>
+  <li><div><span class="who">agent → user</span>"Your feed is ready. I've copied the RSS link; tap Apple Podcasts on the page, or paste the link into any podcast app."</div></li>
+  <li><div><span class="who">user</span>Taps a button; the OS hands the feed to the podcast app. Done: state 2.</div></li>
+</ol>
+
+<table class="plain">
+  <tr><th>Option</th><th>What it is</th><th>Verdict</th></tr>
+  <tr>
+    <td>O1 · Tool choreography</td>
+    <td>New <code>help_subscribe</code> tool as above; <code>create_feed</code>'s result names it as the next step. The agent stays the narrator; the page does the work.</td>
+    <td><span class="pick">recommended</span> · pairs with C; testable; degrades to O2 if the agent skips it</td>
+  </tr>
+  <tr>
+    <td>O2 · Page-only</td>
+    <td>No new tool. State 1 auto-highlights the subscribe card on arrival; the agent just says "tap a button on the page."</td>
+    <td>Safe floor. Ship it inside C regardless; O1 layers on top</td>
+  </tr>
+  <tr>
+    <td>O3 · Deep-link push</td>
+    <td>A tool that navigates the tab to <code>podcast://…</code> itself, so the podcast app opens without the user touching anything. "Computer use" via URL scheme.</td>
+    <td>Spicy demo beat, but custom-scheme navigation from agent in-app browsers is unproven and a failed nav strands the tab. Test in Codex first; behind a flag if it works</td>
+  </tr>
+</table>
+
+<div class="risk"><b>Technical risk on the clipboard:</b> <code>navigator.clipboard.writeText</code> requires document focus and often a user gesture; a tool call from an agent may have neither, and Safari is strictest. So the clipboard copy in O1 is best-effort, and the page never claims it happened unless it did: the "I copied it, just paste" line renders only on success, and the fallback is a big visible Copy button. This is also why O2 ships inside every option.</div>
+
+<h2>Decision 3 · What the page is called, and how many pages exist <span class="tag">open question</span></h2>
+<p>With the agent chrome gone, the session page is converging on "the feed page, minus iOS setup." That raises a real question: keep two pages, or one?</p>
+<table class="plain">
+  <tr><th>Option</th><th>Shape</th><th>Verdict</th></tr>
+  <tr>
+    <td>Two pages (today)</td>
+    <td><code>/u/&lt;secret&gt;</code> for humans-with-iPhones (Shortcut setup), <code>/collab</code> for agent sessions. Header becomes just "Your feed"; the pill and "You + your agent" go.</td>
+    <td>Not chosen: two pages meant two half-experiences</td>
+  </tr>
+  <tr>
+    <td>One page <span class="pick">chosen</span></td>
+    <td>Merge: the feed page <i>is</i> the quiet feed; iOS setup folds behind the existing details; agent trace appears only when tools fire. <code>/collab</code> 301s home.</td>
+    <td>Owner's call, 2026-08-26: worth doing now, not post-hackathon</td>
+  </tr>
+</table>
+
+<h2>Where each of your seven points lands <span class="tag">traceability</span></h2>
+<table class="plain">
+  <tr><th>Feedback</th><th>Resolution</th></tr>
+  <tr><td>1 · "your agent created this feed" pill</td><td>Gone in all directions. In C, creation shows once in the trace line instead</td></tr>
+  <tr><td>2 · WebMCP explainer sentence</td><td>Gone in all directions. The mechanism goes unexplained; it's visible instead</td></tr>
+  <tr><td>3 · Activity to the bottom</td><td>A/C: one-line trace at the bottom, history behind a tap. B: pinned ticker</td></tr>
+  <tr><td>4 · Emphasize the feed</td><td>Episodes are the hero in every direction (C: from state 2 on)</td></tr>
+  <tr><td>5 · Prompt chips</td><td>Removed from the page. They survive only in AGENTS.md for agent authors</td></tr>
+  <tr><td>6 · Guide the subscribe</td><td>Decision 2; C makes it the page's first state</td></tr>
+  <tr><td>7 · Remove crud</td><td>Listen card merges into the header/state-1 card; exit link shrinks to a footer link; nothing else remains</td></tr>
+</table>
+
+<div class="rec">
+  <span class="k">Decided · 2026-08-26</span>
+  <b>C + O1 (with O2 as the floor), one page.</b>
+  <p style="margin:8px 0 0">The feed page <code>/u/&lt;secret&gt;</code> becomes the whole experience: subscribe-first hero on a fresh feed, quiet episode hero after, iOS setup always folded, a bottom trace line with tap-for-history, and the new <code>help_subscribe</code> tool wired into <code>create_feed</code>'s result. <code>/collab</code> 301s home. B's ticker stays the fallback if the trace line proves too invisible on video; O3 (deep-link push) gets a five-minute Codex test before earning a place in the demo.</p>
+</div>
+
+<p class="quiet" style="margin-top:40px">Decision recorded; implemented as v3.34. Mockups are illustrative; final copy went through the usual no-em-dash pass.</p>
+
+</div>

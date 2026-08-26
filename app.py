@@ -879,29 +879,12 @@ def settings(request: Request, secret: str):
     return response
 
 
-@app.get("/u/{secret}/collab", response_class=HTMLResponse)
-def collab(request: Request, secret: str):
-    """The agent-session view of a feed: a live activity log beside the
-    episodes table, built for watching a WebMCP agent drive the feed
-    (webmcp.js lands people here once an agent starts calling tools).
-    Same identity model as the settings page: the URL is the account."""
-    if not storage.user_exists(DATA_DIR, secret):
-        raise HTTPException(404)
-    _track("page_view", secret=secret, path="collab")
-    eps = storage.list_episodes(DATA_DIR, secret)[:30]
-    now_ts = int(_time.time())
-    for ep in eps:
-        ep["when"] = relative_time(ep["ts"], now=now_ts)
-    feed_url = f"{APP_BASE_URL}/u/{secret}/feed.xml"
-    response = templates.TemplateResponse(request, "collab.html", {
-        "secret": secret,
-        "episodes": eps,
-        "feed_url": feed_url,
-        "feed_host_and_path": feed_url.split("://", 1)[1],
-        "base_url": APP_BASE_URL,
-    })
-    set_session_cookie(response, secret)
-    return response
+@app.get("/u/{secret}/collab")
+def collab(secret: str):
+    """v3.31's separate agent-session page, merged into the feed page in
+    v3.34 (spec: docs/superpowers/specs/2026-08-26-session-page-directions
+    .html). Permanent redirect so agents holding the old URL land home."""
+    return RedirectResponse(f"/u/{secret}", status_code=301)
 
 
 @app.get("/u/{secret}/episodes_partial", response_class=HTMLResponse)

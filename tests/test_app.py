@@ -90,22 +90,21 @@ def test_share_status_unknown_without_cookie(client):
     assert r.json()["status"] == "unknown"
 
 
-def test_settings_fresh_feed_shows_instructions_before_episodes(client):
-    # A brand-new feed has only the welcome episode → setup NOT done →
-    # instructions come first, episodes after.
+def test_settings_fresh_feed_shows_listen_card_before_episodes(client):
+    # v3.34 (one-page merge): a brand-new feed leads with the subscribe-first
+    # Listen card; iOS setup is always folded, even before the first share.
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
 
     body = client.get(f"/u/{secret}").text
     assert "Set up" in body
-    assert "Setup &amp; sharing" not in body  # not folded yet
-    # Instructions ("Install the iOS Shortcut") appear before the episodes table.
-    assert body.index("Install the iOS Shortcut") < body.index("Recent episodes")
+    assert "Setup &amp; sharing" in body  # always folded now
+    assert body.index("Put your feed in your podcast app") < body.index("Recent episodes")
 
 
 def test_settings_prioritizes_episodes_once_real_article_shared(client, tmp_path):
-    # After a real (non-welcome) episode exists, setup is done → episodes lead,
-    # instructions fold into a "Setup & sharing" collapsible.
+    # After a real (non-welcome) episode exists, episodes lead and the Listen
+    # card follows; setup stays folded under "Setup & sharing".
     create = client.post("/create", follow_redirects=False)
     secret = create.headers["location"].split("/u/")[1]
 
@@ -117,7 +116,8 @@ def test_settings_prioritizes_episodes_once_real_article_shared(client, tmp_path
 
     body = client.get(f"/u/{secret}").text
     assert "Setup &amp; sharing" in body  # instructions are folded
-    # Episodes table now comes before the setup instructions.
+    assert body.index("Recent episodes") < body.index("Put your feed in your podcast app")
+    # Episodes table also comes before the folded setup instructions.
     assert body.index("Recent episodes") < body.index("Install the iOS Shortcut")
 
 
