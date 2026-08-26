@@ -55,3 +55,27 @@ def test_webmcp_js_guards_on_page(client):
 
 def test_webmcp_js_has_no_emdash(client):
     assert "—" not in client.get("/webmcp.js").text
+
+
+# --- page includes -----------------------------------------------------------
+
+def test_landing_page_loads_webmcp_script(client):
+    resp = client.get("/")
+    assert '<script src="/webmcp.js" defer></script>' in resp.text
+
+
+def test_feed_page_loads_webmcp_script(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}")
+    assert '<script src="/webmcp.js" defer></script>' in resp.text
+
+
+def test_share_page_does_not_load_webmcp_script(client):
+    resp = client.get("/share?url=https://example.com/a")
+    assert "webmcp.js" not in resp.text
+
+
+def test_agent_panel_mentions_webmcp(client):
+    secret = make_feed(client)
+    resp = client.get(f"/u/{secret}")
+    assert "WebMCP browser" in resp.text
