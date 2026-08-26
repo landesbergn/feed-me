@@ -753,6 +753,20 @@ def cover_route():
     )
 
 
+@app.get("/webmcp.js")
+def webmcp_js():
+    """The WebMCP tool registration script (see AGENTS.md, 'In a browser').
+
+    Included by the landing and feed pages; a silent no-op in browsers
+    without WebMCP. Committed under static/, not generated.
+    """
+    return FileResponse(
+        STATIC_DIR / "webmcp.js",
+        media_type="text/javascript",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
 def _icon(name: str, media_type: str) -> FileResponse:
     return FileResponse(
         STATIC_DIR / name,
