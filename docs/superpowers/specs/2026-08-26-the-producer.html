@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed Me · The Producer</title>
+<style>
+  :root { --ink:#1a1a1a; --ink-soft:#4a4a4a; --ink-mute:#6a6a6a; --rule:#e5e5e5; --bg:#fafaf7; --paper:#fff; --accent:#b04a00; --code-bg:#f3f1ec; }
+  * { box-sizing:border-box; } html,body { background:var(--bg); color:var(--ink); }
+  body { font-family:"Iowan Old Style","Charter",Georgia,serif; font-size:17px; line-height:1.55; margin:0; }
+  .wrap { max-width:720px; margin:0 auto; padding:56px 28px 96px; }
+  header.title { border-bottom:1px solid var(--rule); padding-bottom:22px; margin-bottom:36px; }
+  header.title .eyebrow { text-transform:uppercase; letter-spacing:.14em; font-size:12px; color:var(--ink-mute); font-family:-apple-system,sans-serif; font-weight:600; }
+  header.title h1 { font-size:38px; line-height:1.1; margin:8px 0; }
+  header.title .meta { font-size:14px; color:var(--ink-mute); font-family:-apple-system,sans-serif; }
+  h2 { font-size:22px; margin:44px 0 12px; border-bottom:1px solid var(--rule); padding-bottom:6px; }
+  p { margin:12px 0; } ul,ol { margin:12px 0; padding-left:22px; } li { margin:5px 0; }
+  code,pre { font-family:"JetBrains Mono","SF Mono",Menlo,monospace; font-size:13.5px; }
+  code { background:var(--code-bg); padding:1px 5px; border-radius:3px; }
+  pre { background:var(--paper); border:1px solid var(--rule); border-radius:4px; padding:14px 16px; overflow-x:auto; }
+  .callout { background:var(--paper); border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:4px; padding:14px 18px; margin:18px 0; font-family:-apple-system,sans-serif; font-size:14.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="title">
+  <div class="eyebrow">Spec · v3.36</div>
+  <h1>The Producer</h1>
+  <div class="meta">Feed Me · 2026-08-26</div>
+</header>
+
+<p>
+  The product's core loop: the user listens in their native podcast app on the
+  go; the agent's job is building the feed. This release strengthens and closes
+  that loop by making the agent the feed's <em>producer</em>: it explains its
+  picks in the show notes, takes standing assignments from the user, and hears
+  back from the listening moment itself. Three mechanics, shippable in order.
+</p>
+
+<h2>1 · Producer's notes</h2>
+<ul>
+  <li><code>POST /u/&lt;secret&gt;/episodes</code> (both modes) accepts an
+    optional string <code>note</code> (cap 300 chars, 400 on wrong type or
+    over-length): one line to the listener about why the producer picked this.</li>
+  <li>Stored on the pending record; <code>write_episode</code> /
+    <code>write_failed_episode</code> preserve it the way they preserve
+    <code>via</code> (generalize <code>_pending_via</code> to read the prior
+    record once).</li>
+  <li>RSS: the episode description leads with
+    <code>Producer's note: &lt;note&gt;</code> (HTML and text variants), before
+    the excerpt.</li>
+  <li>Page: the episode row shows the note as a quiet line under the title.</li>
+  <li>WebMCP: <code>add_article</code> / <code>add_article_text</code> schemas
+    gain <code>note</code>. Spoken intros: explicitly out of scope this
+    release.</li>
+</ul>
+
+<h2>2 · The assignment desk</h2>
+<ul>
+  <li><strong>Storage:</strong> <code>&lt;user&gt;/inbox/requests.json</code>
+    (a subdirectory, invisible to the episode glob and un-deletable via the
+    episode DELETE). Entries: <code>{id, text, ts, status: open|done, source:
+    owner|listener, done_ts?, done_note?}</code>. Caps: 500 chars per request,
+    20 open per feed. <code>add_request</code> dedupes an open request with
+    identical text (returns the existing one). New storage functions:
+    <code>list_requests</code>, <code>add_request</code>,
+    <code>complete_request</code>.</li>
+  <li><strong>Page:</strong> a "For your producer" card after the episodes:
+    one-line form (placeholder "e.g. Something on the Ottoman Empire this
+    week"), open requests listed beneath (listener feedback marked), the last
+    few completed shown muted with the producer's <code>done_note</code> when
+    present. Form posts <code>text</code> urlencoded and redirects 303 back.
+    Fragment served at <code>GET /u/&lt;secret&gt;/requests_partial</code> so
+    tools can refresh it (id <code>requests-section</code>).</li>
+  <li><strong>API</strong> (path-secret, agent contract, JSON errors):
+    <code>GET /u/&lt;secret&gt;/requests</code> → open requests plus the last 5
+    done; <code>POST /u/&lt;secret&gt;/requests</code> (JSON or form; form
+    redirects, JSON returns 201); <code>POST
+    /u/&lt;secret&gt;/requests/&lt;id&gt;/complete</code> with optional
+    <code>note</code> → <code>{"id","status":"done"}</code>, 404 unknown.</li>
+  <li><strong>Tools:</strong> <code>get_requests</code> (description says to
+    call it at the start of any session on this page) and
+    <code>complete_request({id, note?})</code>; both flash/refresh the
+    requests card.</li>
+</ul>
+
+<h2>3 · Loop-back from the podcast app</h2>
+<ul>
+  <li>Each RSS episode description ends with two plain links:
+    <code>More like this</code> → <code>{feed_page}/feedback?slug=&lt;s&gt;&amp;v=more</code>
+    and <code>Not for me</code> → <code>…&amp;v=less</code>.</li>
+  <li><code>GET /u/&lt;secret&gt;/feedback</code> records a listener request
+    (<code>More like "&lt;title&gt;"</code> / <code>Fewer like
+    "&lt;title&gt;"</code>, source <code>listener</code>, deduped while open)
+    and renders a tiny confirmation page: "Noted. Your producer will see this."
+    No GA on this page (the URL carries the secret); unknown slug or bad
+    <code>v</code> → 404.</li>
+</ul>
+
+<h2>4 · Producer framing</h2>
+<ul>
+  <li>Trace copy: "your producer is adding an article...", "your producer
+    created this feed", etc.</li>
+  <li><code>AGENTS.md</code>: frames the agent as the feed's producer, documents
+    <code>note</code>, the requests API, both new tools, and example prompts.</li>
+</ul>
+
+<div class="callout">
+  <strong>Constraints:</strong> no em-dashes in any user-facing copy; request
+  text is user/listener input, rendered only through Jinja autoescape and never
+  into RSS; the raw secret stays out of analytics (requests routes attribute by
+  hash or not at all); <code>analytics.track</code> never raises on the new
+  routes. Requests live outside the episode namespace by construction.
+</div>
+
+<h2>5 · Acceptance</h2>
+<ul>
+  <li>An episode created with a note shows it on the page and leads with it in
+    the show notes; the note survives pending → ready and pending → failed.</li>
+  <li>The user can leave a request on the page; an agent can list it and
+    complete it with a note; the card reflects both without a reload when done
+    via tools.</li>
+  <li>Tapping a show-notes feedback link records a deduped listener request
+    and confirms quietly.</li>
+  <li>Full suite green; CHANGELOG v3.36 + tag; deployed and verified.</li>
+</ul>
+
+</div>
+</body>
+</html>

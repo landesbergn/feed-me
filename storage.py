@@ -28,18 +28,23 @@ def _new_slug() -> str:
     return _secrets.token_urlsafe(12)
 
 
-def _pending_via(data_dir: Path, secret: str, slug: str) -> str | None:
-    """Read the via tag off an existing (pending) record before finalization
-    overwrites it. write_episode / write_failed_episode rebuild the record
+def _pending_carryover(data_dir: Path, secret: str, slug: str) -> dict:
+    """Read the fields off an existing (pending) record that must survive
+    finalization. write_episode / write_failed_episode rebuild the record
     from scratch; the agent daily cap counts via == "agent" episodes, so
-    dropping the tag would silently turn the daily cap into a concurrency cap.
+    dropping `via` would silently turn the daily cap into a concurrency cap,
+    and dropping `note` would lose the producer's note from the show notes.
     """
     try:
         record = json.loads((data_dir / secret / f"{slug}.json").read_text())
     except (OSError, json.JSONDecodeError):
-        return None
-    via = record.get("via")
-    return via if isinstance(via, str) else None
+        return {}
+    carried = {}
+    for key in ("via", "note"):
+        value = record.get(key)
+        if isinstance(value, str):
+            carried[key] = value
+    return carried
 
 
 def write_episode(
@@ -60,7 +65,7 @@ def write_episode(
         raise ValueError("exactly one of audio / audio_path is required")
     if slug is None:
         slug = _new_slug()
-    via = _pending_via(data_dir, secret, slug)
+    carried = _pending_carryover(data_dir, secret, slug)
     user_dir = data_dir / secret
     if audio_path is not None:
         os.replace(audio_path, user_dir / f"{slug}.mp3")
@@ -70,11 +75,10 @@ def write_episode(
         "title": title,
         "url": source_url,
         "ts": int(time.time()),
+        **carried,
     }
     if description is not None:
         record["description"] = description
-    if via is not None:
-        record["via"] = via
     if chars is not None:
         record["chars"] = chars
     (user_dir / f"{slug}.json").write_text(json.dumps(record))
@@ -90,17 +94,16 @@ def write_failed_episode(
 ) -> str:
     if slug is None:
         slug = _new_slug()
-    via = _pending_via(data_dir, secret, slug)
+    carried = _pending_carryover(data_dir, secret, slug)
     record = {
         "title": None,
         "url": source_url,
         "ts": int(time.time()),
         "error": error,
+        **carried,
     }
     if description is not None:
         record["description"] = description
-    if via is not None:
-        record["via"] = via
     if chars is not None:
         record["chars"] = chars
     (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
@@ -114,6 +117,7 @@ def write_pending_episode(
     description: str | None = None,
     via: str | None = None,
     chars: int | None = None,
+    note: str | None = None,
 ) -> str:
     slug = _new_slug()
     record = {
@@ -128,6 +132,8 @@ def write_pending_episode(
         record["via"] = via
     if chars is not None:
         record["chars"] = chars
+    if note is not None:
+        record["note"] = note
     (data_dir / secret / f"{slug}.json").write_text(json.dumps(record))
     return slug
 
@@ -267,3 +273,87 @@ def rotate_secret(data_dir: Path, old_secret: str) -> str:
     new_secret = _secrets.token_urlsafe(32)
     (data_dir / old_secret).rename(data_dir / new_secret)
     return new_secret
+
+
+# --- the assignment desk (v3.36 The Producer) --------------------------------
+# Requests live in <user>/inbox/requests.json: a subdirectory, so the episode
+# glob (user_dir/*.json) never sees them and the episode DELETE cannot touch
+# them. Entries: {id, text, ts, status: open|done, source: owner|listener,
+# done_ts?, done_note?}.
+
+REQUEST_MAX_LEN = 500
+MAX_OPEN_REQUESTS = 20
+
+
+def _requests_path(data_dir: Path, secret: str) -> Path:
+    return data_dir / secret / "inbox" / "requests.json"
+
+
+def list_requests(data_dir: Path, secret: str) -> list[dict]:
+    """All requests, newest first."""
+    try:
+        entries = json.loads(_requests_path(data_dir, secret).read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(entries, list):
+        return []
+    return sorted(entries, key=lambda r: r.get("ts", 0), reverse=True)
+
+
+def _save_requests(data_dir: Path, secret: str, entries: list[dict]) -> None:
+    path = _requests_path(data_dir, secret)
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(entries))
+
+
+def add_request(
+    data_dir: Path, secret: str, text: str, *, source: str = "owner",
+) -> dict:
+    """Add an open request. Raises ValueError on empty/over-long text or a
+    full desk. An open request with identical text is returned instead of
+    duplicated (repeat feedback taps, double submits)."""
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("Request text is required.")
+    if len(text) > REQUEST_MAX_LEN:
+        raise ValueError(
+            f"Request too long: {len(text)} characters (limit {REQUEST_MAX_LEN})."
+        )
+    entries = list_requests(data_dir, secret)
+    open_entries = [r for r in entries if r.get("status") == "open"]
+    for r in open_entries:
+        if r.get("text") == text:
+            return r
+    if len(open_entries) >= MAX_OPEN_REQUESTS:
+        raise ValueError(
+            f"The desk is full: {MAX_OPEN_REQUESTS} open requests per feed. "
+            "Complete some before adding more."
+        )
+    entry = {
+        "id": _new_slug(),
+        "text": text,
+        "ts": int(time.time()),
+        "status": "open",
+        "source": source,
+    }
+    _save_requests(data_dir, secret, entries + [entry])
+    return entry
+
+
+def complete_request(
+    data_dir: Path, secret: str, req_id: str, *, note: str | None = None,
+) -> bool:
+    """Mark one request done (idempotent). Returns False on unknown id."""
+    entries = list_requests(data_dir, secret)
+    found = False
+    for r in entries:
+        if r.get("id") == req_id:
+            found = True
+            if r.get("status") != "done":
+                r["status"] = "done"
+                r["done_ts"] = int(time.time())
+                if isinstance(note, str) and note.strip():
+                    r["done_note"] = note.strip()[:REQUEST_MAX_LEN]
+    if found:
+        _save_requests(data_dir, secret, entries)
+    return found

@@ -57,16 +57,19 @@
 
     tools.push({
       name: "add_article",
-      description: "Narrate an article into this Feed Me podcast feed from its URL. Returns the pending episode as JSON (note the slug); narration takes a few minutes, so poll get_episode_status until status is ready. Do not retry a failed URL.",
+      description: "Narrate an article into this Feed Me podcast feed from its URL. You are the feed's producer: pass a one-line note about why you picked this and it appears in the episode's show notes. Returns the pending episode as JSON (note the slug); narration takes a few minutes, so poll get_episode_status until status is ready. Do not retry a failed URL.",
       inputSchema: {
         type: "object",
         properties: {
-          url: { type: "string", description: "The article's http or https URL." }
+          url: { type: "string", description: "The article's http or https URL." },
+          note: { type: "string", description: "Optional producer's note to the listener, one line, max 300 characters. Shown in the episode's show notes." }
         },
         required: ["url"]
       },
       execute: async function (params) {
-        var r = await call("POST", base + "/episodes", { json: { url: params.url } });
+        var payload = { url: params.url };
+        if (params.note) payload.note = params.note;
+        var r = await call("POST", base + "/episodes", { json: payload });
         return result(r.ok ? "Episode created: " + r.text : r.text);
       }
     });
@@ -79,13 +82,15 @@
         properties: {
           text: { type: "string", description: "The full text to narrate." },
           title: { type: "string", description: "The episode title." },
-          url: { type: "string", description: "Optional source URL for the show notes." }
+          url: { type: "string", description: "Optional source URL for the show notes." },
+          note: { type: "string", description: "Optional producer's note to the listener, one line, max 300 characters. Shown in the episode's show notes." }
         },
         required: ["text", "title"]
       },
       execute: async function (params) {
         var payload = { text: params.text, title: params.title };
         if (params.url) payload.url = params.url;
+        if (params.note) payload.note = params.note;
         var r = await call("POST", base + "/episodes", { json: payload });
         return result(r.ok ? "Episode created: " + r.text : r.text);
       }
@@ -150,6 +155,34 @@
       execute: async function (params) {
         var r = await call("POST", base + "/voice", { form: { voice: params.voice } });
         return result(r.ok ? "Voice set to " + params.voice + " for future episodes." : r.text);
+      }
+    });
+
+    tools.push({
+      name: "get_requests",
+      description: "The user's standing requests for you, their feed's producer: things they want narrated, plus feedback taps from their podcast app ('More like ...'). Call this at the start of any session on this page and fulfill what you can. Complete fulfilled ones with complete_request.",
+      inputSchema: { type: "object", properties: {} },
+      execute: async function () {
+        var r = await call("GET", base + "/requests");
+        return result(r.text);
+      }
+    });
+
+    tools.push({
+      name: "complete_request",
+      description: "Mark one of the user's requests done, with an optional one-line note about what you produced for it. Call after fulfilling a request from get_requests.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The request id from get_requests." },
+          note: { type: "string", description: "Optional one-line note about what you did." }
+        },
+        required: ["id"]
+      },
+      execute: async function (params) {
+        var payload = params.note ? { note: params.note } : {};
+        var r = await call("POST", base + "/requests/" + encodeURIComponent(params.id) + "/complete", { json: payload });
+        return result(r.text);
       }
     });
 
@@ -238,6 +271,8 @@
     set_voice: "changing the voice",
     get_feed_info: "reading the feed links",
     help_subscribe: "helping you subscribe",
+    get_requests: "checking your requests",
+    complete_request: "checking off a request",
     create_feed: "creating your feed"
   };
   var bannerText = null;
@@ -360,6 +395,16 @@
     } catch (e) { return null; }
   }
 
+  async function refreshRequests() {
+    try {
+      var target = document.getElementById("requests-section");
+      if (!target) return null;
+      var resp = await fetch("/u/" + secret + "/requests_partial", { cache: "no-store" });
+      if (resp.ok) target.innerHTML = await resp.text();
+      return target;
+    } catch (e) { return null; }
+  }
+
   var REACT = {
     add_article: async function () { flash(await refreshEpisodes()); },
     add_article_text: async function () { flash(await refreshEpisodes()); },
@@ -379,6 +424,12 @@
     },
     get_feed_info: function () {
       flash(document.getElementById("listen-card") || document.querySelector("a.btn-primary"));
+    },
+    get_requests: function () {
+      flash(document.getElementById("requests-section"));
+    },
+    complete_request: async function () {
+      flash(await refreshRequests());
     }
   };
 
@@ -388,10 +439,10 @@
       var activity = ACTIVITY[tool.name] || "working";
       /* Status polling repeats: keep it off the timeline. */
       var quiet = tool.name === "get_episode_status";
-      agentMode("your agent is " + activity + "...", quiet);
+      agentMode("your producer is " + activity + "...", quiet);
       try {
         var out = await inner.apply(this, arguments);
-        agentMode("your agent finished " + activity, quiet);
+        agentMode("your producer finished " + activity, quiet);
         var react = REACT[tool.name];
         if (react) { try { await react(params); } catch (e) { /* flourish */ } }
         return out;
@@ -418,7 +469,7 @@
     try {
       if (sessionStorage.getItem("fmAgentCreated")) {
         sessionStorage.removeItem("fmAgentCreated");
-        agentMode("your agent created this feed");
+        agentMode("your producer created this feed");
         flash(document.getElementById("listen-card"));
       }
     } catch (e) { /* sessionStorage can be unavailable; fine */ }

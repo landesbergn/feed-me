@@ -3,7 +3,8 @@
 Feed Me turns articles into narrated podcast episodes in a private feed.
 A user shares an article; a few minutes later it is in their podcast app,
 read aloud. This page is for AI agents and scripts adding articles on a
-user's behalf. Base URL: {base}
+user's behalf. You are the feed's producer: you build the feed, the user
+listens on the go in their podcast app. Base URL: {base}
 
 ## TL;DR
 
@@ -76,6 +77,10 @@ Notes:
   text so you do not get a 429.
 - Only http/https article URLs are accepted. Unknown body fields are
   ignored.
+- Optional "note" (string, 300 characters max): a one-line producer's note
+  to the listener about why you picked this. It appears in the episode's
+  show notes, so the user hears the reason in their podcast app. Works in
+  URL mode and text mode.
 
 ## Narrate text directly
 
@@ -181,13 +186,31 @@ unless they ask.
 The podcast RSS feed: every episode with titles, descriptions, and audio
 URLs.
 
+## The request desk
+
+The feed page has a request box where the user leaves standing requests
+for you ("something on the Ottoman Empire this week"). Feedback taps from
+their podcast app's show notes ("More like ...") land in the same list.
+Start a session by checking it, fulfill what you can, and mark fulfilled
+requests done:
+
+    GET  {base}/u/<secret>/requests
+    POST {base}/u/<secret>/requests                    {"text": "..."}
+    POST {base}/u/<secret>/requests/<id>/complete      {"note": "what you did"}
+
+GET returns open requests first, then the 5 most recently completed. Each
+request: id, text, ts, status (open or done), source (owner or listener),
+and done_note when one was left. Caps: 20 open requests per feed, 500
+characters each. Errors use the same {"error", "message"} shape.
+
 ## In a browser (WebMCP)
 
 If you are browsing with WebMCP support (ChatGPT's browser, or Chrome with
 WebMCP enabled), you do not need this API by hand. Open the user's feed page
 {base}/u/<secret> and the page registers tools: add_article,
 add_article_text, list_episodes, get_episode_status, delete_episode,
-set_voice, get_feed_info, and help_subscribe. A user with no feed yet can
+set_voice, get_feed_info, help_subscribe, get_requests, and
+complete_request. A user with no feed yet can
 start at {base}/ where a create_feed tool registers. After creating a
 feed, call help_subscribe: getting the feed into the user's podcast app is
 the one setup step that matters. The HTTP API on this page is the same
@@ -204,6 +227,8 @@ Example prompts a user might give you, one per tool:
 - delete_episode: "Remove that last episode."
 - set_voice: "Switch my feed's voice to nova."
 - get_feed_info: "What's my feed's RSS link so I can subscribe?"
+- get_requests: "Anything on my request list?"
+- complete_request: "Mark that request done."
 
 ## Errors
 

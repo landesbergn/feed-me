@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Noted · Feed Me</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <style>
+    body {
+      font-family: -apple-system, "Helvetica Neue", system-ui, sans-serif;
+      max-width: 420px; margin: 80px auto; padding: 0 22px;
+      line-height: 1.5; color: #2a1f18; background: #FFF8F2;
+      text-align: center; -webkit-font-smoothing: antialiased;
+    }
+    .brand {
+      font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      font-size: 12px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: #b04a00; margin-bottom: 22px;
+    }
+    h1 {
+      font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+      font-size: 26px; font-weight: 800; margin: 0 0 10px;
+    }
+    p { color: #8a6f5e; font-size: 14.5px; margin: 8px 0; }
+    em { color: #2a1f18; font-style: normal; font-weight: 600; }
+    a { color: #b04a00; font-weight: 700; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="brand">🎧 Feed Me</div>
+  {% if recorded %}
+    <h1>Noted.</h1>
+    <p>{% if more %}More like{% else %}Fewer like{% endif %} <em>{{ title }}</em>. Your producer will see this next time it checks in.</p>
+  {% else %}
+    <h1>The desk is full.</h1>
+    <p>Your producer has 20 open requests already, so this one didn't make it. Ask it to work through the list first.</p>
+  {% endif %}
+  <p><a href="/u/{{ secret }}">Back to your feed</a></p>
+</body>
+</html>

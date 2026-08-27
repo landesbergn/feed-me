@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.36 · 2026-08-26
+
+The Producer: notes, the assignment desk, and loop-back from the podcast app.
+
+- The agent is now framed as the feed's producer, and the core loop closes in both directions (spec: `docs/superpowers/specs/2026-08-26-the-producer.html`).
+- **Producer's notes:** `POST /u/<secret>/episodes` accepts an optional `note` (300 chars): one line about why the producer picked this. It leads the episode's show notes ("Producer's note: ..."), shows under the title on the page, and survives pending → ready/failed (finalization now carries `note` the way it carries `via`). The WebMCP add tools pass it through.
+- **The assignment desk:** a "For your producer" card on the feed page where the user leaves standing requests (500 chars, 20 open per feed, open-text deduped). Stored in `<user>/inbox/requests.json`, a subdirectory the episode glob never sees. New API: `GET/POST /u/<secret>/requests`, `POST .../requests/<id>/complete` (optional note), plus a `requests_partial` fragment. New WebMCP tools `get_requests` (call at session start) and `complete_request`.
+- **Loop-back:** every episode's show notes end with "More like this" / "Not for me" links; a tap from the podcast app records a deduped listener request on the desk and confirms with a tiny page (no GA; the URL carries the secret). A full desk is reported honestly.
+- Trace copy says "your producer" now; `AGENTS.md` documents all of it. Also fixed: the trace strip's `display:flex` beat the `hidden` attribute, showing an empty strip before any agent acted.
+
 ## v3.35 · 2026-08-26
 
 Episode list copy and link fixes.

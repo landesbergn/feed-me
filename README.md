@@ -83,7 +83,11 @@ Each feed is a directory: `/data/<secret>/` holds `settings.json` plus one
 | `GET /share/text` | Landing page for the Full Text Shortcut: reads the article text out of the URL fragment and posts it back. Cookie-identified, so the Shortcut carries no secret |
 | `POST /share/text` | Cookie-authed twin of `/u/<secret>/share-text`; renders the same live adding/added/failed page as `/share` |
 | `POST /u/{secret}/share-text` | Same narration from a secret-authed client (no browser); 30/day rolling cap shared with `/share/text` |
-| `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}` or `{"text": ..., "title": ...}`); 5/day rolling cap |
+| `POST /u/{secret}/episodes` | Agent API: create an episode from a JSON body (`{"url": ...}` or `{"text": ..., "title": ...}`, optional `note` for the show notes); 5/day rolling cap |
+| `GET/POST /u/{secret}/requests` | The assignment desk: list requests (agent) / leave one (JSON 201, or the page form via 303) |
+| `POST /u/{secret}/requests/{id}/complete` | Agent API: mark a request done, optional `note` |
+| `GET /u/{secret}/requests_partial` | Request-card fragment, refreshed by the WebMCP tools |
+| `GET /u/{secret}/feedback?slug=&v=more\|less` | Loop-back links from episode show notes; records a listener request |
 | `GET /u/{secret}/episodes` | Agent API: JSON feed listing (20 most recent) + voice + remaining quota, secret-authed |
 | `GET /u/{secret}/episodes/{slug}` | Agent API: JSON episode status, secret-authed |
 | `DELETE /u/{secret}/episodes/{slug}` | Agent API: delete an episode (undo a share), secret-authed |

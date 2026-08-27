@@ -1,0 +1,22 @@
+<div class="listen-title">For your producer</div>
+<p class="listen-note">Leave a request; your producer picks it up next session.</p>
+<form class="req-form" method="post" action="/u/{{ secret }}/requests">
+  <input name="text" maxlength="500" required
+         placeholder="e.g. Something on the Ottoman Empire this week">
+  <button class="btn-secondary req-submit" type="submit">Leave request</button>
+</form>
+{% if requests %}
+  <ul class="req-list">
+    {% for r in requests %}
+      <li class="req-{{ r.status }}">
+        <span class="req-mark" aria-hidden="true">{{ "✓" if r.status == "done" else "•" }}</span>
+        <span class="req-body">
+          {{ r.text }}
+          {% if r.source == "listener" %}<span class="req-tag">from your podcast app</span>{% endif %}
+          {% if r.done_note %}<span class="req-note">{{ r.done_note }}</span>{% endif %}
+        </span>
+        <span class="req-when">{{ r.when }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

@@ -409,6 +409,19 @@ async def create_episode_api(request: Request, secret: str):
             'Body must include a string "url" or "text" field.',
         )
 
+    note = payload.get("note")
+    if note is not None:
+        if not isinstance(note, str):
+            return _agent_error(
+                400, "invalid_request", 'Optional "note" must be a string.',
+            )
+        if len(note) > 300:
+            return _agent_error(
+                400, "invalid_request",
+                f"Note too long: {len(note):,} characters (limit 300).",
+            )
+        note = note.strip() or None
+
     text = payload.get("text")
     text_mode = isinstance(text, str) and bool(text.strip())
 
@@ -503,7 +516,7 @@ async def create_episode_api(request: Request, secret: str):
 
     slug = storage.write_pending_episode(
         DATA_DIR, secret, source_url=source_url, title=record_title, via="agent",
-        chars=incoming if text_mode else None,
+        chars=incoming if text_mode else None, note=note,
     )
     spawn_ingest(source_url, secret, DATA_DIR, slug, text=spawn_text, title=spawn_title)
     _track("article_shared", secret=secret, path="agent",
@@ -746,6 +759,139 @@ def delete_episode_api(secret: str, slug: str):
     return JSONResponse({"slug": slug, "status": "deleted"})
 
 
+# --- the assignment desk (v3.36 The Producer) --------------------------------
+
+def _public_request(r: dict) -> dict:
+    item = {
+        "id": r["id"],
+        "text": r["text"],
+        "ts": r["ts"],
+        "status": r["status"],
+        "source": r.get("source", "owner"),
+    }
+    if r.get("done_note"):
+        item["done_note"] = r["done_note"]
+    return item
+
+
+def _requests_view(secret: str) -> list[dict]:
+    """Open requests first (newest first), then the 5 most recent done."""
+    entries = storage.list_requests(DATA_DIR, secret)
+    view = ([r for r in entries if r["status"] == "open"]
+            + [r for r in entries if r["status"] == "done"][:5])
+    now_ts = int(_time.time())
+    for r in view:
+        r["when"] = relative_time(r["ts"], now=now_ts)
+    return view
+
+
+@app.get("/u/{secret}/requests")
+def list_requests_api(secret: str):
+    """Agent-facing request list (documented at /AGENTS.md). Path-secret
+    auth, JSON only, no cookies. Open requests first, then recent done."""
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    return JSONResponse({
+        "requests": [_public_request(r) for r in _requests_view(secret)],
+    })
+
+
+@app.post("/u/{secret}/requests")
+async def create_request_route(request: Request, secret: str):
+    """Leave a request for the producer. Accepts JSON {"text": ...} (agent
+    contract, 201) or a form post from the feed page (303 back to the page).
+    Path-secret auth either way; the page form's action carries the secret."""
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    body = await request.body()
+    payload: dict = {}
+    is_form = False
+    try:
+        parsed_json = json.loads(body)
+        if isinstance(parsed_json, dict):
+            payload = parsed_json
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = dict(await request.form())
+        is_form = True
+    text = payload.get("text")
+    if not isinstance(text, str) or not text.strip():
+        if is_form:
+            return RedirectResponse(f"/u/{secret}", status_code=303)
+        return _agent_error(
+            400, "invalid_request", 'Body must include a string "text".',
+        )
+    try:
+        entry = storage.add_request(DATA_DIR, secret, text)
+    except ValueError as err:
+        if is_form:
+            return RedirectResponse(f"/u/{secret}", status_code=303)
+        return _agent_error(400, "invalid_request", str(err))
+    _track("request_left", secret=secret, path="requests",
+           props={"source": "owner"})
+    if is_form:
+        return RedirectResponse(f"/u/{secret}", status_code=303)
+    return JSONResponse(_public_request(entry), status_code=201)
+
+
+@app.post("/u/{secret}/requests/{rid}/complete")
+async def complete_request_api(request: Request, secret: str, rid: str):
+    """Agent-facing: mark a request done, optionally with a note about what
+    was produced for it. Path-secret auth, JSON only."""
+    if not storage.user_exists(DATA_DIR, secret):
+        return _agent_error(404, "not_found", "No feed at this URL.")
+    try:
+        payload = json.loads(await request.body())
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = {}
+    note = payload.get("note") if isinstance(payload, dict) else None
+    if note is not None and not isinstance(note, str):
+        return _agent_error(400, "invalid_request", '"note" must be a string.')
+    if not storage.complete_request(DATA_DIR, secret, rid, note=note):
+        return _agent_error(404, "not_found", "No such request.")
+    return JSONResponse({"id": rid, "status": "done"})
+
+
+@app.get("/u/{secret}/requests_partial", response_class=HTMLResponse)
+def requests_partial(request: Request, secret: str):
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    return templates.TemplateResponse(request, "_requests_section.html", {
+        "requests": _requests_view(secret),
+        "secret": secret,
+    })
+
+
+@app.get("/u/{secret}/feedback", response_class=HTMLResponse)
+def feedback_route(request: Request, secret: str, slug: str = "", v: str = ""):
+    """The loop-back from the podcast app: show-notes links land here. Records
+    a listener request on the producer's desk (deduped while open) and
+    confirms quietly. No GA on this page: the URL carries the secret."""
+    if not storage.user_exists(DATA_DIR, secret):
+        raise HTTPException(404)
+    if v not in ("more", "less"):
+        raise HTTPException(404)
+    ep = next(
+        (e for e in storage.list_episodes(DATA_DIR, secret) if e["slug"] == slug),
+        None,
+    )
+    if ep is None:
+        raise HTTPException(404)
+    title = ep.get("title") or hostname(ep.get("url") or "") or "that episode"
+    text = (f'More like "{title}"' if v == "more" else f'Fewer like "{title}"')
+    recorded = True
+    try:
+        storage.add_request(DATA_DIR, secret, text[:500], source="listener")
+    except ValueError:
+        recorded = False  # full desk; the tap still lands on a page
+    _track("feedback_tap", secret=secret, path="feedback", props={"v": v})
+    return templates.TemplateResponse(request, "feedback.html", {
+        "title": title,
+        "more": v == "more",
+        "recorded": recorded,
+        "secret": secret,
+    })
+
+
 @app.get("/cover.jpg")
 def cover_route():
     return FileResponse(
@@ -874,6 +1020,7 @@ def settings(request: Request, secret: str):
         "shortcut_text_url": SHORTCUT_TEXT_ICLOUD_URL,
         "setup_done": setup_done,
         "base_url": APP_BASE_URL,
+        "requests": _requests_view(secret),
     })
     set_session_cookie(response, secret)
     return response

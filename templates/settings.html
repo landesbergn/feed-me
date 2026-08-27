@@ -87,6 +87,10 @@
       margin-top: 2px; word-break: break-word; font-weight: 400;
     }
     .ep-table td.col-title a.src:hover { color: var(--accent); }
+    .ep-table td.col-title .ep-note {
+      display: block; font-family: var(--sans); font-size: 11px; color: var(--muted);
+      font-style: italic; font-weight: 400; margin-top: 3px;
+    }
     .ep-table td.col-title .ep-err {
       display: block; font-size: 11px; color: var(--accent);
       margin-top: 4px; line-height: 1.4; word-break: break-word;
@@ -173,10 +177,30 @@
       font-family: var(--round); font-size: 15px; font-weight: 800; color: var(--ink);
     }
     .listen-note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+    .req-form { display: flex; gap: 8px; margin-top: 12px; }
+    .req-form input {
+      flex: 1; min-width: 0; font-family: var(--sans); font-size: 13px;
+      padding: 9px 13px; border: 1.5px solid #E9C9AC; border-radius: 999px;
+      background: #fff; color: var(--ink);
+    }
+    .req-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .req-submit { margin-top: 0 !important; flex: none; }
+    .req-list { list-style: none; margin: 12px 0 0; padding: 0; font-size: 12.5px; }
+    .req-list li { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px solid #F4E9DD; align-items: baseline; }
+    .req-list li:last-child { border-bottom: none; }
+    .req-mark { flex: none; color: var(--accent); font-weight: 700; }
+    .req-done .req-mark { color: #2f7a3d; }
+    .req-done .req-body { color: var(--faint); }
+    .req-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .req-tag, .req-note { display: block; font-size: 11px; color: var(--faint); margin-top: 2px; }
+    .req-note { font-style: italic; }
+    .req-when { flex: none; color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
     #agent-trace {
       display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
       border-top: 1px solid var(--hair); margin-top: 28px; padding: 12px 2px 0;
     }
+    /* display:flex beats the hidden attribute's UA rule; restore it. */
+    #agent-trace[hidden] { display: none; }
     #agent-trace .dot {
       width: 7px; height: 7px; border-radius: 50%; background: #2f7a3d; flex: none;
     }
@@ -244,6 +268,10 @@
       {% include "_episodes_section.html" %}
     </div>
   {% endif %}
+
+  <section class="listen-card" id="requests-section">
+    {% include "_requests_section.html" %}
+  </section>
 
   <details class="setup-fold">
     <summary>Setup &amp; sharing</summary>

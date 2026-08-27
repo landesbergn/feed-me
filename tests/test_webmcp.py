@@ -15,6 +15,8 @@ TOOL_NAMES = [
     "set_voice",
     "get_feed_info",
     "help_subscribe",
+    "get_requests",
+    "complete_request",
     "create_feed",
 ]
 
@@ -90,6 +92,8 @@ def test_webmcp_js_narrates_every_tool(client):
         "changing the voice",
         "reading the feed links",
         "helping you subscribe",
+        "checking your requests",
+        "checking off a request",
         "creating your feed",
     ):
         assert activity in body
@@ -108,10 +112,13 @@ def test_webmcp_js_uses_the_native_trace(client):
 def test_feed_page_has_the_trace_markup(client):
     secret = make_feed(client)
     text = client.get(f"/u/{secret}").text
-    assert 'id="agent-trace"' in text
+    assert 'id="agent-trace" hidden' in text
     assert 'id="agent-trace-text"' in text
     assert 'id="agent-history-btn"' in text
     assert 'id="agent-log"' in text
+    # The trace styles use display:flex, which beats the hidden attribute's
+    # UA rule; the guard keeps the strip invisible until an agent acts.
+    assert "#agent-trace[hidden] { display: none; }" in text
 
 
 def test_webmcp_js_drives_the_page(client):
@@ -120,7 +127,9 @@ def test_webmcp_js_drives_the_page(client):
     assert "voice-chip" in body              # set_voice moves the picker's active chip
     assert "scrollIntoView" in body          # reactions bring the change on screen
     assert "fmAgentCreated" in body          # agent mode survives the create_feed hop
-    assert "your agent created this feed" in body
+    assert "your producer created this feed" in body
+    assert "requests_partial" in body        # request tools refresh the assignment desk
+    assert "params.note" in body             # producer's note flows through the add tools
 
 
 # --- one page: /collab redirects home ----------------------------------------

@@ -14,6 +14,7 @@
           <td class="col-title">
             {% if ep.title %}{{ ep.title }}{% elif ep.status == "pending" %}Loading from {{ ep.url | hostname }}…{% else %}{{ ep.url | hostname }}{% endif %}
             {% if ep.url %}<a class="src" href="{{ ep.url }}" target="_blank" rel="noopener">{{ ep.url }}</a>{% endif %}
+            {% if ep.note %}<span class="ep-note">{{ ep.note }}</span>{% endif %}
             {% if ep.status == "failed" and ep.error %}<span class="ep-err">{{ ep.error }}</span>{% endif %}
           </td>
           <td class="col-time">{{ ep.when }}</td>
