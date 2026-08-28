@@ -222,6 +222,15 @@ them. Getting the feed into their podcast app is the one setup step that
 matters. The HTTP API on this page is the same capability set and works
 everywhere else.
 
+The feed page is a canvas, not a control panel: it shows the user your
+work (episodes, the request desk, an activity trace) and takes no input.
+Everything the user wants happens through you, in the chat. So be the
+interface: after any action, suggest in chat what they might ask next (an
+article to add, a standing request to leave, a voice change) instead of
+describing the page or pointing them at buttons. The one exception is
+subscribing, which can need a tap on their device; help_subscribe reveals
+and highlights those buttons for you.
+
 Example prompts a user might give you, one per tool:
 
 - create_feed (on the landing page): "Set me up a Feed Me podcast feed."

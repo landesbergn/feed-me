@@ -972,12 +972,20 @@ def landing(request: Request):
 
 
 @app.post("/create")
-def create():
-    secret = storage.create_user(DATA_DIR)
+async def create(request: Request):
+    # create_feed (WebMCP) posts via=agent; that feed's page renders as the
+    # producer's canvas rather than the self-serve layout.
+    try:
+        via = (await request.form()).get("via", "web")
+    except Exception:
+        via = "web"
+    if via != "agent":
+        via = "web"
+    secret = storage.create_user(DATA_DIR, via=via)
     storage.seed_welcome_episode(
         DATA_DIR, secret, welcome_audio=WELCOME_AUDIO_BYTES,
     )
-    _track("feed_created", secret=secret)
+    _track("feed_created", secret=secret, props={"via": via})
     return RedirectResponse(f"/u/{secret}", status_code=303)
 
 
@@ -1009,6 +1017,7 @@ def settings(request: Request, secret: str):
         "setup_done": setup_done,
         "base_url": APP_BASE_URL,
         "requests": _requests_view(secret),
+        "producer_mode": s.get("created_via") == "agent",
     })
     set_session_cookie(response, secret)
     return response

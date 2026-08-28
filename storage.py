@@ -9,11 +9,15 @@ ALLOWED_VOICES = {"shimmer", "alloy", "nova", "echo"}
 WELCOME_DESCRIPTION = "Share an article from your phone — it'll show up here a minute later."
 
 
-def create_user(data_dir: Path) -> str:
+def create_user(data_dir: Path, via: str = "web") -> str:
     secret = _secrets.token_urlsafe(32)
     user_dir = data_dir / secret
     user_dir.mkdir(parents=True, exist_ok=False)
-    settings = {"voice": DEFAULT_VOICE, "created_at": int(time.time())}
+    settings = {
+        "voice": DEFAULT_VOICE,
+        "created_at": int(time.time()),
+        "created_via": via,
+    }
     (user_dir / "settings.json").write_text(json.dumps(settings))
     return secret
 

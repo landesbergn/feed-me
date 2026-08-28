@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.38 · 2026-08-28
+
+The page is the producer's canvas; the chat is the interface. Owner feedback on v3.37: the agent still stopped after create_feed and described the page, and the tap-to-copy ask chips were page UI for something that belongs in the chat.
+
+- **Proactivity through the tool results:** create_feed now frames creation as an unfinished job ("the job is not done yet... do not stop to summarize") with a numbered sequence: ask which podcast app, help_subscribe with app to open it, then suggest next asks in chat; it also copies the private RSS link to the clipboard at creation time (reported honestly) and tells the agent to report actions, not describe the page. help_subscribe's result ends by prompting the agent to suggest next asks. AGENTS.md gains a "the page is a canvas, not a control panel" paragraph: the agent is the interface and offers suggestions in chat instead of pointing at buttons.
+- **Producer mode:** create_feed posts via=agent and the feed remembers it (settings.json created_via). An agent-created feed's page renders as a canvas: episodes, then the desk, with the subscribe buttons folded under "Put this feed in your podcast app" until help_subscribe (or the reader) opens them; the subline says "your producer runs this feed from your chat". Web-created feeds keep the self-serve subscribe-first layout.
+- **The desk is pure status:** the tap-to-copy ask chips are gone; suggestions come through the chat. The card is the title, one line about asking in chat, and the standing-request list or its empty state.
+
 ## v3.37 · 2026-08-28
 
 The agent drives; the page is a window. Owner feedback on the v3.36 flow.

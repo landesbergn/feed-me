@@ -196,16 +196,16 @@ def test_page_shows_the_producers_desk(client, tmp_path):
     assert "Something about lighthouses" in body
 
 
-def test_desk_is_chat_first_not_a_form(client, tmp_path):
+def test_desk_is_pure_status(client, tmp_path):
     # The interaction model: the user talks to their agent in chat, never to
-    # the website. The desk shows tap-to-copy asks and the standing list; it
-    # takes no input of its own.
+    # the website. The desk takes no input and offers no buttons; suggestions
+    # for what to ask come through the chat (the tool results carry them).
     secret = make_feed(client)
     body = client.get(f"/u/{secret}").text
     assert f'action="/u/{secret}/requests"' not in body
     assert "req-form" not in body
-    assert 'class="ask-chip"' in body
-    assert "paste" in body            # the chips explain the copy-to-chat move
+    assert "ask-chip" not in body
+    assert "in your chat" in body
 
 
 def test_desk_empty_state_explains_itself(client):

@@ -174,6 +174,33 @@ def test_feed_page_has_no_agent_chrome(client):
     assert "You + your agent" not in body
 
 
+# --- producer mode: the agent-created page is a canvas -----------------------
+
+def test_agent_created_feed_folds_the_listen_card(client):
+    # create_feed sends via=agent; that feed's page is a canvas: episodes and
+    # the desk up front, the subscribe buttons folded until help_subscribe
+    # (or the reader) opens them, and a subline saying who runs the feed.
+    resp = client.post("/create", data={"via": "agent"}, follow_redirects=False)
+    assert resp.status_code == 303
+    secret = resp.headers["location"].rsplit("/", 1)[-1]
+    body = client.get(f"/u/{secret}").text
+    assert 'id="listen-fold"' in body
+    assert "your producer runs this feed from your chat" in body
+
+
+def test_web_created_feed_keeps_the_open_listen_card(client):
+    secret = make_feed(client)
+    body = client.get(f"/u/{secret}").text
+    assert 'id="listen-fold"' not in body
+    assert 'id="listen-card"' in body
+
+
+def test_webmcp_js_sends_via_agent_and_opens_the_fold(client):
+    body = client.get("/webmcp.js").text
+    assert 'via: "agent"' in body      # create_feed marks the feed agent-made
+    assert "listen-fold" in body       # help_subscribe reveals the folded card
+
+
 # --- help_subscribe ----------------------------------------------------------
 
 def test_help_subscribe_is_honest_about_the_clipboard(client):
@@ -192,8 +219,13 @@ def test_create_feed_result_names_help_subscribe(client):
     assert "call help_subscribe" in body
     assert "Free and instant" in body
     assert "no extra confirmation" in body
-    # The agent sets the new feed up proactively, not on request.
+    # The agent sets the new feed up proactively, not on request: the result
+    # frames creation as an unfinished job and forbids stopping to summarize.
     assert "without being asked" in body
+    assert "not done" in body
+    assert "do not stop" in body
+    # It copies the RSS link at creation time and reports it honestly.
+    assert "/feed.xml" in body
 
 
 def test_help_subscribe_can_open_the_users_app(client):

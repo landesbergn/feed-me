@@ -209,7 +209,7 @@
       },
       execute: async function (params) {
         var rss = location.origin + base + "/feed.xml";
-        flash(document.getElementById("listen-card"));
+        flash(revealListenCard());
         var copied = false;
         try {
           await navigator.clipboard.writeText(rss);
@@ -238,7 +238,8 @@
               (copied
                 ? ", or paste the copied link into any other podcast app."
                 : ", or use the Copy RSS link button for any other podcast app. The RSS link is " + rss) + " ") +
-          "Subscribing once is enough; every future episode arrives automatically."
+          "Subscribing once is enough; every future episode arrives automatically. " +
+          "Once they are set up, suggest in your chat what they might ask you next: an article to add now, a standing request to leave, a voice change."
         );
       }
     });
@@ -286,15 +287,27 @@
             cta.style.boxShadow = "0 0 0 3px #b04a00, 0 0 18px rgba(176,74,0,.35)";
           }
         } catch (e) { /* flourish */ }
-        var resp = await fetch("/create", { method: "POST" });
+        /* via=agent renders the new page as the producer's canvas. */
+        var resp = await fetch("/create", {
+          method: "POST",
+          body: new URLSearchParams({ via: "agent" })
+        });
         if (!resp.ok) return result("Error " + resp.status + ".");
         var page = resp.url;
+        var copied = false;
+        try {
+          await navigator.clipboard.writeText(page.replace(/\/+$/, "") + "/feed.xml");
+          copied = true;
+        } catch (e) { /* clipboard needs focus; help_subscribe retries */ }
         try { sessionStorage.setItem("fmAgentCreated", "1"); } catch (e) {}
         setTimeout(function () { location.assign(page); }, 500);
         return result(
           "Feed created. Its private page is " + page + " (treat it as a secret; it is the user's whole account). " +
+          (copied ? "The private RSS link (" + page + "/feed.xml) is already on the user's clipboard. " : "") +
           "Navigating there now; the feed tools register on that page. " +
-          "Then set the feed up for the user without being asked: call help_subscribe (it copies the RSS link to their clipboard and highlights the subscribe buttons), ask which podcast app they use, and call help_subscribe again with app to open that app on the feed for them. " +
+          "The job is not done yet: the feed reaches the user only once it is in their podcast app, so do not stop to summarize. " +
+          "Without being asked: (1) ask the user which podcast app they use, (2) call help_subscribe with app ('apple', 'overcast', or 'pocketcasts') to open that app on the feed for them, or plain help_subscribe for any other app, (3) then offer, in your chat, what they might ask you next: an article to add now, a standing request to leave, a voice change. " +
+          "When you report back, lead with what you did and the one thing you need from them, not a description of the page. " +
           "Stay on that page; do not navigate elsewhere unless the user asks."
         );
       }
@@ -420,6 +433,16 @@
   /* Page reactions: each tool call drives the same UI a person would use,
      so watching the page shows the collaboration, not just the end result.
      All flourish: a reaction failure never breaks the tool call. */
+  /* The producer-mode page folds the subscribe buttons away; open the fold
+     before flashing so the reveal is the agent's doing, on screen. */
+  function revealListenCard() {
+    try {
+      var fold = document.getElementById("listen-fold");
+      if (fold) fold.open = true;
+    } catch (e) { /* flourish */ }
+    return document.getElementById("listen-card");
+  }
+
   function flash(el) {
     try {
       if (!el) return;
@@ -469,7 +492,7 @@
       flash(document.querySelector(".voices"));
     },
     get_feed_info: function () {
-      flash(document.getElementById("listen-card") || document.querySelector("a.btn-primary"));
+      flash(revealListenCard() || document.querySelector("a.btn-primary"));
     },
     get_requests: function () {
       flash(document.getElementById("requests-section"));
@@ -519,7 +542,7 @@
       if (sessionStorage.getItem("fmAgentCreated")) {
         sessionStorage.removeItem("fmAgentCreated");
         agentMode("your producer created this feed");
-        flash(document.getElementById("listen-card"));
+        flash(revealListenCard());
       }
     } catch (e) { /* sessionStorage can be unavailable; fine */ }
   }
