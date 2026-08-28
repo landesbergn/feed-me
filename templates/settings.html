@@ -177,14 +177,14 @@
       font-family: var(--round); font-size: 15px; font-weight: 800; color: var(--ink);
     }
     .listen-note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
-    .req-form { display: flex; gap: 8px; margin-top: 12px; }
-    .req-form input {
-      flex: 1; min-width: 0; font-family: var(--sans); font-size: 13px;
-      padding: 9px 13px; border: 1.5px solid #E9C9AC; border-radius: 999px;
-      background: #fff; color: var(--ink);
+    .ask-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+    .ask-chip {
+      font-family: var(--sans); font-size: 12px; font-weight: 600; text-align: left;
+      padding: 7px 13px; border-radius: 999px; cursor: pointer;
+      border: 1.5px solid #E9C9AC; background: #fff; color: var(--accent);
     }
-    .req-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .req-submit { margin-top: 0 !important; flex: none; }
+    .ask-hint { font-size: 11px; color: var(--faint); margin: 8px 0 0; }
+    .req-empty { font-size: 12.5px; color: var(--muted); font-style: italic; margin: 12px 0 0; }
     .req-list { list-style: none; margin: 12px 0 0; padding: 0; font-size: 12.5px; }
     .req-list li { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px solid #F4E9DD; align-items: baseline; }
     .req-list li:last-child { border-bottom: none; }
@@ -317,6 +317,15 @@
     }
     function copyFeedUrl() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}
+    }
+    // The desk's example asks: copy to the clipboard so the user can paste
+    // them into their agent chat. Inline onclick survives the partial's
+    // innerHTML refresh, so this stays here, not in the fragment.
+    function copyAsk(btn) {
+      try { navigator.clipboard.writeText(btn.dataset.ask); } catch (e) {}
+      var old = btn.textContent;
+      btn.textContent = "copied!";
+      setTimeout(function () { btn.textContent = old; }, 1400);
     }
     function copyRssLink() {
       try { navigator.clipboard.writeText(FEED_URL); } catch (e) {}

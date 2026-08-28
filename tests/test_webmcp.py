@@ -17,6 +17,7 @@ TOOL_NAMES = [
     "help_subscribe",
     "get_requests",
     "complete_request",
+    "leave_request",
     "create_feed",
 ]
 
@@ -94,6 +95,7 @@ def test_webmcp_js_narrates_every_tool(client):
         "helping you subscribe",
         "checking your requests",
         "checking off a request",
+        "noting a request",
         "creating your feed",
     ):
         assert activity in body
@@ -190,6 +192,21 @@ def test_create_feed_result_names_help_subscribe(client):
     assert "call help_subscribe" in body
     assert "Free and instant" in body
     assert "no extra confirmation" in body
+    # The agent sets the new feed up proactively, not on request.
+    assert "without being asked" in body
+
+
+def test_help_subscribe_can_open_the_users_app(client):
+    # help_subscribe takes an optional app and presses the page's own
+    # subscribe link for it, so the agent can open the podcast app directly
+    # instead of telling the user which button to tap.
+    body = client.get("/webmcp.js").text
+    assert '"apple"' in body
+    assert '"overcast"' in body
+    assert '"pocketcasts"' in body
+    assert 'podcast://' in body
+    assert 'overcast://' in body
+    assert 'pktc://' in body
 
 
 # --- docs --------------------------------------------------------------------

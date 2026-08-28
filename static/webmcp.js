@@ -186,11 +186,28 @@
       }
     });
 
+    /* help_subscribe's app values, each mapped to the listen card's own
+       subscribe link so opening the app is the page pressing its button. */
+    var SUBSCRIBE_APPS = {
+      "apple": { selector: 'a[href^="podcast://"]', label: "Apple Podcasts" },
+      "overcast": { selector: 'a[href^="overcast://"]', label: "Overcast" },
+      "pocketcasts": { selector: 'a[href^="pktc://"]', label: "Pocket Casts" }
+    };
+
     tools.push({
       name: "help_subscribe",
-      description: "Help the user put this feed in their podcast app. Call this right after create_feed, or whenever the user wants to subscribe. It highlights the subscribe buttons on the page and copies the private RSS link to the user's clipboard when the browser allows. Relay the returned instructions to the user.",
-      inputSchema: { type: "object", properties: {} },
-      execute: async function () {
+      description: "Set this feed up in the user's podcast app. Call it right after create_feed, without being asked, and whenever the user wants to subscribe. It highlights the subscribe buttons and copies the private RSS link to the user's clipboard when the browser allows. If you know which podcast app the user uses (ask them), pass app and this opens that app on the feed directly. Relay the returned instructions to the user.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          app: {
+            type: "string",
+            "enum": ["apple", "overcast", "pocketcasts"],
+            description: "The user's podcast app, to open it on the feed directly. Omit if you do not know it yet."
+          }
+        }
+      },
+      execute: async function (params) {
         var rss = location.origin + base + "/feed.xml";
         flash(document.getElementById("listen-card"));
         var copied = false;
@@ -200,17 +217,45 @@
           var note = document.getElementById("agent-copied");
           if (note) note.hidden = false;
         } catch (e) { /* clipboard needs focus or a gesture; the page has a Copy button */ }
+        var opened = null;
+        var app = params && SUBSCRIBE_APPS[params.app];
+        if (app) {
+          try {
+            var link = document.querySelector(app.selector);
+            if (link) { link.click(); opened = app.label; }
+          } catch (e) { /* the highlighted button is the fallback */ }
+        }
         return result(
-          "The page is highlighting the subscribe buttons. " +
+          (opened
+            ? "The page pressed its own " + opened + " button, so " + opened + " should be opening on this feed now. Tell the user: tap Follow or Subscribe there, and if nothing opened, tap the highlighted " + opened + " button on the page. "
+            : "The page is highlighting the subscribe buttons. ") +
           (copied
             ? "The RSS link is on the user's clipboard. "
             : "The clipboard was not available here, so the link was not copied. ") +
-          "Tell the user: tap Add to Apple Podcasts on the page (Overcast and Pocket Casts buttons are there too)" +
-          (copied
-            ? ", or paste the copied link into any other podcast app."
-            : ", or use the Copy RSS link button for any other podcast app. The RSS link is " + rss) +
-          " Subscribing once is enough; every future episode arrives automatically."
+          (opened
+            ? ""
+            : "Tell the user: tap Add to Apple Podcasts on the page (Overcast and Pocket Casts buttons are there too)" +
+              (copied
+                ? ", or paste the copied link into any other podcast app."
+                : ", or use the Copy RSS link button for any other podcast app. The RSS link is " + rss) + " ") +
+          "Subscribing once is enough; every future episode arrives automatically."
         );
+      }
+    });
+
+    tools.push({
+      name: "leave_request",
+      description: "Put a standing request on the user's desk when they ask for something you cannot finish this session ('find me something on the Ottoman Empire each week'). It persists across sessions: get_requests returns it next time, and the user sees it on their feed page. Max 500 characters, 20 open per feed.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "The request, in the user's own terms. Max 500 characters." }
+        },
+        required: ["text"]
+      },
+      execute: async function (params) {
+        var r = await call("POST", base + "/requests", { json: { text: params.text } });
+        return result(r.ok ? "Request noted: " + r.text : r.text);
       }
     });
 
@@ -249,7 +294,7 @@
         return result(
           "Feed created. Its private page is " + page + " (treat it as a secret; it is the user's whole account). " +
           "Navigating there now; the feed tools register on that page. " +
-          "Next step: call help_subscribe to help the user put the feed in their podcast app. " +
+          "Then set the feed up for the user without being asked: call help_subscribe (it copies the RSS link to their clipboard and highlights the subscribe buttons), ask which podcast app they use, and call help_subscribe again with app to open that app on the feed for them. " +
           "Stay on that page; do not navigate elsewhere unless the user asks."
         );
       }
@@ -273,6 +318,7 @@
     help_subscribe: "helping you subscribe",
     get_requests: "checking your requests",
     complete_request: "checking off a request",
+    leave_request: "noting a request",
     create_feed: "creating your feed"
   };
   var bannerText = null;
@@ -429,6 +475,9 @@
       flash(document.getElementById("requests-section"));
     },
     complete_request: async function () {
+      flash(await refreshRequests());
+    },
+    leave_request: async function () {
       flash(await refreshRequests());
     }
   };

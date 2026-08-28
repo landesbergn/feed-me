@@ -175,24 +175,43 @@ def test_requests_api_errors(client):
     assert r.json()["error"] == "not_found"
 
 
-def test_requests_form_post_redirects_back(client, tmp_path):
+def test_requests_post_is_json_only(client, tmp_path):
+    # The page form is gone (the agent records requests from chat), so a
+    # form-encoded post is just malformed JSON now.
     secret = make_feed(client)
-    r = client.post(f"/u/{secret}/requests", data={"text": "From the page form"},
-                    follow_redirects=False)
-    assert r.status_code == 303
-    assert r.headers["location"] == f"/u/{secret}"
-    assert storage.list_requests(tmp_path, secret)[0]["text"] == "From the page form"
+    r = client.post(f"/u/{secret}/requests", data={"text": "From a form"})
+    assert r.status_code == 400
+    assert r.json()["error"] == "invalid_request"
+    assert storage.list_requests(tmp_path, secret) == []
 
 
 # --- the page ----------------------------------------------------------------
 
-def test_page_shows_the_assignment_desk(client, tmp_path):
+def test_page_shows_the_producers_desk(client, tmp_path):
     secret = make_feed(client)
     storage.add_request(tmp_path, secret, "Something about lighthouses")
     body = client.get(f"/u/{secret}").text
-    assert "For your producer" in body
+    assert "Your producer's desk" in body
     assert 'id="requests-section"' in body
     assert "Something about lighthouses" in body
+
+
+def test_desk_is_chat_first_not_a_form(client, tmp_path):
+    # The interaction model: the user talks to their agent in chat, never to
+    # the website. The desk shows tap-to-copy asks and the standing list; it
+    # takes no input of its own.
+    secret = make_feed(client)
+    body = client.get(f"/u/{secret}").text
+    assert f'action="/u/{secret}/requests"' not in body
+    assert "req-form" not in body
+    assert 'class="ask-chip"' in body
+    assert "paste" in body            # the chips explain the copy-to-chat move
+
+
+def test_desk_empty_state_explains_itself(client):
+    secret = make_feed(client)
+    body = client.get(f"/u/{secret}").text
+    assert "Nothing on the desk" in body
 
 
 def test_requests_partial_serves_fragment(client, tmp_path):

@@ -188,11 +188,13 @@ URLs.
 
 ## The request desk
 
-The feed page has a request box where the user leaves standing requests
-for you ("something on the Ottoman Empire this week"). Feedback taps from
-their podcast app's show notes ("More like ...") land in the same list.
-Start a session by checking it, fulfill what you can, and mark fulfilled
-requests done:
+The user works with you in chat, not on the website. When they ask for
+something you cannot finish this session ("something on the Ottoman Empire
+this week"), record it as a standing request so it survives the session;
+the feed page displays the desk so they can see what you are tracking.
+Feedback taps from their podcast app's show notes ("More like ...") land
+in the same list. Start a session by checking it, fulfill what you can,
+and mark fulfilled requests done:
 
     GET  {base}/u/<secret>/requests
     POST {base}/u/<secret>/requests                    {"text": "..."}
@@ -209,12 +211,16 @@ If you are browsing with WebMCP support (ChatGPT's browser, or Chrome with
 WebMCP enabled), you do not need this API by hand. Open the user's feed page
 {base}/u/<secret> and the page registers tools: add_article,
 add_article_text, list_episodes, get_episode_status, delete_episode,
-set_voice, get_feed_info, help_subscribe, get_requests, and
-complete_request. A user with no feed yet can
+set_voice, get_feed_info, help_subscribe, get_requests, complete_request,
+and leave_request. A user with no feed yet can
 start at {base}/ where a create_feed tool registers. After creating a
-feed, call help_subscribe: getting the feed into the user's podcast app is
-the one setup step that matters. The HTTP API on this page is the same
-capability set and works everywhere else.
+feed, set it up without being asked: call help_subscribe (it copies the
+RSS link to the user's clipboard and highlights the subscribe buttons),
+ask which podcast app they use, then call help_subscribe again with app
+("apple", "overcast", or "pocketcasts") to open that app on the feed for
+them. Getting the feed into their podcast app is the one setup step that
+matters. The HTTP API on this page is the same capability set and works
+everywhere else.
 
 Example prompts a user might give you, one per tool:
 
@@ -229,6 +235,7 @@ Example prompts a user might give you, one per tool:
 - get_feed_info: "What's my feed's RSS link so I can subscribe?"
 - get_requests: "Anything on my request list?"
 - complete_request: "Mark that request done."
+- leave_request: "Find me something on the Ottoman Empire every week."
 
 ## Errors
 

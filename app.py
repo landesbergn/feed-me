@@ -798,38 +798,26 @@ def list_requests_api(secret: str):
 
 @app.post("/u/{secret}/requests")
 async def create_request_route(request: Request, secret: str):
-    """Leave a request for the producer. Accepts JSON {"text": ...} (agent
-    contract, 201) or a form post from the feed page (303 back to the page).
-    Path-secret auth either way; the page form's action carries the secret."""
+    """Agent-facing: record a standing request on the desk (documented at
+    /AGENTS.md). The user asks in chat; the agent records it here so it
+    survives the session. Path-secret auth, JSON only."""
     if not storage.user_exists(DATA_DIR, secret):
         return _agent_error(404, "not_found", "No feed at this URL.")
-    body = await request.body()
-    payload: dict = {}
-    is_form = False
     try:
-        parsed_json = json.loads(body)
-        if isinstance(parsed_json, dict):
-            payload = parsed_json
+        payload = json.loads(await request.body())
     except (json.JSONDecodeError, UnicodeDecodeError):
-        payload = dict(await request.form())
-        is_form = True
-    text = payload.get("text")
+        payload = None
+    text = payload.get("text") if isinstance(payload, dict) else None
     if not isinstance(text, str) or not text.strip():
-        if is_form:
-            return RedirectResponse(f"/u/{secret}", status_code=303)
         return _agent_error(
             400, "invalid_request", 'Body must include a string "text".',
         )
     try:
         entry = storage.add_request(DATA_DIR, secret, text)
     except ValueError as err:
-        if is_form:
-            return RedirectResponse(f"/u/{secret}", status_code=303)
         return _agent_error(400, "invalid_request", str(err))
     _track("request_left", secret=secret, path="requests",
            props={"source": "owner"})
-    if is_form:
-        return RedirectResponse(f"/u/{secret}", status_code=303)
     return JSONResponse(_public_request(entry), status_code=201)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.37 · 2026-08-28
+
+The agent drives; the page is a window. Owner feedback on the v3.36 flow.
+
+- **Proactive setup after create_feed:** `help_subscribe` gains an optional `app` ("apple", "overcast", "pocketcasts") and presses the listen card's own subscribe link for it, so the agent can open the user's podcast app on the feed directly instead of narrating which button to tap. `create_feed`'s result now tells the agent to run the whole setup without being asked: call `help_subscribe` (clipboard + highlight), ask which app the user uses, call again with `app`. `AGENTS.md` documents the same sequence.
+- **The desk is chat-first:** the "For your producer" request form is gone; the user never interacts with the website, so the card no longer takes input. It is now "Your producer's desk": a line explaining the producer lives in your chat, three tap-to-copy example asks (paste into ChatGPT/Codex), the standing-request list as a status display, and an empty state that explains what lands there. `POST /u/<secret>/requests` is JSON-only again (the form branch is removed); the new WebMCP tool `leave_request` records a standing request from chat, and `AGENTS.md`'s request-desk section reframes recording requests as the agent's job.
+
 ## v3.36 · 2026-08-26
 
 The Producer: notes, the assignment desk, and loop-back from the podcast app.
